@@ -25,16 +25,24 @@ public sealed class WatchAgent : IDisposable
 	private readonly List<ToastWindow> toasts = [];
 	private readonly List<Alert> waiting = [];
 	private readonly DispatcherTimer refresh;
+	private readonly IAutostart? autostart;
+	private readonly IAppUpdates? updates;
+	private NativeMenu? menu;
 	private NativeMenuItem? snoozeItem;
+	private NativeMenuItem? updateItem;
+	private bool updateArranged;
 	private bool quitting;
 
-	public WatchAgent(IClassicDesktopStyleApplicationLifetime desktop, Window window, MainWindowViewModel vm, AlertService alerts, JsonAlertSettingsStore store)
+	public WatchAgent(IClassicDesktopStyleApplicationLifetime desktop, Window window, MainWindowViewModel vm, AlertService alerts, JsonAlertSettingsStore store,
+		IAutostart? autostart = null, IAppUpdates? updates = null)
 	{
 		this.desktop = desktop;
 		this.window = window;
 		this.vm = vm;
 		this.alerts = alerts;
 		this.store = store;
+		this.autostart = autostart;
+		this.updates = updates;
 
 		desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 		window.Icon = AppIcon.Get();
@@ -55,6 +63,13 @@ public sealed class WatchAgent : IDisposable
 
 		this.refresh = new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, (_, _) => this.UpdateTray());
 		this.refresh.Start();
+
+		if (updates is not null)
+		{
+			updates.Ready += (_, _) => Dispatcher.UIThread.Post(this.OfferUpdate);
+			if (updates.ReadyVersion is not null)
+				this.OfferUpdate();
+		}
 	}
 
 	// ---- The window ------------------------------------------------------------------------
@@ -74,6 +89,8 @@ public sealed class WatchAgent : IDisposable
 
 	public void ShowWindow()
 	{
+		// Started in the tray, the window becomes the main window the first time it is shown.
+		this.desktop.MainWindow ??= this.window;
 		this.window.Show();
 		if (this.window.WindowState == WindowState.Minimized)
 			this.window.WindowState = WindowState.Normal;
@@ -86,6 +103,11 @@ public sealed class WatchAgent : IDisposable
 			return;
 
 		this.quitting = true;
+
+		// A downloaded update is installed quietly once Neuro.AA has quit.
+		if (!this.updateArranged && this.updates?.ReadyVersion is not null)
+			this.ArrangeUpdate(restart: false);
+
 		foreach (ToastWindow t in this.toasts.ToList())
 			t.Close();
 		this.tray.IsVisible = false;
@@ -120,12 +142,66 @@ public sealed class WatchAgent : IDisposable
 		which.Menu.Add(this.Toggle("Information too (updates, restarts)", s => s.InformationalNotifications, (s, v) => s with { InformationalNotifications = v }));
 		menu.Add(which);
 		menu.Add(this.Toggle("Keep watching when the window closes", s => s.KeepRunningInTray, (s, v) => s with { KeepRunningInTray = v }));
+		if (this.autostart is not null)
+			menu.Add(this.AutostartToggle(this.autostart));
 
 		menu.Add(new NativeMenuItemSeparator());
 		NativeMenuItem quit = new("Quit");
 		quit.Click += (_, _) => this.Quit();
 		menu.Add(quit);
+		this.menu = menu;
 		return menu;
+	}
+
+	private NativeMenuItem AutostartToggle(IAutostart autostart)
+	{
+		NativeMenuItem item = new("Start with Windows") { ToggleType = MenuItemToggleType.CheckBox, IsChecked = autostart.IsEnabled };
+		item.Click += (_, _) =>
+		{
+			try
+			{
+				autostart.SetEnabled(!autostart.IsEnabled);
+			}
+			catch (Exception ex)
+			{
+				AppLog.Error("Could not change whether Neuro.AA starts with Windows.", ex);
+			}
+			item.IsChecked = autostart.IsEnabled;
+		};
+		return item;
+	}
+
+	/// <summary>An update has been downloaded: offer to restart into it, at the top of the menu.</summary>
+	private void OfferUpdate()
+	{
+		if (this.menu is null || this.updates?.ReadyVersion is not string version || this.quitting)
+			return;
+
+		if (this.updateItem is null)
+		{
+			this.updateItem = new NativeMenuItem();
+			this.updateItem.Click += (_, _) =>
+			{
+				this.ArrangeUpdate(restart: true);
+				this.Quit();
+			};
+			this.menu.Items.Insert(0, this.updateItem);
+			this.menu.Items.Insert(1, new NativeMenuItemSeparator());
+		}
+		this.updateItem.Header = $"Restart to update to {version}";
+	}
+
+	private void ArrangeUpdate(bool restart)
+	{
+		try
+		{
+			this.updates?.InstallWhenQuit(restart);
+			this.updateArranged = true;
+		}
+		catch (Exception ex)
+		{
+			AppLog.Error("Could not arrange for the update to be installed.", ex);
+		}
 	}
 
 	private NativeMenuItem Toggle(string header, Func<AlertSettings, bool> get, Func<AlertSettings, bool, AlertSettings> set)

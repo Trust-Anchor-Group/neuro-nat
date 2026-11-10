@@ -35,12 +35,16 @@ public partial class App : Application
 				AppServices services = Services ?? throw new InvalidOperationException("App.Services must be set by the host.");
 				MainWindowViewModel vm = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub);
 				MainWindow window = new() { DataContext = vm };
-				desktop.MainWindow = window;
+
+				// Started with Windows: watch from the tray, and show the window only when asked.
+				// The lifetime shows its main window at start, so it gets one only when shown.
+				if (!services.StartHidden)
+					desktop.MainWindow = window;
 
 				// Watching from the tray: alerts while the window is closed.
 				Engine.Alerts.JsonAlertSettingsStore alertStore = new(Path.Combine(services.DataFolder, "alerts.json"));
 				Engine.Alerts.AlertService alerts = new(services.Monitors, alertStore.Load());
-				Watch.WatchAgent watch = new(desktop, window, vm, alerts, alertStore);
+				Watch.WatchAgent watch = new(desktop, window, vm, alerts, alertStore, services.Autostart, services.Updates);
 				showMainWindow = watch.ShowWindow;
 				desktop.ShutdownRequested += async (_, _) =>
 				{

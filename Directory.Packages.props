@@ -34,6 +34,8 @@
   </ItemGroup>
   <ItemGroup Label="Platform">
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
+    <!-- Installer, Start menu shortcuts and self-updates (vpk pack, see tools/installer). Keep vpk at the same version. -->
+    <PackageVersion Include="Velopack" Version="1.2.161" />
   </ItemGroup>
   <ItemGroup Label="Tests">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />

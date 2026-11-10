@@ -1,23 +1,40 @@
 using Avalonia;
 using Avalonia.Threading;
 using Neuro.AA.App;
+using Neuro.AA.Desktop.Install;
 using Neuro.AA.Engine;
 using Neuro.AA.Engine.Accounts;
 using Neuro.AA.Engine.Attention;
 using Neuro.AA.Engine.Events;
+using Velopack;
 
 namespace Neuro.AA.Desktop;
 
 internal static class Program
 {
+	/// <summary>Starts Neuro.AA in the tray, without its window (used by "Start with Windows").</summary>
+	public const string TrayArgument = "--tray";
+
 	[STAThread]
 	public static int Main(string[] args)
 	{
+		// First: the installer runs Neuro.AA with special arguments at install, update and
+		// uninstall, and this handles them (and exits) before anything else starts.
+		// Installing turns "Start with Windows" on; uninstalling removes it.
+		VelopackApp installer = VelopackApp.Build();
+		if (OperatingSystem.IsWindows())
+			WindowsAutostart.AddInstallerHooks(installer);
+		installer.Run();
+
+		// Started with Windows: watch from the tray without opening the window.
+		bool startHidden = args.Contains(TrayArgument, StringComparer.OrdinalIgnoreCase);
+
 		// One Neuro.AA per user: starting it again brings the running one (perhaps in the tray) forward.
 		using SingleInstance? single = SingleInstance.TryClaim();
 		if (single is null)
 		{
-			SingleInstance.AskRunningToShow();
+			if (!startHidden)
+				SingleInstance.AskRunningToShow();
 			return 0;
 		}
 
@@ -77,7 +94,14 @@ internal static class Program
 			Engine.Devices.DevicesService devices = new(accounts);
 			Engine.PubSub.PubSubService pubsub = new(accounts);
 
-			App.App.Services = new AppServices(accounts, monitors, new FleetService(monitors), chat, identities, devices, pubsub, dataFolder);
+			App.App.Services = new AppServices(accounts, monitors, new FleetService(monitors), chat, identities, devices, pubsub, dataFolder)
+			{
+				StartHidden = startHidden,
+				Autostart = OperatingSystem.IsWindows() ? new WindowsAutostart() : null,
+				Updates = VelopackUpdates.TryStart(dataFolder),
+			};
+			if (startHidden)
+				AppLog.Info("Started in the tray.");
 
 			return BuildAvaloniaApp()
 				.AfterSetup(_ => Dispatcher.UIThread.UnhandledException += (_, e) =>
