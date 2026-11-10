@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.AA.App.ViewModels"
+             xmlns:conv="using:Neuro.AA.App.Converters"
+             xmlns:c="using:Neuro.AA.App.Controls"
+             x:Class="Neuro.AA.App.Views.FleetView"
+             x:DataType="vm:FleetViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.th">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.num">
+      <Setter Property="FontFeatures" Value="+tnum" />
+    </Style>
+    <Style Selector="TextBlock.warn">
+      <Setter Property="Foreground" Value="{DynamicResource Severity.Warning}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.bad">
+      <Setter Property="Foreground" Value="{DynamicResource Severity.Error}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- Narrow windows drop the version and disk columns. -->
+    <!-- Window width 1180 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw1180 :is(Control).colWide">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    
+  </UserControl.Styles>
+
+  <DockPanel Margin="20,16,20,20">
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding RefreshNowCommand}" ToolTip.Tip="Read every Neuron's health now">
+        <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
+      </Button>
+      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <TextBlock Classes="section" Text="Neurons" />
+        <TextBlock Classes="meta" Text="{Binding Summary}" VerticalAlignment="Center" />
+      </StackPanel>
+    </DockPanel>
+
+    <Border Classes="panel">
+      <DockPanel>
+        <!-- Column headers -->
+        <Border DockPanel.Dock="Top" Padding="14,9" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="2.4*,1.3*,1.3*,132,1.6*,1*,72,84,84" ColumnSpacing="12">
+            <TextBlock Classes="th" Text="Neuron" />
+            <TextBlock Grid.Column="1" Classes="th" Text="Stream" />
+            <TextBlock Grid.Column="2" Classes="th colWide" Text="Version" />
+            <TextBlock Grid.Column="3" Classes="th" Text="CPU, last 30 min" />
+            <TextBlock Grid.Column="4" Classes="th" Text="Memory" />
+            <TextBlock Grid.Column="5" Classes="th colWide" Text="Disk" />
+            <TextBlock Grid.Column="6" Classes="th" Text="Errors 1 h" HorizontalAlignment="Right" />
+            <TextBlock Grid.Column="7" Classes="th" Text="Open issues" HorizontalAlignment="Right" />
+            <TextBlock Grid.Column="8" Classes="th" Text="Last event" HorizontalAlignment="Right" />
+          </Grid>
+        </Border>
+
+        <Panel>
+          <ListBox Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" Margin="4">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:FleetRowViewModel">
+                <Grid ColumnDefinitions="2.4*,1.3*,1.3*,132,1.6*,1*,72,84,84" ColumnSpacing="12" RowDefinitions="Auto,Auto"
+                      ToolTip.Tip="Double-click to see this Neuron's events">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <Ellipse Classes="dot" VerticalAlignment="Center"
+                             Classes.ok="{Binding State, Converter={x:Static conv:EventConverters.IsLive}}"
+                             Classes.busy="{Binding State, Converter={x:Static conv:EventConverters.IsPending}}"
+                             Classes.bad="{Binding State, Converter={x:Static conv:EventConverters.IsProblem}}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Classes="mono" Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding BareJid}" />
+                      <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Border Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center"
+                                Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
+                          <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="9" FontWeight="SemiBold"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                                     Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+                        </Border>
+                        <TextBlock Classes="meta" Text="{Binding AccountLabel}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                  <TextBlock Grid.Column="1" Classes="meta" Text="{Binding StateText}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="2" Classes="meta colWide" Text="{Binding Software}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                  <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Classes="num" Classes.warn="{Binding HighCpu}" Text="{Binding CpuText}" Width="40" VerticalAlignment="Center" />
+                    <c:Sparkline Values="{Binding CpuSeries}" Width="72" Height="16" Foreground="{DynamicResource Accent}" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="4" Classes="num" Classes.warn="{Binding LowMemory}" Text="{Binding MemoryText}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="5" Classes="num colWide" Classes.warn="{Binding LowDisk}" Text="{Binding DiskText}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="6" Classes="num" Classes.bad="{Binding HasErrors}" Text="{Binding ErrorsLastHour}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="7" Classes="num" Text="{Binding OpenIssues}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="8" Classes="meta" Text="{Binding LastEventText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+
+                  <TextBlock Grid.Row="1" Grid.ColumnSpan="9" Classes="meta" Margin="18,6,0,0" TextWrapping="Wrap"
+                             Text="{Binding Note}" IsVisible="{Binding Note, Converter={x:Static conv:EventConverters.HasText}}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <StackPanel IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460" Spacing="6">
+            <c:LineIcon Data="{StaticResource Icon.Fleet}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+            <TextBlock Text="No Neurons found yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                       Text="Every Neuron in your accounts' rosters appears here, with its event stream, version, CPU, memory, disk and how many errors it logged in the last hour. Neurons that send you notifications are picked up automatically." />
+          </StackPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+  </DockPanel>
+</UserControl>

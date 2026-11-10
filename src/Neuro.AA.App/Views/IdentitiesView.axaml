@@ -1,0 +1,324 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.AA.App.ViewModels"
+             xmlns:conv="using:Neuro.AA.App.Converters"
+             xmlns:c="using:Neuro.AA.App.Controls"
+             x:Class="Neuro.AA.App.Views.IdentitiesView"
+             x:DataType="vm:IdentitiesViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.pill">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.pill TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.badge">
+      <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
+      <Setter Property="MinWidth" Value="20" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="Background" Value="{DynamicResource Accent}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.badge TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink.OnAccent}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.listPane">
+      <Setter Property="Width" Value="380" />
+    </Style>
+    <Style Selector="ToggleButton.seg">
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
+    </Style>
+    <Style Selector="ToggleButton.seg.first">
+      <Setter Property="CornerRadius" Value="6,0,0,6" />
+    </Style>
+    <Style Selector="ToggleButton.seg.last">
+      <Setter Property="CornerRadius" Value="0,6,6,0" />
+    </Style>
+    <Style Selector="TextBlock.factName">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+    <!-- Window width 1180 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw1180 Border.listPane">
+      <Setter Property="Width" Value="320" />
+    </Style>
+    
+    <!-- Window width 900 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw900 Border.listPane">
+      <Setter Property="Width" Value="260" />
+    </Style>
+    <Style Selector=".maxw900 TextBlock.wideOnly, .maxw900 StackPanel.wideOnly">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="Auto,*">
+
+    <!-- The list -->
+    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="12,14,12,12">
+        <DockPanel DockPanel.Dock="Top" Margin="6,0,0,12">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+            <ToggleButton Classes="seg first" IsChecked="{Binding IsMine, Mode=OneWay}"
+                          Command="{Binding SetModeCommand}" CommandParameter="{x:Static vm:IdentitiesMode.Mine}"
+                          ToolTip.Tip="Your accounts' legal identities">
+              <TextBlock Text="Mine" />
+            </ToggleButton>
+            <ToggleButton Classes="seg last" IsChecked="{Binding IsNeurons, Mode=OneWay}" Margin="-1,0,0,0"
+                          Command="{Binding SetModeCommand}" CommandParameter="{x:Static vm:IdentitiesMode.Neurons}"
+                          ToolTip.Tip="The Neurons' own identities, and applications waiting for review">
+              <TextBlock Text="Neurons" />
+            </ToggleButton>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <TextBlock Classes="section" Text="Identities" />
+            <TextBlock Classes="meta wideOnly" Text="{Binding Summary}" VerticalAlignment="Center" />
+          </StackPanel>
+        </DockPanel>
+
+        <CheckBox DockPanel.Dock="Bottom" Margin="6,10,0,0" IsChecked="{Binding ShowRetired}"
+                  IsVisible="{Binding ShowsRetiredToggle}">
+          <TextBlock Classes="meta" Text="{Binding RetiredText}" />
+        </CheckBox>
+
+        <Panel>
+          <ListBox Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:IdentityRowViewModel">
+                <Panel>
+                  <!-- An account: where its identities are listed, and where to apply for one. -->
+                  <Grid IsVisible="{Binding IsAccount}" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" Margin="0,4,0,0">
+                    <Border Grid.RowSpan="2" Width="22" Height="22" CornerRadius="5" VerticalAlignment="Top"
+                            Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
+                      <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="11" FontWeight="SemiBold"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Grid.Row="1" Classes="meta" Text="{Binding Meta}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                    <c:LineIcon Grid.Column="2" Grid.RowSpan="2" Data="{StaticResource Icon.Plus}" Width="14" Height="14"
+                                Foreground="{DynamicResource Ink.Tertiary}" VerticalAlignment="Center" ToolTip.Tip="Apply for a legal identity" />
+                  </Grid>
+
+                  <!-- An identity, a request, or a Neuron. -->
+                  <Grid IsVisible="{Binding IsItem}" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" Margin="30,0,0,0">
+                    <Border Classes="pill" IsVisible="{Binding HasState}" Margin="0,0,0,5"
+                            Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}, ConverterParameter=subtle}">
+                      <TextBlock Text="{Binding StateLabel}" Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                    </Border>
+                    <Border Grid.Column="1" Grid.RowSpan="2" Classes="badge" IsVisible="{Binding HasBadge}" ToolTip.Tip="Applications waiting for review">
+                      <TextBlock Text="{Binding Badge}" />
+                    </Border>
+                    <TextBlock Grid.Row="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="meta" Text="{Binding Meta}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                  </Grid>
+                </Panel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <StackPanel IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="290" Spacing="6">
+            <c:LineIcon Data="{StaticResource Icon.Identities}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+            <TextBlock Text="No accounts yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsMine}" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding IsMine}"
+                       Text="Add an account under Accounts. Its legal identities on its Neuron show up here." />
+            <TextBlock Text="No Neurons yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsNeurons}" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding IsNeurons}"
+                       Text="Neurons where your accounts are administrators show their own identity here, and the applications waiting for review." />
+          </StackPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- The selection -->
+    <Panel Grid.Column="1">
+      <DockPanel IsVisible="{Binding HasSelection}" Margin="24,16,24,20">
+
+        <!-- Header: state, name, account, actions -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowsIdentity}">
+              <Button Classes="ghost" Command="{Binding CopyIdCommand}" ToolTip.Tip="Copy the identity's id">
+                <TextBlock Text="Copy id" FontSize="{StaticResource Type.Meta}" />
+              </Button>
+              <Button Classes="ghost" Command="{Binding ValidateCommand}" ToolTip.Tip="Check its signatures and that the Neuron vouches for it">
+                <TextBlock Text="Check" FontSize="{StaticResource Type.Meta}" />
+              </Button>
+              <Button Content="{Binding RetireLabel}" IsVisible="{Binding CanRetire}" Command="{Binding AskRetireCommand}" CommandParameter="obsolete"
+                      ToolTip.Tip="Stop using it. It stays on record, but can no longer sign." />
+              <Button Classes="danger" Content="Compromised…" IsVisible="{Binding CanReportCompromised}" Command="{Binding AskRetireCommand}" CommandParameter="compromised"
+                      ToolTip.Tip="Its keys may be in someone else's hands" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowsPetition}">
+              <Button Content="Decline" Command="{Binding RespondCommand}" CommandParameter="decline" />
+              <Button Classes="primary" Content="Accept" Command="{Binding RespondCommand}" CommandParameter="accept" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowsNeuron}">
+              <Button Classes="ghost" Command="{Binding RefreshNeuronCommand}" ToolTip.Tip="Ask the Neuron again">
+                <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
+              </Button>
+              <Button Command="{Binding OpenPendingCommand}" ToolTip.Tip="{Binding NeuronWebBase}">
+                <TextBlock Text="Open review page" FontSize="{StaticResource Type.Meta}" />
+              </Button>
+            </StackPanel>
+          </StackPanel>
+
+          <StackPanel Spacing="6" Margin="0,0,16,0">
+            <Border Classes="pill" IsVisible="{Binding DetailState, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Background="{Binding DetailTone, Converter={x:Static conv:ToneBrushConverter.Instance}, ConverterParameter=subtle}">
+              <TextBlock Text="{Binding DetailState}" Foreground="{Binding DetailTone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+            </Border>
+            <TextBlock Classes="title" Text="{Binding DetailTitle}" TextWrapping="Wrap" />
+            <TextBlock Classes="meta" Text="{Binding DetailSubtitle}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </DockPanel>
+
+        <!-- Confirmation for retiring or reporting an identity -->
+        <Border DockPanel.Dock="Top" IsVisible="{Binding IsConfirming}" Background="{DynamicResource State.Bad.Subtle}"
+                CornerRadius="{StaticResource Radius}" Padding="14,10" Margin="0,0,0,14">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="12,0,0,0">
+              <Button Content="Cancel" Command="{Binding CancelConfirmCommand}" />
+              <Button Classes="danger armed" Content="{Binding ConfirmButton}" Command="{Binding ConfirmCommand}" />
+            </StackPanel>
+            <TextBlock Text="{Binding ConfirmText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+
+        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,14"
+                    IsVisible="{Binding Validation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse Width="8" Height="8" VerticalAlignment="Center" Fill="{Binding ValidationTone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+            <TextBlock Text="{Binding Validation}" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock DockPanel.Dock="Top" Classes="error" Text="{Binding DetailError}" TextWrapping="Wrap" Margin="0,0,0,14"
+                   IsVisible="{Binding DetailError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+        <ScrollViewer>
+          <StackPanel Spacing="18" MaxWidth="860" HorizontalAlignment="Left">
+
+            <TextBlock Classes="meta" Text="{Binding DetailNote}" TextWrapping="Wrap" MaxWidth="640" HorizontalAlignment="Left"
+                       IsVisible="{Binding DetailNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+            <!-- Facts: identity, request or Neuron -->
+            <Border Classes="panel" Background="{DynamicResource Surface.Panel}" Padding="16,12"
+                    IsVisible="{Binding !ShowsAccount}">
+              <ItemsControl ItemsSource="{Binding Facts}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:IdentityFact">
+                    <Grid ColumnDefinitions="140,*" Margin="0,4">
+                      <TextBlock Classes="factName" Text="{Binding Name}" />
+                      <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"
+                                           Classes.mono="{Binding Mono}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+
+            <StackPanel Spacing="8" IsVisible="{Binding HasProperties}">
+              <TextBlock Classes="section" Text="What it says" />
+              <Border Classes="panel" Background="{DynamicResource Surface.Panel}" Padding="16,12">
+                <ItemsControl ItemsSource="{Binding Properties}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:IdentityFact">
+                      <Grid ColumnDefinitions="140,*" Margin="0,4">
+                        <TextBlock Classes="factName" Text="{Binding Name}" />
+                        <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+            </StackPanel>
+
+            <StackPanel Spacing="8" IsVisible="{Binding HasAttachments}">
+              <TextBlock Classes="section" Text="Attachments" />
+              <ItemsControl ItemsSource="{Binding Attachments}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:IdentityFact">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,3">
+                      <c:LineIcon Data="{StaticResource Icon.Attach}" Width="14" Height="14" Foreground="{DynamicResource Ink.Secondary}" />
+                      <TextBlock Text="{Binding Name}" />
+                      <TextBlock Classes="meta" Text="{Binding Value}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- Apply for a legal identity -->
+            <StackPanel Spacing="14" IsVisible="{Binding ShowsAccount}">
+              <ItemsControl ItemsSource="{Binding ApplyFields}" IsVisible="{Binding CanApply}" MaxWidth="800" HorizontalAlignment="Left">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ApplyField">
+                      <StackPanel Width="250" Spacing="4" Margin="0,0,14,12">
+                        <TextBlock Classes="label" Text="{Binding Label}" />
+                        <TextBox Text="{Binding Value}" PlaceholderText="{Binding Hint}" MinHeight="30" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding CanApply}">
+                <Button Classes="primary" Content="Send application" Command="{Binding ApplyCommand}" IsEnabled="{Binding !IsBusy}" />
+                <TextBlock Classes="meta" Text="Sending…" VerticalAlignment="Center" IsVisible="{Binding IsBusy}" />
+              </StackPanel>
+            </StackPanel>
+
+            <!-- A Neuron's applications waiting for review -->
+            <StackPanel Spacing="8" IsVisible="{Binding ShowsNeuron}">
+              <TextBlock Classes="section" Text="Waiting for review" />
+              <TextBlock Classes="meta" Text="{Binding PendingSummary}" />
+              <ItemsControl ItemsSource="{Binding PendingRows}" IsVisible="{Binding HasPending}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PendingApplicationRow">
+                    <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,10">
+                      <DockPanel>
+                        <Button DockPanel.Dock="Right" VerticalAlignment="Center" ToolTip.Tip="{Binding ReviewUrl}"
+                                Command="{Binding $parent[UserControl].((vm:IdentitiesViewModel)DataContext).OpenReviewCommand}" CommandParameter="{Binding}">
+                          <TextBlock Text="Review" FontSize="{StaticResource Type.Meta}" />
+                        </Button>
+                        <StackPanel Spacing="3">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                          <TextBlock Classes="meta" Text="{Binding Details}" />
+                          <SelectableTextBlock Classes="mono" Text="{Binding Model.Id}" FontSize="{StaticResource Type.Caption}" Foreground="{DynamicResource Ink.Tertiary}" />
+                        </StackPanel>
+                      </DockPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+
+      <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
+        <TextBlock Text="Pick an identity, an account or a Neuron" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                   Text="Pick an account to apply for a legal identity on its Neuron. Requests to see your identities wait at the top until you answer them." />
+      </StackPanel>
+    </Panel>
+  </Grid>
+</UserControl>

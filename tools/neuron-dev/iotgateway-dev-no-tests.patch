@@ -1,0 +1,16 @@
+﻿diff --git a/Waher.IoTGateway/Setup/XmppConfiguration.cs b/Waher.IoTGateway/Setup/XmppConfiguration.cs
+index 5fb55e392..ab40b9abf 100644
+--- a/Waher.IoTGateway/Setup/XmppConfiguration.cs
++++ b/Waher.IoTGateway/Setup/XmppConfiguration.cs
+@@ -1376,6 +1376,11 @@ public override async Task<bool> EnvironmentConfiguration()
+ 			if (!this.TryGetEnvironmentVariable(GATEWAY_XMPP_CLEAR_PWD, out this.storePasswordInsteadOfHash, false))
+ 				return false;
+ 
++			// LOCAL DEV PATCH (Neuro.AA test Neuron, do not commit): a broker can use an account on its
++			// own XMPP server, which only starts after setup. Accept the settings without connecting.
++			if (string.Equals(Environment.GetEnvironmentVariable("GATEWAY_DEV_NO_TESTS"), "true", StringComparison.OrdinalIgnoreCase))
++				return true;
++
+ 			this.testConnection = new TaskCompletionSource<bool>();
+ 			try
+ 			{

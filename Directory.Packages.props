@@ -1,0 +1,44 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <AvaloniaVersion>12.1.6</AvaloniaVersion>
+  </PropertyGroup>
+  <ItemGroup Label="Neuron protocol libraries (same packages the Neuron uses)">
+    <PackageVersion Include="Waher.Networking.XMPP" Version="4.4.0" />
+    <PackageVersion Include="Waher.Networking.XMPP.Concentrator" Version="4.4.0" />
+    <PackageVersion Include="Waher.Events" Version="1.4.7" />
+    <PackageVersion Include="Waher.Events.XMPP" Version="2.1.4" />
+    <PackageVersion Include="Waher.Networking.XMPP.P2P" Version="5.0.0" />
+    <PackageVersion Include="Waher.Networking.XMPP.Contracts" Version="5.5.0" />
+    <!-- Contracts 5.5 uses post-quantum endpoints that arrived in PQC 1.2. -->
+    <PackageVersion Include="Waher.Security.PQC" Version="1.2.0" />
+    <PackageVersion Include="Waher.Networking.XMPP.MUC" Version="3.1.1" />
+    <!-- Encrypted object database for signing keys and identity state (the lightweight build: no Roslyn). -->
+    <PackageVersion Include="Waher.Persistence.FilesLW" Version="2.1.1" />
+    <PackageVersion Include="Waher.Networking.XMPP.Provisioning" Version="4.3.0" />
+    <PackageVersion Include="Waher.Networking.XMPP.PubSub" Version="3.1.1" />
+    <PackageVersion Include="Waher.Networking.XMPP.PEP" Version="3.1.1" />
+    <PackageVersion Include="Waher.Runtime.Inventory" Version="1.5.0" />
+    <!-- 6.3.x is the last line built on SkiaSharp 3.x, which Avalonia 12 uses; 6.4 moves to SkiaSharp 4. -->
+    <PackageVersion Include="Waher.Content.Markdown" Version="6.3.3" />
+  </ItemGroup>
+  <ItemGroup Label="UI">
+    <PackageVersion Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Headless.XUnit" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="DynamicData" Version="9.5.0" />
+  </ItemGroup>
+  <ItemGroup Label="Platform">
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
+  </ItemGroup>
+  <ItemGroup Label="Tests">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+  </ItemGroup>
+</Project>

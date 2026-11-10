@@ -1,0 +1,18 @@
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+TestResults/
+artifacts/
+publish/
+
+# Impeccable runtime folders (decision sketches are kept: .impeccable/mocks/decision/)
+.impeccable/questions/
+.impeccable/review/
+.impeccable/build/
+.impeccable/config.local.json
+
+# Local test credentials
+.local/

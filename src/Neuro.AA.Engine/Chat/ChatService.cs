@@ -1,0 +1,574 @@
+using System.Collections.Concurrent;
+using System.Security;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Neuro.AA.Engine.Accounts;
+using Neuro.AA.Engine.Attention;
+using Neuro.AA.Engine.Events;
+using Waher.Networking.XMPP;
+using Waher.Networking.XMPP.Events;
+
+namespace Neuro.AA.Engine.Chat;
+
+/// <summary>A roster contact of an account, with what is known about its presence.</summary>
+public sealed record Contact(
+	Guid AccountId,
+	string BareJid,
+	string Name,
+	IReadOnlyList<string> Groups,
+	SubscriptionState Subscription,
+	bool IsOnline,
+	Availability Availability,
+	string? Status,
+	bool IsNeuron)
+{
+	public string Label => string.IsNullOrWhiteSpace(this.Name) ? this.BareJid : this.Name;
+}
+
+/// <summary>
+/// Chat for every account: conversations, the roster and subscription requests, and the chat
+/// admin consoles of Neurons. A Neuron's notifications (sent to the bare JID) belong to the
+/// Attention list and are left out here; its answers to console commands (sent to this client's
+/// full JID, in the command's thread) go to the console.
+/// </summary>
+public sealed partial class ChatService : IAsyncDisposable
+{
+	private readonly AccountManager accounts;
+	private readonly MonitorService monitors;
+	private readonly IChatStore? store;
+	private readonly ConcurrentDictionary<string, Conversation> conversations = new(StringComparer.OrdinalIgnoreCase);
+	private readonly ConcurrentDictionary<string, ConsoleSession> consoles = new(StringComparer.OrdinalIgnoreCase);
+	private readonly ConcurrentDictionary<Guid, AccountChat> attached = new();
+	private readonly HashSet<AccountSession> watched = [];
+	private readonly List<SubscriptionRequest> requests = [];
+	private readonly Timer saveTimer;
+	private int dirty;
+
+	public ChatService(AccountManager accounts, MonitorService monitors, IChatStore? store = null)
+	{
+		this.accounts = accounts;
+		this.monitors = monitors;
+		this.store = store;
+		this.saveTimer = new Timer(_ => this.SaveIfDirty(), null, Timeout.Infinite, Timeout.Infinite);
+
+		monitors.SubscriptionRequested += this.Monitors_SubscriptionRequested;
+		accounts.SessionsChanged += (_, _) => this.SyncSessions();
+		this.SyncSessions();
+	}
+
+	/// <summary>Raised when a conversation gets a message or changes. Any thread.</summary>
+	public event EventHandler<Conversation>? ConversationChanged;
+
+	/// <summary>Raised when an account's roster or a contact's presence changes. Any thread.</summary>
+	public event EventHandler<Guid>? RosterChanged;
+
+	/// <summary>Raised when subscription requests arrive or are answered. Any thread.</summary>
+	public event EventHandler? RequestsChanged;
+
+	// ---- Conversations ---------------------------------------------------------------------
+
+	private static string Key(Guid accountId, string bareJid) => accountId.ToString("N") + "|" + bareJid.ToLowerInvariant();
+
+	public IReadOnlyList<Conversation> Conversations => [.. this.conversations.Values.OrderByDescending(c => c.LastActivity)];
+
+	public Conversation Get(Guid accountId, string bareJid)
+		=> this.conversations.GetOrAdd(Key(accountId, bareJid), _ => new Conversation(accountId, bareJid));
+
+	public Conversation? Find(Guid accountId, string bareJid)
+		=> this.conversations.TryGetValue(Key(accountId, bareJid), out Conversation? c) ? c : null;
+
+	public void MarkRead(Conversation c)
+	{
+		if (c.Unread == 0)
+			return;
+
+		c.Unread = 0;
+		this.Touch();
+		this.ConversationChanged?.Invoke(this, c);
+	}
+
+	/// <summary>Sends a Markdown chat message to a contact.</summary>
+	public async Task<ChatMessage> SendAsync(Guid accountId, string bareJid, string markdown)
+	{
+		Conversation c = this.Get(accountId, bareJid);
+		string id = Guid.NewGuid().ToString("N");
+		ChatMessage m = new()
+		{
+			Id = id,
+			MessageId = id,
+			Direction = ChatDirection.Out,
+			Timestamp = DateTime.Now,
+			Markdown = markdown,
+			Text = markdown,
+		};
+		c.Add(m);
+
+		try
+		{
+			bool encrypted = await this.DeliverAsync(accountId, bareJid, c.IsRoom, id, MarkdownXml(markdown), markdown);
+			if (encrypted)
+			{
+				m = m with { Encrypted = true };
+				c.Replace(m);
+			}
+		}
+		catch (Exception ex)
+		{
+			m = m with { Error = ex.Message };
+			c.Replace(m);
+		}
+
+		this.Touch();
+		this.ConversationChanged?.Invoke(this, c);
+		return m;
+	}
+
+	/// <summary>
+	/// Sends a message to a contact, end-to-end encrypted to every resource that published keys,
+	/// or in the clear to the bare JID when none did; to a room as group chat. Returns true when
+	/// it went encrypted.
+	/// </summary>
+	private async Task<bool> DeliverAsync(Guid accountId, string jid, bool room, string id, string customXml, string body)
+	{
+		AccountChat a = this.ChatOf(accountId) ?? throw new InvalidOperationException("The account is not connected.");
+		XmppClient client = a.Client;
+		if (client.State != XmppState.Connected)
+			throw new InvalidOperationException("The account is not connected.");
+
+		if (room)
+		{
+			await client.SendMessage(QoSLevel.Unacknowledged, MessageType.GroupChat, id, jid, customXml, body,
+				string.Empty, string.Empty, string.Empty, string.Empty, null, null);
+			return false;
+		}
+
+		// A Neuron is the far end of its own chat admin: messages to it travel in the clear over the
+		// account's TLS connection, like the console's, so its chat bot always gets them.
+		bool neuron = this.monitors.For(accountId)?.Neurons.Any(n => n.State is WatchState.Live or WatchState.Subscribing or WatchState.Forbidden && string.Equals(n.BareJid, jid, StringComparison.OrdinalIgnoreCase)) == true;
+		List<string> secure = neuron ? [] : this.SecureResources(a, jid);
+		if (secure.Count == 0)
+		{
+			await client.SendMessage(QoSLevel.Unacknowledged, MessageType.Chat, id, jid, customXml, body,
+				string.Empty, string.Empty, string.Empty, string.Empty, null, null);
+			return false;
+		}
+
+		foreach (string full in secure)
+		{
+			await a.E2e.SendMessage(client, E2ETransmission.AssertE2E, QoSLevel.Unacknowledged, MessageType.Chat,
+				id, full, customXml, body, string.Empty, string.Empty, string.Empty, string.Empty, null, null);
+		}
+
+		return true;
+	}
+
+	internal static string MarkdownXml(string markdown)
+		=> "<content xmlns=\"urn:xmpp:content\" type=\"text/markdown\">" + SecurityElement.Escape(markdown) + "</content>";
+
+	// ---- Roster ----------------------------------------------------------------------------
+
+	/// <summary>Contacts of an account, as the server's roster has them now.</summary>
+	public IReadOnlyList<Contact> Contacts(Guid accountId)
+	{
+		XmppClient? c = this.ClientOf(accountId);
+		if (c is null)
+			return [];
+
+		NeuronMonitor? m = this.monitors.For(accountId);
+		HashSet<string> neurons = new(m?.Neurons.Select(n => n.BareJid) ?? [], StringComparer.OrdinalIgnoreCase);
+
+		return [.. c.Roster.Select(r =>
+		{
+			PresenceEventArgs? p = r.HasLastPresence ? r.LastPresence : null;
+			bool online = p?.IsOnline == true;
+			return new Contact(accountId, r.BareJid, r.Name ?? string.Empty, r.Groups ?? [], r.State, online,
+				online ? p!.Availability : Availability.Offline, p?.Status, neurons.Contains(r.BareJid));
+		})];
+	}
+
+	public async Task AddContactAsync(Guid accountId, string bareJid, string? name)
+	{
+		XmppClient c = this.ClientOf(accountId) ?? throw new InvalidOperationException("The account is not connected.");
+		bareJid = bareJid.Trim();
+		await c.AddRosterItem(new RosterItem(bareJid, name?.Trim() ?? string.Empty));
+		await c.RequestPresenceSubscription(bareJid);
+		this.RosterChanged?.Invoke(this, accountId);
+	}
+
+	public async Task RemoveContactAsync(Guid accountId, string bareJid)
+	{
+		XmppClient c = this.ClientOf(accountId) ?? throw new InvalidOperationException("The account is not connected.");
+		await c.RemoveRosterItem(bareJid);
+		this.RosterChanged?.Invoke(this, accountId);
+	}
+
+	public async Task RenameContactAsync(Guid accountId, string bareJid, string name)
+	{
+		XmppClient c = this.ClientOf(accountId) ?? throw new InvalidOperationException("The account is not connected.");
+		RosterItem? item = c.GetRosterItem(bareJid);
+		await c.UpdateRosterItem(bareJid, name.Trim(), item?.Groups ?? []);
+		this.RosterChanged?.Invoke(this, accountId);
+	}
+
+	// ---- Subscription requests -------------------------------------------------------------
+
+	public IReadOnlyList<SubscriptionRequest> Requests
+	{
+		get
+		{
+			lock (this.requests)
+				return [.. this.requests];
+		}
+	}
+
+	private void Monitors_SubscriptionRequested(object? sender, (Guid AccountId, PresenceEventArgs Presence) e)
+	{
+		lock (this.requests)
+		{
+			this.requests.RemoveAll(r => r.AccountId == e.AccountId && string.Equals(r.BareJid, e.Presence.FromBareJID, StringComparison.OrdinalIgnoreCase));
+			this.requests.Add(new SubscriptionRequest(e.AccountId, e.Presence.FromBareJID, DateTime.Now) { Presence = e.Presence });
+		}
+
+		this.RequestsChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	/// <summary>Lets the requester see the account's presence, and asks to see theirs.</summary>
+	public async Task AcceptAsync(SubscriptionRequest r)
+	{
+		if (r.Presence is not null)
+			await r.Presence.Accept();
+
+		XmppClient? c = this.ClientOf(r.AccountId);
+		RosterItem? item = c?.GetRosterItem(r.BareJid);
+		if (c is not null && (item is null || item.State is SubscriptionState.None or SubscriptionState.From))
+			await c.RequestPresenceSubscription(r.BareJid);
+
+		this.Forget(r);
+	}
+
+	public async Task DeclineAsync(SubscriptionRequest r)
+	{
+		if (r.Presence is not null)
+			await r.Presence.Decline();
+
+		this.Forget(r);
+	}
+
+	private void Forget(SubscriptionRequest r)
+	{
+		lock (this.requests)
+			this.requests.Remove(r);
+
+		this.RequestsChanged?.Invoke(this, EventArgs.Empty);
+		this.RosterChanged?.Invoke(this, r.AccountId);
+	}
+
+	// ---- Consoles --------------------------------------------------------------------------
+
+	/// <summary>The chat admin console of a Neuron through an account.</summary>
+	public ConsoleSession Console(Guid accountId, string neuronJid)
+		=> this.consoles.GetOrAdd(Key(accountId, neuronJid), _ => new ConsoleSession(accountId, neuronJid,
+			() => this.monitors.For(accountId)?.Concentrator(neuronJid)?.FullJid,
+			async (to, command, thread) =>
+			{
+				XmppClient c = this.ClientOf(accountId) ?? throw new InvalidOperationException("The account is not connected.");
+				// The body carries the command as typed; the Markdown element tells the Neuron to answer in Markdown.
+				await c.SendMessage(QoSLevel.Unacknowledged, MessageType.Chat, Guid.NewGuid().ToString("N"), to, MarkdownXml(command), command,
+					string.Empty, string.Empty, thread, string.Empty, null, null);
+			}));
+
+	// ---- Connections -----------------------------------------------------------------------
+
+	private XmppClient? ClientOf(Guid accountId)
+		=> this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == accountId)?.Client;
+
+	private AccountChat? ChatOf(Guid accountId)
+		=> this.attached.TryGetValue(accountId, out AccountChat? a) && ReferenceEquals(a.Client, this.ClientOf(accountId)) ? a : null;
+
+	private void SyncSessions()
+	{
+		foreach (AccountSession s in this.accounts.Sessions)
+		{
+			bool added;
+			lock (this.watched)
+				added = this.watched.Add(s);
+
+			if (!added)
+				continue;
+
+			s.ClientCreated += (_, c) => this.Attach(s.Profile.Id, c);
+			if (s.Client is XmppClient existing)
+				this.Attach(s.Profile.Id, existing);
+		}
+	}
+
+	private void Attach(Guid accountId, XmppClient c)
+	{
+		if (this.attached.TryGetValue(accountId, out AccountChat? old))
+		{
+			if (ReferenceEquals(old.Client, c))
+				return;
+			this.Detach(old);
+		}
+
+		AccountSession? session = this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == accountId);
+		AccountChat a = new(accountId, c, session?.Profile.TrustServerCertificate ?? false);
+		this.attached[accountId] = a;
+		this.AttachRooms(a);
+		c.OnChatMessage += this.Client_OnChatMessage;
+		c.OnPresence += this.Client_OnPresence;
+		c.OnRosterItemAdded += this.Client_OnRoster;
+		c.OnRosterItemUpdated += this.Client_OnRoster;
+		c.OnRosterItemRemoved += this.Client_OnRoster;
+		c.OnStateChanged += this.Client_OnStateChanged;
+	}
+
+	private void Detach(AccountChat a)
+	{
+		XmppClient c = a.Client;
+		this.DetachRooms(a);
+		a.Dispose();
+		c.OnChatMessage -= this.Client_OnChatMessage;
+		c.OnPresence -= this.Client_OnPresence;
+		c.OnRosterItemAdded -= this.Client_OnRoster;
+		c.OnRosterItemUpdated -= this.Client_OnRoster;
+		c.OnRosterItemRemoved -= this.Client_OnRoster;
+		c.OnStateChanged -= this.Client_OnStateChanged;
+	}
+
+	private Guid? AccountOf(object sender)
+	{
+		foreach (KeyValuePair<Guid, AccountChat> p in this.attached)
+		{
+			if (ReferenceEquals(p.Value.Client, sender))
+				return p.Key;
+		}
+
+		return null;
+	}
+
+	private Task Client_OnStateChanged(object sender, XmppState state)
+	{
+		if (this.AccountOf(sender) is Guid id)
+		{
+			if (state == XmppState.Connected && this.attached.TryGetValue(id, out AccountChat? a))
+				_ = this.OnConnectedAsync(a);
+
+			this.RosterChanged?.Invoke(this, id);
+		}
+		return Task.CompletedTask;
+	}
+
+	/// <summary>Finds the upload and group chat services, and enters the rooms the account was in.</summary>
+	private async Task OnConnectedAsync(AccountChat a)
+	{
+		try
+		{
+			await a.DiscoverAsync();
+		}
+		catch (Exception)
+		{
+			// Without the services, files and rooms are simply not offered.
+		}
+
+		await this.RejoinRoomsAsync(a);
+		this.RosterChanged?.Invoke(this, a.AccountId);
+	}
+
+	private Task Client_OnPresence(object sender, PresenceEventArgs e)
+	{
+		if (this.AccountOf(sender) is Guid id)
+			this.RosterChanged?.Invoke(this, id);
+		return Task.CompletedTask;
+	}
+
+	private Task Client_OnRoster(object sender, RosterItem item)
+	{
+		if (this.AccountOf(sender) is Guid id)
+			this.RosterChanged?.Invoke(this, id);
+		return Task.CompletedTask;
+	}
+
+	private async Task Client_OnChatMessage(object sender, MessageEventArgs e)
+	{
+		try
+		{
+			if (this.AccountOf(sender) is not Guid accountId || sender is not XmppClient client)
+				return;
+
+			string bare = e.FromBareJID;
+			if (string.IsNullOrEmpty(bare) || string.Equals(bare, client.BareJID, StringComparison.OrdinalIgnoreCase))
+				return;
+
+			IncomingNotification? n = NeuronMonitor.ReadNotification(accountId, e);
+			if (n is null)
+				return;
+
+			bool toFull = !string.IsNullOrEmpty(e.To) && e.To.Contains('/');
+
+			if (toFull && this.consoles.TryGetValue(Key(accountId, bare), out ConsoleSession? console) && console.Receive(n, e.ThreadID))
+				return;
+
+			// A Neuron's notifications go to the Attention list.
+			if (!toFull && this.monitors.For(accountId) is NeuronMonitor m && await m.IsNeuronSenderAsync(e.From))
+				return;
+
+			Conversation conv = this.Get(accountId, bare);
+			n = WithOutOfBand(n, e);
+
+			// Neurons answer Markdown with Markdown only; keep a plain version for previews.
+			string text = string.IsNullOrWhiteSpace(n.Text) ? NotificationClassifier.Plain(n.Markdown) : n.Text;
+
+			if (n.Replaces is string replaces && conv.Correct(replaces, n.Markdown, text, n.Timestamp))
+			{
+				// Corrected in place.
+			}
+			else
+			{
+				conv.Add(new ChatMessage
+				{
+					Id = Guid.NewGuid().ToString("N"),
+					MessageId = n.MessageId,
+					Direction = ChatDirection.In,
+					Timestamp = n.Timestamp,
+					Markdown = n.Markdown,
+					Text = text,
+					Encrypted = e.UsesE2eEncryption,
+				});
+				conv.Unread++;
+			}
+
+			this.Touch();
+			this.ConversationChanged?.Invoke(this, conv);
+		}
+		catch (Exception)
+		{
+			// A malformed message must not stop the client's message loop.
+		}
+	}
+
+	// ---- Persistence -----------------------------------------------------------------------
+
+	/// <summary>Loads stored conversations.</summary>
+	public void Load()
+	{
+		if (this.store is null)
+			return;
+
+		(IReadOnlyList<Conversation> conversations, IReadOnlyList<RoomInfo> rooms) = this.store.Load();
+		foreach (Conversation c in conversations)
+			this.conversations[Key(c.AccountId, c.BareJid)] = c;
+		foreach (RoomInfo r in rooms)
+			this.rooms[Key(r.AccountId, r.RoomJid)] = r;
+	}
+
+	private void Touch()
+	{
+		if (this.store is null)
+			return;
+
+		Interlocked.Exchange(ref this.dirty, 1);
+		this.saveTimer.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
+	}
+
+	private void SaveIfDirty()
+	{
+		if (this.store is null || Interlocked.Exchange(ref this.dirty, 0) == 0)
+			return;
+
+		try
+		{
+			this.store.Save([.. this.conversations.Values], [.. this.rooms.Values]);
+		}
+		catch (Exception)
+		{
+			Interlocked.Exchange(ref this.dirty, 1);
+		}
+	}
+
+	public ValueTask DisposeAsync()
+	{
+		this.monitors.SubscriptionRequested -= this.Monitors_SubscriptionRequested;
+		foreach (AccountChat a in this.attached.Values)
+			this.Detach(a);
+
+		this.saveTimer.Dispose();
+		this.SaveIfDirty();
+		return ValueTask.CompletedTask;
+	}
+}
+
+/// <summary>Keeps conversations between runs.</summary>
+public interface IChatStore
+{
+	(IReadOnlyList<Conversation> Conversations, IReadOnlyList<RoomInfo> Rooms) Load();
+
+	void Save(IReadOnlyList<Conversation> conversations, IReadOnlyList<RoomInfo> rooms);
+}
+
+/// <summary>Stores conversations as JSON.</summary>
+public sealed class JsonChatStore(string filePath) : IChatStore
+{
+	private static readonly JsonSerializerOptions options = new()
+	{
+		Converters = { new JsonStringEnumConverter() },
+		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+	};
+
+	private readonly object gate = new();
+
+	private sealed record Stored(Guid AccountId, string BareJid, int Unread, List<ChatMessage> Messages, bool IsRoom = false, string? Subject = null);
+	private sealed record StoredRoom(Guid AccountId, string RoomJid, string NickName, string? Password);
+	private sealed record StoredFile(List<Stored> Conversations, List<StoredRoom> Rooms);
+
+	public (IReadOnlyList<Conversation> Conversations, IReadOnlyList<RoomInfo> Rooms) Load()
+	{
+		lock (this.gate)
+		{
+			if (!File.Exists(filePath))
+				return ([], []);
+
+			try
+			{
+				string json = File.ReadAllText(filePath);
+				StoredFile file = json.TrimStart().StartsWith('[')
+					? new StoredFile(JsonSerializer.Deserialize<List<Stored>>(json, options) ?? [], [])
+					: JsonSerializer.Deserialize<StoredFile>(json, options) ?? new StoredFile([], []);
+
+				List<Conversation> result = [];
+				foreach (Stored s in file.Conversations ?? [])
+				{
+					Conversation c = new(s.AccountId, s.BareJid) { Unread = s.Unread, IsRoom = s.IsRoom, Subject = s.Subject };
+					foreach (ChatMessage m in s.Messages)
+						c.Add(m);
+					result.Add(c);
+				}
+
+				List<RoomInfo> rooms = [.. (file.Rooms ?? []).Select(r => new RoomInfo(r.AccountId, r.RoomJid, r.NickName) { Password = r.Password })];
+				return (result, rooms);
+			}
+			catch (JsonException)
+			{
+				File.Copy(filePath, filePath + ".damaged", true);
+				return ([], []);
+			}
+		}
+	}
+
+	public void Save(IReadOnlyList<Conversation> conversations, IReadOnlyList<RoomInfo> rooms)
+	{
+		lock (this.gate)
+		{
+			string? folder = Path.GetDirectoryName(filePath);
+			if (!string.IsNullOrEmpty(folder))
+				Directory.CreateDirectory(folder);
+
+			StoredFile file = new(
+				[.. conversations.Where(c => c.Messages.Count > 0 || c.IsRoom).Select(c => new Stored(c.AccountId, c.BareJid, c.Unread, [.. c.Messages], c.IsRoom, c.Subject))],
+				[.. rooms.Select(r => new StoredRoom(r.AccountId, r.RoomJid, r.NickName, r.Password))]);
+			string tmp = filePath + ".tmp";
+			File.WriteAllText(tmp, JsonSerializer.Serialize(file, options));
+			File.Move(tmp, filePath, true);
+		}
+	}
+}

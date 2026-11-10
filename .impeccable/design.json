@@ -1,0 +1,1359 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-09T17:12:41+00:00",
+  "title": "Design System: Neuro.AA",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Signal Cobalt",
+        "canonical": "#3358D4",
+        "tonalRamp": [
+          "#060A18",
+          "#0F1F55",
+          "#19339A",
+          "#2F52CE",
+          "#4C77F5",
+          "#749FFF",
+          "#ABC8FF",
+          "#E5EFFF"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Signal Cobalt Hover",
+        "canonical": "#2A4BBE",
+        "tonalRamp": [
+          "#060B17",
+          "#102052",
+          "#1C3595",
+          "#3154C8",
+          "#4F78EF",
+          "#779FFF",
+          "#ADC8FF",
+          "#E6EFFF"
+        ]
+      },
+      "accent-subtle": {
+        "role": "primary",
+        "displayName": "Cobalt Wash",
+        "canonical": "#EAEFFC",
+        "tonalRamp": [
+          "#080B13",
+          "#21252E",
+          "#3E424C",
+          "#5D616C",
+          "#7E828E",
+          "#A0A5B1",
+          "#C4C9D6",
+          "#E9EEFB"
+        ]
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Cobalt Ink",
+        "canonical": "#2440A8",
+        "tonalRamp": [
+          "#070B16",
+          "#12214F",
+          "#1F388F",
+          "#3656C0",
+          "#547AE7",
+          "#7BA0FF",
+          "#B0C8FF",
+          "#E6EEFF"
+        ]
+      },
+      "accent-dark": {
+        "role": "primary",
+        "displayName": "Signal Cobalt (dark)",
+        "canonical": "#7B9BFF",
+        "tonalRamp": [
+          "#070B15",
+          "#16214A",
+          "#273986",
+          "#3F58B6",
+          "#5E7BDC",
+          "#83A0F7",
+          "#B4C8FC",
+          "#E8EEFF"
+        ]
+      },
+      "accent-hover-dark": {
+        "role": "primary",
+        "displayName": "Signal Cobalt Hover (dark)",
+        "canonical": "#94AEFF",
+        "tonalRamp": [
+          "#080B13",
+          "#192343",
+          "#2D3C79",
+          "#475BA5",
+          "#667DCA",
+          "#8BA2E7",
+          "#B9C8F2",
+          "#E9EEFC"
+        ]
+      },
+      "accent-subtle-dark": {
+        "role": "primary",
+        "displayName": "Cobalt Wash (dark)",
+        "canonical": "#1C2541",
+        "tonalRamp": [
+          "#0A0B0F",
+          "#202533",
+          "#38415B",
+          "#556080",
+          "#7581A3",
+          "#99A4C3",
+          "#C2C9DC",
+          "#ECEEF4"
+        ]
+      },
+      "accent-ink-dark": {
+        "role": "primary",
+        "displayName": "Cobalt Ink (dark)",
+        "canonical": "#B4C6FF",
+        "tonalRamp": [
+          "#090B11",
+          "#1D243A",
+          "#343F68",
+          "#505E90",
+          "#7080B4",
+          "#94A3D3",
+          "#BFC8E6",
+          "#EBEEF7"
+        ]
+      },
+      "surface-ground": {
+        "role": "neutral",
+        "displayName": "Ground",
+        "canonical": "#F5F6F8",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#A4A5A7",
+          "#C8C9CB",
+          "#EDEEF0"
+        ]
+      },
+      "surface-panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "surface-hover": {
+        "role": "neutral",
+        "displayName": "Hover Fill",
+        "canonical": "#F0F2F5",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#242527",
+          "#404244",
+          "#606164",
+          "#818285",
+          "#A3A5A8",
+          "#C7C9CC",
+          "#EDEFF2"
+        ]
+      },
+      "surface-pressed": {
+        "role": "neutral",
+        "displayName": "Pressed Fill",
+        "canonical": "#E7EAEE",
+        "tonalRamp": [
+          "#090B0E",
+          "#232528",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A2A5A9",
+          "#C6C9CD",
+          "#ECEFF3"
+        ]
+      },
+      "surface-rail": {
+        "role": "neutral",
+        "displayName": "Rail",
+        "canonical": "#ECEEF2",
+        "tonalRamp": [
+          "#0A0B0E",
+          "#242528",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A3A5A9",
+          "#C7C9CD",
+          "#ECEEF2"
+        ]
+      },
+      "surface-code": {
+        "role": "neutral",
+        "displayName": "Code Well",
+        "canonical": "#FAFBFC",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818283",
+          "#A4A5A6",
+          "#C8C9CA",
+          "#EDEEEF"
+        ]
+      },
+      "surface-ground-dark": {
+        "role": "neutral",
+        "displayName": "Ground (dark)",
+        "canonical": "#101215",
+        "tonalRamp": [
+          "#090B0E",
+          "#232528",
+          "#404246",
+          "#5F6165",
+          "#808287",
+          "#A2A5A9",
+          "#C6C9CE",
+          "#ECEFF3"
+        ]
+      },
+      "surface-panel-dark": {
+        "role": "neutral",
+        "displayName": "Panel (dark)",
+        "canonical": "#16191D",
+        "tonalRamp": [
+          "#090B0F",
+          "#22252A",
+          "#3F4247",
+          "#5E6266",
+          "#7F8388",
+          "#A1A5AB",
+          "#C5C9CF",
+          "#EAEFF5"
+        ]
+      },
+      "surface-hover-dark": {
+        "role": "neutral",
+        "displayName": "Hover Fill (dark)",
+        "canonical": "#1D2126",
+        "tonalRamp": [
+          "#080B10",
+          "#21252B",
+          "#3E4248",
+          "#5D6268",
+          "#7E8389",
+          "#A0A6AC",
+          "#C4CAD0",
+          "#E9EFF6"
+        ]
+      },
+      "surface-pressed-dark": {
+        "role": "neutral",
+        "displayName": "Pressed Fill (dark)",
+        "canonical": "#242930",
+        "tonalRamp": [
+          "#070B11",
+          "#20252C",
+          "#3D424A",
+          "#5C626A",
+          "#7D838B",
+          "#9FA6AE",
+          "#C3CAD3",
+          "#E8EFF9"
+        ]
+      },
+      "surface-rail-dark": {
+        "role": "neutral",
+        "displayName": "Rail (dark)",
+        "canonical": "#0C0E11",
+        "tonalRamp": [
+          "#090B0E",
+          "#232529",
+          "#404246",
+          "#5F6165",
+          "#808287",
+          "#A2A5AA",
+          "#C6C9CE",
+          "#ECEFF3"
+        ]
+      },
+      "surface-code-dark": {
+        "role": "neutral",
+        "displayName": "Code Well (dark)",
+        "canonical": "#121519",
+        "tonalRamp": [
+          "#090B0F",
+          "#22252A",
+          "#3F4247",
+          "#5E6267",
+          "#7F8388",
+          "#A1A5AB",
+          "#C5C9CF",
+          "#EAEFF5"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#E2E5EA",
+        "tonalRamp": [
+          "#090B0E",
+          "#232529",
+          "#404246",
+          "#5F6166",
+          "#808287",
+          "#A2A5AA",
+          "#C6C9CE",
+          "#ECEFF4"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "#CDD2D9",
+        "tonalRamp": [
+          "#080B10",
+          "#22252B",
+          "#3E4248",
+          "#5D6268",
+          "#7E8389",
+          "#A1A5AC",
+          "#C5CAD0",
+          "#EAEFF6"
+        ]
+      },
+      "line-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "canonical": "#252A31",
+        "tonalRamp": [
+          "#070B11",
+          "#21252C",
+          "#3D424A",
+          "#5C626A",
+          "#7D838B",
+          "#9FA6AE",
+          "#C3CAD3",
+          "#E8EFF9"
+        ]
+      },
+      "line-strong-dark": {
+        "role": "neutral",
+        "displayName": "Strong Hairline (dark)",
+        "canonical": "#353C46",
+        "tonalRamp": [
+          "#060B13",
+          "#1F252F",
+          "#3B434D",
+          "#5A626D",
+          "#7B838E",
+          "#9DA6B2",
+          "#C1CAD6",
+          "#E6EFFC"
+        ]
+      },
+      "ink-primary": {
+        "role": "neutral",
+        "displayName": "Primary Ink",
+        "canonical": "#12161C",
+        "tonalRamp": [
+          "#080B11",
+          "#21252C",
+          "#3E4249",
+          "#5D6269",
+          "#7D838B",
+          "#A0A5AE",
+          "#C4CAD2",
+          "#E9EFF8"
+        ]
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary Ink",
+        "canonical": "#545D6B",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#21252B",
+          "#3B424E",
+          "#596270",
+          "#798392",
+          "#9DA6B3",
+          "#C4C9D2",
+          "#EDEEF1"
+        ]
+      },
+      "ink-tertiary": {
+        "role": "neutral",
+        "displayName": "Tertiary Ink",
+        "canonical": "#6B7480",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#22252A",
+          "#3C434C",
+          "#59626E",
+          "#7A838F",
+          "#9DA6B1",
+          "#C4CAD0",
+          "#EDEEF1"
+        ]
+      },
+      "ink-on-accent": {
+        "role": "neutral",
+        "displayName": "On-Accent Ink",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "ink-primary-dark": {
+        "role": "neutral",
+        "displayName": "Primary Ink (dark)",
+        "canonical": "#E6E9ED",
+        "tonalRamp": [
+          "#090B0E",
+          "#232528",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A2A5A9",
+          "#C6C9CD",
+          "#ECEFF3"
+        ]
+      },
+      "ink-secondary-dark": {
+        "role": "neutral",
+        "displayName": "Secondary Ink (dark)",
+        "canonical": "#A3ABB6",
+        "tonalRamp": [
+          "#060B13",
+          "#1F262E",
+          "#3C434C",
+          "#5B626C",
+          "#7B838D",
+          "#9EA6B1",
+          "#C2CAD5",
+          "#E7EFFB"
+        ]
+      },
+      "ink-tertiary-dark": {
+        "role": "neutral",
+        "displayName": "Tertiary Ink (dark)",
+        "canonical": "#838B96",
+        "tonalRamp": [
+          "#060B13",
+          "#1F262E",
+          "#3C434C",
+          "#5A626C",
+          "#7B838E",
+          "#9EA6B1",
+          "#C1CAD6",
+          "#E6EFFC"
+        ]
+      },
+      "ink-on-accent-dark": {
+        "role": "neutral",
+        "displayName": "On-Accent Ink (dark)",
+        "canonical": "#0B0D10",
+        "tonalRamp": [
+          "#090B0E",
+          "#232529",
+          "#404246",
+          "#5F6165",
+          "#808287",
+          "#A2A5AA",
+          "#C6C9CE",
+          "#EBEFF3"
+        ]
+      },
+      "state-ok": {
+        "role": "tertiary",
+        "displayName": "Online Green",
+        "canonical": "#1E8A4C",
+        "tonalRamp": [
+          "#050E07",
+          "#002E14",
+          "#005220",
+          "#007639",
+          "#32995A",
+          "#68BA81",
+          "#A8D7B4",
+          "#E5F3E8"
+        ]
+      },
+      "state-busy": {
+        "role": "tertiary",
+        "displayName": "Connecting Amber",
+        "canonical": "#B26B00",
+        "tonalRamp": [
+          "#110903",
+          "#3A1D00",
+          "#693100",
+          "#924D00",
+          "#B76F0C",
+          "#D69652",
+          "#E8C19B",
+          "#F8ECE0"
+        ]
+      },
+      "state-bad": {
+        "role": "tertiary",
+        "displayName": "Failure Red",
+        "canonical": "#C8312B",
+        "tonalRamp": [
+          "#160605",
+          "#490807",
+          "#840000",
+          "#B41718",
+          "#DD463D",
+          "#FB776A",
+          "#FFB1A7",
+          "#FFE8E4"
+        ]
+      },
+      "state-bad-subtle": {
+        "role": "tertiary",
+        "displayName": "Failure Wash",
+        "canonical": "#FCEBEA",
+        "tonalRamp": [
+          "#120808",
+          "#2E2221",
+          "#4C3E3E",
+          "#6C5D5C",
+          "#8D7E7D",
+          "#B1A1A0",
+          "#D5C5C4",
+          "#FBEAE9"
+        ]
+      },
+      "state-idle": {
+        "role": "tertiary",
+        "displayName": "Idle Grey",
+        "canonical": "#8A929E",
+        "tonalRamp": [
+          "#0A0B0C",
+          "#22252A",
+          "#3C424B",
+          "#5A626D",
+          "#7B838F",
+          "#9EA6B0",
+          "#C5C9D0",
+          "#EDEEF1"
+        ]
+      },
+      "state-ok-dark": {
+        "role": "tertiary",
+        "displayName": "Online Green (dark)",
+        "canonical": "#45C27D",
+        "tonalRamp": [
+          "#040E07",
+          "#002F14",
+          "#005420",
+          "#007839",
+          "#009C59",
+          "#57BD81",
+          "#A1D9B4",
+          "#E3F3E8"
+        ]
+      },
+      "state-busy-dark": {
+        "role": "tertiary",
+        "displayName": "Connecting Amber (dark)",
+        "canonical": "#E5A63F",
+        "tonalRamp": [
+          "#100A03",
+          "#381F00",
+          "#653500",
+          "#8C5200",
+          "#B07400",
+          "#D09A46",
+          "#E4C496",
+          "#F7EDDF"
+        ]
+      },
+      "state-bad-dark": {
+        "role": "tertiary",
+        "displayName": "Failure Red (dark)",
+        "canonical": "#F26D64",
+        "tonalRamp": [
+          "#150706",
+          "#460E0D",
+          "#7D0E12",
+          "#AB2B29",
+          "#D3514A",
+          "#F27E74",
+          "#FCB4AC",
+          "#FFE8E5"
+        ]
+      },
+      "state-bad-subtle-dark": {
+        "role": "tertiary",
+        "displayName": "Failure Wash (dark)",
+        "canonical": "#2E1A1A",
+        "tonalRamp": [
+          "#0D0A0A",
+          "#2D2222",
+          "#503C3C",
+          "#735A5A",
+          "#957B7A",
+          "#B69F9E",
+          "#D4C5C5",
+          "#F2EDED"
+        ]
+      },
+      "state-idle-dark": {
+        "role": "tertiary",
+        "displayName": "Idle Grey (dark)",
+        "canonical": "#6E7682",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#22252A",
+          "#3C424C",
+          "#5A626D",
+          "#7B838F",
+          "#9EA6B1",
+          "#C5C9D0",
+          "#EDEEF1"
+        ]
+      },
+      "severity-debug": {
+        "role": "tertiary",
+        "displayName": "Severity Debug",
+        "canonical": "#8A929E",
+        "tonalRamp": [
+          "#0A0B0C",
+          "#22252A",
+          "#3C424B",
+          "#5A626D",
+          "#7B838F",
+          "#9EA6B0",
+          "#C5C9D0",
+          "#EDEEF1"
+        ]
+      },
+      "severity-informational": {
+        "role": "tertiary",
+        "displayName": "Severity Informational",
+        "canonical": "#545D6B",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#21252B",
+          "#3B424E",
+          "#596270",
+          "#798392",
+          "#9DA6B3",
+          "#C4C9D2",
+          "#EDEEF1"
+        ]
+      },
+      "severity-notice": {
+        "role": "tertiary",
+        "displayName": "Severity Notice",
+        "canonical": "#3358D4",
+        "tonalRamp": [
+          "#060A18",
+          "#0F1F55",
+          "#19339A",
+          "#2F52CE",
+          "#4C77F5",
+          "#749FFF",
+          "#ABC8FF",
+          "#E5EFFF"
+        ]
+      },
+      "severity-warning": {
+        "role": "tertiary",
+        "displayName": "Severity Warning",
+        "canonical": "#B26B00",
+        "tonalRamp": [
+          "#110903",
+          "#3A1D00",
+          "#693100",
+          "#924D00",
+          "#B76F0C",
+          "#D69652",
+          "#E8C19B",
+          "#F8ECE0"
+        ]
+      },
+      "severity-error": {
+        "role": "tertiary",
+        "displayName": "Severity Error",
+        "canonical": "#C8312B",
+        "tonalRamp": [
+          "#160605",
+          "#490807",
+          "#840000",
+          "#B41718",
+          "#DD463D",
+          "#FB776A",
+          "#FFB1A7",
+          "#FFE8E4"
+        ]
+      },
+      "severity-critical": {
+        "role": "tertiary",
+        "displayName": "Severity Critical",
+        "canonical": "#A11A4B",
+        "tonalRamp": [
+          "#140709",
+          "#450C1E",
+          "#7C0636",
+          "#AA2552",
+          "#D24C72",
+          "#F07A96",
+          "#FBB2C0",
+          "#FFE8EC"
+        ]
+      },
+      "severity-alert": {
+        "role": "tertiary",
+        "displayName": "Severity Alert",
+        "canonical": "#8E1B6E",
+        "tonalRamp": [
+          "#13070E",
+          "#3F0F31",
+          "#721157",
+          "#9D2C7B",
+          "#C4519E",
+          "#E37DBF",
+          "#F2B3D9",
+          "#FCE8F3"
+        ]
+      },
+      "severity-emergency": {
+        "role": "tertiary",
+        "displayName": "Severity Emergency",
+        "canonical": "#6B1D8F",
+        "tonalRamp": [
+          "#0F0814",
+          "#341444",
+          "#5D1D7B",
+          "#8238A8",
+          "#A65CCE",
+          "#C586EA",
+          "#DDB8F4",
+          "#F5EAFC"
+        ]
+      },
+      "severity-debug-dark": {
+        "role": "tertiary",
+        "displayName": "Severity Debug (dark)",
+        "canonical": "#6E7682",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#22252A",
+          "#3C424C",
+          "#5A626D",
+          "#7B838F",
+          "#9EA6B1",
+          "#C5C9D0",
+          "#EDEEF1"
+        ]
+      },
+      "severity-informational-dark": {
+        "role": "tertiary",
+        "displayName": "Severity Informational (dark)",
+        "canonical": "#A3ABB6",
+        "tonalRamp": [
+          "#060B13",
+          "#1F262E",
+          "#3C434C",
+          "#5B626C",
+          "#7B838D",
+          "#9EA6B1",
+          "#C2CAD5",
+          "#E7EFFB"
+        ]
+      },
+      "severity-notice-dark": {
+        "role": "tertiary",
+        "displayName": "Severity Notice (dark)",
+        "canonical": "#7B9BFF",
+        "tonalRamp": [
+          "#070B15",
+          "#16214A",
+          "#273986",
+          "#3F58B6",
+          "#5E7BDC",
+          "#83A0F7",
+          "#B4C8FC",
+          "#E8EEFF"
+        ]
+      },
+      "severity-warning-dark": {
+        "role": "tertiary",
+        "displayName": "Severity Warning (dark)",
+        "canonical": "#E5A63F",
+        "tonalRamp": [
+          "#100A03",
+          "#381F00",
+          "#653500",
+          "#8C5200",
+          "#B07400",
+          "#D09A46",
+          "#E4C496",
+          "#F7EDDF"
+        ]
+      },
+      "severity-error-dark": {
+        "role": "tertiary",
+        "displayName": "Severity Error (dark)",
+        "canonical": "#F26D64",
+        "tonalRamp": [
+          "#150706",
+          "#460E0D",
+          "#7D0E12",
+          "#AB2B29",
+          "#D3514A",
+          "#F27E74",
+          "#FCB4AC",
+          "#FFE8E5"
+        ]
+      },
+      "severity-critical-dark": {
+        "role": "tertiary",
+        "displayName": "Severity Critical (dark)",
+        "canonical": "#F0608F",
+        "tonalRamp": [
+          "#15060A",
+          "#460921",
+          "#7E003A",
+          "#AC1C57",
+          "#D44778",
+          "#F3769C",
+          "#FDB0C3",
+          "#FFE7ED"
+        ]
+      },
+      "severity-alert-dark": {
+        "role": "tertiary",
+        "displayName": "Severity Alert (dark)",
+        "canonical": "#D06BD0",
+        "tonalRamp": [
+          "#110711",
+          "#3B103B",
+          "#69156B",
+          "#923094",
+          "#B854B8",
+          "#D780D6",
+          "#EAB5E8",
+          "#F9E8F8"
+        ]
+      },
+      "severity-emergency-dark": {
+        "role": "tertiary",
+        "displayName": "Severity Emergency (dark)",
+        "canonical": "#B488FF",
+        "tonalRamp": [
+          "#0D0915",
+          "#2C1849",
+          "#4F2684",
+          "#7142B3",
+          "#9265D9",
+          "#B38EF4",
+          "#D1BDFB",
+          "#F1EBFE"
+        ]
+      },
+      "account-hue0": {
+        "role": "secondary",
+        "displayName": "Account Blue",
+        "canonical": "#3B6FE0",
+        "tonalRamp": [
+          "#060B17",
+          "#0B2151",
+          "#103894",
+          "#2657C6",
+          "#467BED",
+          "#70A2FF",
+          "#AAC9FF",
+          "#E5EFFF"
+        ]
+      },
+      "account-hue1": {
+        "role": "secondary",
+        "displayName": "Account Teal",
+        "canonical": "#0F9488",
+        "tonalRamp": [
+          "#040D0C",
+          "#002D28",
+          "#005148",
+          "#007369",
+          "#14968A",
+          "#5CB8AC",
+          "#A3D5CD",
+          "#E3F2F0"
+        ]
+      },
+      "account-hue2": {
+        "role": "secondary",
+        "displayName": "Account Violet",
+        "canonical": "#7C4DDB",
+        "tonalRamp": [
+          "#0C0817",
+          "#2A1552",
+          "#4C1D95",
+          "#6C3AC7",
+          "#8C60EF",
+          "#AC8BFF",
+          "#CCBCFF",
+          "#EFEBFF"
+        ]
+      },
+      "account-hue3": {
+        "role": "secondary",
+        "displayName": "Account Ochre",
+        "canonical": "#C27C0E",
+        "tonalRamp": [
+          "#110903",
+          "#3A1D00",
+          "#683200",
+          "#914F00",
+          "#B67100",
+          "#D5974B",
+          "#E7C298",
+          "#F8ECE0"
+        ]
+      },
+      "account-hue4": {
+        "role": "secondary",
+        "displayName": "Account Rose",
+        "canonical": "#D23F6C",
+        "tonalRamp": [
+          "#150609",
+          "#47071E",
+          "#800034",
+          "#AF1750",
+          "#D74470",
+          "#F67595",
+          "#FFB0BF",
+          "#FFE7EB"
+        ]
+      },
+      "account-hue5": {
+        "role": "secondary",
+        "displayName": "Account Green",
+        "canonical": "#3A8F3A",
+        "tonalRamp": [
+          "#060E06",
+          "#082E09",
+          "#005204",
+          "#1B751F",
+          "#439843",
+          "#72B96F",
+          "#ADD6AA",
+          "#E6F3E5"
+        ]
+      },
+      "account-hue6": {
+        "role": "secondary",
+        "displayName": "Account Sky",
+        "canonical": "#0C86B5",
+        "tonalRamp": [
+          "#040C12",
+          "#00293D",
+          "#00496E",
+          "#006B98",
+          "#1C8DBD",
+          "#5DB0DA",
+          "#A3D1EA",
+          "#E3F1F9"
+        ]
+      },
+      "account-hue7": {
+        "role": "secondary",
+        "displayName": "Account Orange",
+        "canonical": "#D2601A",
+        "tonalRamp": [
+          "#140804",
+          "#431300",
+          "#791C00",
+          "#A63700",
+          "#CD5C13",
+          "#EC8653",
+          "#F7B99B",
+          "#FEEAE1"
+        ]
+      },
+      "account-hue0-dark": {
+        "role": "secondary",
+        "displayName": "Account Blue (dark)",
+        "canonical": "#6E98FF",
+        "tonalRamp": [
+          "#070B16",
+          "#12224C",
+          "#1E3A8A",
+          "#3659BA",
+          "#557CE0",
+          "#7CA2FB",
+          "#B0C9FF",
+          "#E7EFFF"
+        ]
+      },
+      "account-hue1-dark": {
+        "role": "secondary",
+        "displayName": "Account Teal (dark)",
+        "canonical": "#36C2B4",
+        "tonalRamp": [
+          "#030E0C",
+          "#002E29",
+          "#005249",
+          "#00766A",
+          "#00988C",
+          "#4BBAAD",
+          "#9DD6CE",
+          "#E2F3F0"
+        ]
+      },
+      "account-hue2-dark": {
+        "role": "secondary",
+        "displayName": "Account Violet (dark)",
+        "canonical": "#A887FF",
+        "tonalRamp": [
+          "#0C0915",
+          "#29194A",
+          "#4A2987",
+          "#6A45B7",
+          "#8B68DD",
+          "#AB91F8",
+          "#CCBFFD",
+          "#EFEBFF"
+        ]
+      },
+      "account-hue3-dark": {
+        "role": "secondary",
+        "displayName": "Account Ochre (dark)",
+        "canonical": "#E7A93C",
+        "tonalRamp": [
+          "#100A03",
+          "#381F00",
+          "#643500",
+          "#8C5300",
+          "#B07500",
+          "#CF9A42",
+          "#E4C495",
+          "#F7EDDF"
+        ]
+      },
+      "account-hue4-dark": {
+        "role": "secondary",
+        "displayName": "Account Rose (dark)",
+        "canonical": "#F07399",
+        "tonalRamp": [
+          "#14070A",
+          "#430F21",
+          "#77123B",
+          "#A42D59",
+          "#CB527A",
+          "#EA7E9D",
+          "#F7B4C4",
+          "#FEE8ED"
+        ]
+      },
+      "account-hue5-dark": {
+        "role": "secondary",
+        "displayName": "Account Green (dark)",
+        "canonical": "#6CC46C",
+        "tonalRamp": [
+          "#060E05",
+          "#062E09",
+          "#005204",
+          "#15751E",
+          "#409842",
+          "#70BA6F",
+          "#ACD7AA",
+          "#E6F3E5"
+        ]
+      },
+      "account-hue6-dark": {
+        "role": "secondary",
+        "displayName": "Account Sky (dark)",
+        "canonical": "#4BB8E6",
+        "tonalRamp": [
+          "#040D11",
+          "#002A3C",
+          "#004A6D",
+          "#006C96",
+          "#0B8FBB",
+          "#58B1D9",
+          "#A1D1E9",
+          "#E3F1F9"
+        ]
+      },
+      "account-hue7-dark": {
+        "role": "secondary",
+        "displayName": "Account Orange (dark)",
+        "canonical": "#F08A4B",
+        "tonalRamp": [
+          "#130804",
+          "#401700",
+          "#732500",
+          "#9F4000",
+          "#C5631E",
+          "#E48C58",
+          "#F2BC9E",
+          "#FCEBE1"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Workspace title in the top bar and the first-run heading."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "List summary, block headings such as Traffic, form headings, the account name in the detail header."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Window default for all UI text."
+      },
+      "body-strong": {
+        "displayName": "Body Strong",
+        "purpose": "Row names and empty-state headlines."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Button and toggle labels."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Status lines, hints and explanatory notes in secondary ink."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels above inputs; lens chip labels."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Rail labels."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Protocol text: XML stanzas, JIDs, host:port, timestamps."
+      },
+      "mono-tag": {
+        "displayName": "Mono Tag",
+        "purpose": "Sniffer direction tags (TX, RX, INF, WRN, ERR, EXC)."
+      }
+    },
+    "shadows": [],
+    "focus": [
+      {
+        "name": "focus-ring",
+        "value": "2px solid {colors.accent}, radius 6px, offset 2px (Avalonia FocusAdorner, Margin -2)",
+        "purpose": "Keyboard focus on every focusable control; TextBox suppresses it and shows a cobalt border instead."
+      }
+    ],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "1180px",
+        "purpose": "ContainerQuery max-width: list column 340 to 300px"
+      },
+      {
+        "name": "medium",
+        "value": "960px",
+        "purpose": "ContainerQuery max-width: rail 56px icon-only, chips avatar-only, list 260px, Add label and endpoint hidden"
+      },
+      {
+        "name": "narrow",
+        "value": "780px",
+        "purpose": "ContainerQuery max-width: button labels hidden (armed Remove keeps its words), list 220px, short timestamps and summary"
+      },
+      {
+        "name": "min-window",
+        "value": "720px",
+        "purpose": "Window MinWidth (MinHeight 480)"
+      }
+    ],
+    "platform": {
+      "runtime": "Avalonia 12 (.NET 10), FluentTheme restyled through tokens",
+      "tokenSource": "src/Neuro.AA.App/Themes/Tokens.axaml",
+      "controlStyles": "src/Neuro.AA.App/Themes/Controls.axaml",
+      "themeVariants": "Light and Dark ThemeDictionaries; RequestedThemeVariant=Default follows the OS; rail toggle switches",
+      "note": "Native XAML tokens, not CSS. Component html/css here are browser approximations for preview only, resolved to light-theme literals."
+    },
+    "icons": {
+      "grid": 24,
+      "strokeWidth": 1.7,
+      "caps": "round",
+      "joins": "round",
+      "fill": "none",
+      "control": "src/Neuro.AA.App/Controls/LineIcon.cs",
+      "sizes": {
+        "button": 15,
+        "inline": 16,
+        "rail": 20,
+        "empty-state": 24
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Secondary action on a panel: Disconnect, Enter password.",
+      "html": "<button class=\"ds-btn\">Disconnect</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 10px; border-radius: 6px; border: 1px solid #CDD2D9; background: #FFFFFF; color: #12161C; font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; } .ds-btn:hover { background: #F0F2F5; } .ds-btn:active { background: #E7EAEE; } .ds-btn:focus-visible { outline: 2px solid #3358D4; outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action in a region: Add account, Connect, Save and connect.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 5v14 M5 12h14\"/></svg><span>Add account</span></button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 10px; border-radius: 6px; border: 1px solid #CDD2D9; background: #FFFFFF; color: #12161C; font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; background: #3358D4; border-color: #3358D4; color: #FFFFFF; } .ds-btn-primary:hover { background: #2A4BBE; border-color: #2A4BBE; } .ds-btn-primary:disabled { background: #E7EAEE; border-color: #E7EAEE; color: #6B7480; } .ds-btn-primary:focus-visible { outline: 2px solid #3358D4; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet in-panel tools and Cancel.",
+      "html": "<button class=\"ds-btn-ghost\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8.5 5v14 M15.5 5v14\"/></svg><span>Pause</span></button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 10px; border-radius: 6px; border: 1px solid #CDD2D9; background: #FFFFFF; color: #12161C; font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; border-color: transparent; color: #545D6B; padding: 5px 8px; } .ds-btn-ghost:hover { background: #F0F2F5; color: #12161C; } .ds-btn-ghost:focus-visible { outline: 2px solid #3358D4; outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button (armed)",
+      "kind": "button",
+      "refersTo": "button-danger-armed",
+      "description": "Destructive action set 20px apart; the first click arms it, the second confirms.",
+      "html": "<button class=\"ds-btn-danger\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4.5 6.5h15 M9.5 6.5v-2h5v2 M6.5 6.5l1 13h9l1-13 M10.5 10v6 M13.5 10v6\"/></svg><span>Remove account</span></button> <button class=\"ds-btn-danger ds-armed\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4.5 6.5h15 M9.5 6.5v-2h5v2 M6.5 6.5l1 13h9l1-13 M10.5 10v6 M13.5 10v6\"/></svg><span>Click again to remove</span></button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 10px; border-radius: 6px; border: 1px solid #CDD2D9; background: #FFFFFF; color: #12161C; font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; border-color: transparent; color: #C8312B; padding: 5px 8px; } .ds-btn-danger:hover { background: #FCEBEA; } .ds-btn-danger.ds-armed { background: #FCEBEA; border-color: #C8312B; } .ds-btn-danger:focus-visible { outline: 2px solid #3358D4; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field; focus shows through a cobalt border.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-label\">Host</span><input class=\"ds-input\" placeholder=\"localhost\"></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; font-family: Inter, system-ui, sans-serif; } .ds-label { font-size: 12px; font-weight: 500; color: #545D6B; margin-bottom: 4px; } .ds-input { min-height: 32px; padding: 6px 10px; border: 1px solid #CDD2D9; border-radius: 6px; background: #FFFFFF; color: #12161C; font: inherit; font-size: 13px; outline: none; } .ds-input::placeholder { color: #6B7480; } .ds-input:hover { border-color: #6B7480; } .ds-input:focus-visible { border-color: #3358D4; } .ds-input::selection { background: #3358D4; color: #FFFFFF; }"
+    },
+    {
+      "name": "Workspace Rail",
+      "kind": "nav",
+      "refersTo": "rail-item",
+      "description": "Icon-over-label workspace rail; current item accent-tinted, future workspaces visible but disabled.",
+      "html": "<nav class=\"ds-rail\"><button class=\"ds-rail-item ds-current\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 12a4 4 0 1 0 0-8a4 4 0 1 0 0 8 M4.5 20c.8-3.3 3.8-5.5 7.5-5.5s6.7 2.2 7.5 5.5\"/></svg><span>Accounts</span></button><button class=\"ds-rail-item\" disabled><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 12h4l2.5-7l5 14l2.5-7h4\"/></svg><span>Events</span></button></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 76px; padding: 10px 0; background: #ECEEF2; border-right: 1px solid #E2E5EA; font-family: Inter, system-ui, sans-serif; } .ds-rail-item { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 60px; padding: 8px 0 7px; border: 0; border-radius: 6px; background: transparent; color: #545D6B; font: inherit; font-size: 11px; font-weight: 500; cursor: pointer; } .ds-rail-item:hover:not(:disabled) { background: #F0F2F5; color: #12161C; } .ds-rail-item.ds-current { background: #EAEFFC; color: #2440A8; } .ds-rail-item:disabled { color: #6B7480; opacity: 0.7; cursor: default; } .ds-rail-item:focus-visible { outline: 2px solid #3358D4; outline-offset: 2px; }"
+    },
+    {
+      "name": "Account Lens Chip",
+      "kind": "chip",
+      "refersTo": "lens-chip",
+      "description": "One pill per account in the top bar: hue avatar, ringed status dot, label, short failure status.",
+      "html": "<span class=\"ds-chip\"><span class=\"ds-chip-av\" style=\"color:#7C4DDB;background:rgba(124,77,219,0.16)\">M<i class=\"ds-chip-dot\"></i></span><span>mille@gamma.lab.local</span><span class=\"ds-chip-bad\">Failed</span></span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 4px; border: 1px solid #E2E5EA; border-radius: 999px; background: #F5F6F8; color: #12161C; font-family: Inter, system-ui, sans-serif; font-size: 12px; font-weight: 500; } .ds-chip-av { position: relative; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; font-size: 11px; font-weight: 600; } .ds-chip-dot { position: absolute; right: -3px; bottom: -3px; width: 8px; height: 8px; border-radius: 50%; background: #C8312B; box-sizing: border-box; border: 2px solid #FFFFFF; } .ds-chip-bad { color: #C8312B; font-weight: 400; }"
+    },
+    {
+      "name": "Account Row",
+      "kind": "custom",
+      "refersTo": "list-row-selected",
+      "description": "Selectable list row: hue avatar with status dot, name, status line; selection is a cobalt wash.",
+      "html": "<div class=\"ds-rows\"><div class=\"ds-row\"><span class=\"ds-av\" style=\"color:#3B6FE0;background:rgba(59,111,224,0.16)\">A<i class=\"ds-dot\"></i></span><span><b>admin@alpha.lab.local</b><small>Offline</small></span></div><div class=\"ds-row ds-sel\"><span class=\"ds-av\" style=\"color:#7C4DDB;background:rgba(124,77,219,0.16)\">M<i class=\"ds-dot ds-bad\"></i></span><span><b>mille@gamma.lab.local</b><small>Failed · no stored password</small></span></div></div>",
+      "css": ".ds-rows { display: flex; flex-direction: column; gap: 2px; width: 316px; font-family: Inter, system-ui, sans-serif; font-size: 13px; color: #12161C; } .ds-row { display: flex; gap: 12px; align-items: center; padding: 8px 10px; border-radius: 6px; cursor: pointer; } .ds-row:hover { background: #F0F2F5; } .ds-row.ds-sel { background: #EAEFFC; } .ds-row b { display: block; font-weight: 600; } .ds-row small { display: block; font-size: 12px; color: #545D6B; margin-top: 2px; } .ds-av { position: relative; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; font-weight: 600; } .ds-dot { position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 50%; background: #8A929E; box-sizing: border-box; border: 2px solid #FFFFFF; } .ds-dot.ds-bad { background: #C8312B; }"
+    },
+    {
+      "name": "Failure Banner",
+      "kind": "custom",
+      "refersTo": "failure-banner",
+      "description": "Says why an account is not connected and offers the fix in place.",
+      "html": "<div class=\"ds-banner\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#C8312B\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 4l9 16H3z M12 10v4 M12 17h.01\"/></svg><span>No password is stored for this account.</span><button class=\"ds-banner-btn\">Enter password</button></div>",
+      "css": ".ds-banner { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; background: #FCEBEA; color: #12161C; font-family: Inter, system-ui, sans-serif; font-size: 13px; } .ds-banner span { flex: 1; } .ds-banner-btn { min-height: 30px; padding: 5px 10px; border: 1px solid #CDD2D9; border-radius: 6px; background: #FFFFFF; color: #12161C; font: inherit; font-weight: 500; cursor: pointer; } .ds-banner-btn:hover { background: #F0F2F5; } .ds-banner-btn:focus-visible { outline: 2px solid #3358D4; outline-offset: 2px; }"
+    },
+    {
+      "name": "Sniffer Stream",
+      "kind": "custom",
+      "refersTo": "stream-row",
+      "description": "Full-height monospace log: timestamp, direction tag, wrapped stanza text.",
+      "html": "<div class=\"ds-stream\"><div class=\"ds-line\"><span class=\"ds-ts\">17:07:19.204</span><span class=\"ds-tag\">INF</span><span>Connecting to localhost:5222</span></div><div class=\"ds-line\"><span class=\"ds-ts\">17:07:19.311</span><span class=\"ds-tag\" style=\"color:#12161C\">RX</span><span>&lt;proceed xmlns=&quot;urn:ietf:params:xml:ns:xmpp-tls&quot;/&gt;</span></div><div class=\"ds-line\"><span class=\"ds-ts\">17:07:19.402</span><span class=\"ds-tag\" style=\"color:#C8312B\">ERR</span><span>Authentication failed.</span></div></div>",
+      "css": ".ds-stream { padding: 6px 0; border: 1px solid #E2E5EA; border-radius: 6px; background: #FAFBFC; color: #12161C; font-family: 'Cascadia Mono', Consolas, 'SF Mono', Menlo, monospace; font-size: 12px; } .ds-line { display: grid; grid-template-columns: auto 36px 1fr; padding: 3px 14px; } .ds-line:hover { background: #F0F2F5; } .ds-ts { color: #6B7480; margin-right: 14px; } .ds-tag { font-size: 11px; font-weight: 700; color: #545D6B; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Console",
+    "overview": "Neuro.AA is a native Avalonia 12 desktop app for Windows, macOS and Linux, not a website. Its design system lives in XAML, not CSS: colour, type and shape tokens are resources in `src/Neuro.AA.App/Themes/Tokens.axaml`, and the restyled controls are in `src/Neuro.AA.App/Themes/Controls.axaml`, layered over Avalonia's FluentTheme, whose accent palette is pinned to the same cobalt. Views reference token keys only (`{DynamicResource Ink.Primary}`, `{StaticResource Radius}`), never raw colours. Every later workspace (Events, Fleet, Sources, Chat, Console, Topology, Identities) reuses these tokens and control styles and sits inside the shell recorded here. Hex values and px sizes in this file mirror the XAML. The XAML resource is the source of truth and this file records it.\n\nThe world is the category-standard operator console, chosen deliberately: the calm, dense layout the audience already knows, built to the standard of the category's best tools. Hierarchy comes from type weight, spacing and 1 px hairlines. Colour carries meaning only: connection state, selection and primary action, and which account something belongs to. Light mode is a cool near-white ground with white panels. Dark mode is graphite with panels one step lighter. Both are designed palettes; neither is an inversion of the other. The theme follows the OS by default (`RequestedThemeVariant=\"Default\"`) and a rail button toggles it.\n\nDensity is high but never cramped. Body text is 13 px, controls are 30 to 32 px tall, list rows are tight, and the sniffer stream is a full-height monospace log. Operators keep this tool open for hours, so the resting state is quiet. The dashboard-of-cards layout and the neon-on-black \"ops\" costume are both rejected.",
+    "keyCharacteristics": [
+      "Flat, hairline-structured surfaces; no shadows anywhere.",
+      "One cobalt accent, reserved for selection, primary action and keyboard focus.",
+      "Eight account hues, used only to say which account something belongs to.",
+      "Inter for all UI text; a system monospace only for JIDs, XML, endpoints and timestamps.",
+      "One corner radius (6 px) on every rectangle; pills only for lens chips and status dots.",
+      "Line icons drawn on a 24-unit grid with round caps, taking the surrounding text colour.",
+      "Designed light and dark palettes, switched per theme through Avalonia ThemeDictionaries."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Cobalt means \"selected, primary or focused\" and nothing else. Never use it for decoration, headings or links that are not the primary action.",
+        "section": "colors"
+      },
+      {
+        "name": "The Hue Belongs To The Account Rule",
+        "body": "Account hues appear only on account avatars and lens chips. They never mark state, severity or workspace identity. State is said by the state set and by words, never by hue alone.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token-Only Rule",
+        "body": "Views reference token keys through `DynamicResource` (colours, so theme switches apply live) or `StaticResource` (type sizes, radius, fonts, icons). No hex appears in a view.",
+        "section": "colors"
+      },
+      {
+        "name": "The Machine Text Is Mono Rule",
+        "body": "If the text came from a protocol (JID, XML, host:port, timestamp), it is set in `Font.Mono`. Otherwise it is set in Inter. Never mix the two within a single phrase.",
+        "section": "typography"
+      },
+      {
+        "name": "The Five Sizes Rule",
+        "body": "The ramp is 11 / 12 / 13 / 15 / 18. Hierarchy within it comes from weight (400, 500, 600) and ink step, not from new sizes.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline, Not Shadow Rule",
+        "body": "Separate regions with a 1 px `Line` border or a surface step. If something seems to need a shadow, it needs a surface step instead.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do reference only token keys from `Tokens.axaml`, through `DynamicResource` for brushes so light and dark switch live.",
+      "Do reuse the `Controls.axaml` classes (`primary`, `ghost`, `danger`, `armed`, `rows`, `stream`, `panel`, `dot`, `meta`, `label`, `section`, `title`, `mono`) in every new workspace before writing a local style.",
+      "Do set protocol text (JIDs, XML, host:port, timestamps) in `Font.Mono` at 12 px.",
+      "Do pair every status dot and hue with words: a status line, a tooltip, or an automation name.",
+      "Do set destructive actions 20 px apart from their siblings and require a second, armed click whose label stays visible at every width.",
+      "Do put the fix for a failure next to the failure, inline, in a `State.Bad.Subtle` banner.",
+      "Do add responsive rules as `ContainerQuery` steps at the existing 1180 / 960 / 780 px breakpoints, and keep a tooltip on anything that becomes icon-only.",
+      "Do design both theme variants for every new token. Never derive dark by inverting light."
+    ],
+    "donts": [
+      "Don't use cobalt for anything except selection, primary action and focus.",
+      "Don't use account hues for state, severity or decoration.",
+      "Don't add shadows or glows; use a surface step or a 1 px hairline.",
+      "Don't introduce a corner radius other than 6 px or the pill.",
+      "Don't add type sizes outside 11 / 12 / 13 / 15 / 18.",
+      "Don't build dashboards out of cards, or style the console as neon on black.",
+      "Don't treat the sniffer's TX tag colour (currently the accent) as precedent for accent-coloured content; it is an open exception to the One Accent Rule."
+    ]
+  }
+}

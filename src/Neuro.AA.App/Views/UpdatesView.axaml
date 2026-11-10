@@ -1,0 +1,217 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.AA.App.ViewModels"
+             xmlns:conv="using:Neuro.AA.App.Converters"
+             xmlns:c="using:Neuro.AA.App.Controls"
+             xmlns:sw="using:Neuro.AA.Engine.Software"
+             x:Class="Neuro.AA.App.Views.UpdatesView"
+             x:DataType="vm:UpdatesViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.pill">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.pill TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.listPane">
+      <Setter Property="Width" Value="340" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource Surface.Panel}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="16,14" />
+    </Style>
+    <!-- Window width 1000 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw1000 Border.listPane">
+      <Setter Property="Width" Value="260" />
+    </Style>
+    
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="Auto,*">
+
+    <!-- The Neurons -->
+    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="12,14,12,12">
+        <TextBlock DockPanel.Dock="Top" Classes="section" Text="Software" Margin="6,0,0,12" />
+        <Panel>
+          <ListBox Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:UpdateRowViewModel">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
+                  <Border Grid.RowSpan="2" Width="22" Height="22" CornerRadius="5" VerticalAlignment="Top"
+                          Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}"
+                          ToolTip.Tip="{Binding AccountLabel}">
+                    <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="11" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+                  </Border>
+                  <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <Border Grid.Column="2" Classes="pill" IsVisible="{Binding HasState}"
+                          Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}, ConverterParameter=subtle}">
+                    <TextBlock Text="{Binding StateLabel}" Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                  </Border>
+                  <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="1" Classes="meta" Text="{Binding Meta}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <StackPanel IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="280" Spacing="6">
+            <c:LineIcon Data="{StaticResource Icon.Updates}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+            <TextBlock Text="No Neurons yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                       Text="Neurons where your accounts are administrators show their software and updates here." />
+          </StackPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- The selected Neuron -->
+    <Panel Grid.Column="1">
+      <DockPanel IsVisible="{Binding HasSelection}" Margin="24,16,24,20">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+            <TextBlock Classes="meta" Text="{Binding BusyText}" IsVisible="{Binding IsBusy}" VerticalAlignment="Center" />
+            <Button Classes="ghost" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Ask the Neuron again">
+              <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
+            </Button>
+            <Button Command="{Binding CheckCommand}" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Ask the update service for new packages">
+              <TextBlock Text="Check for updates" FontSize="{StaticResource Type.Meta}" />
+            </Button>
+            <Button Classes="danger" Content="Upgrade…" Command="{Binding AskUpgradeCommand}" IsEnabled="{Binding !IsBusy}"
+                    ToolTip.Tip="Install downloaded packages. The Neuron restarts." />
+          </StackPanel>
+          <StackPanel Spacing="4" Margin="0,0,16,0">
+            <TextBlock Classes="title" Text="{Binding Selected.Label}" TextWrapping="Wrap" />
+            <TextBlock Classes="meta" Text="{Binding Selected.NeuronJid}" />
+          </StackPanel>
+        </DockPanel>
+
+        <!-- Upgrade confirmation: type the Neuron's name -->
+        <Border DockPanel.Dock="Top" IsVisible="{Binding IsConfirmingUpgrade}" Background="{DynamicResource State.Bad.Subtle}"
+                CornerRadius="{StaticResource Radius}" Padding="14,12" Margin="0,0,0,16">
+          <StackPanel Spacing="10">
+            <TextBlock TextWrapping="Wrap"
+                       Text="Upgrading installs the downloaded packages and restarts the Neuron. Everyone connected to it is disconnected for a while." />
+            <WrapPanel>
+              <TextBox Text="{Binding UpgradePackage}" PlaceholderText="Every installed package" Width="240" MinHeight="30" Margin="0,0,12,8"
+                       ToolTip.Tip="Leave empty to upgrade everything, or name one installed package" />
+              <CheckBox IsChecked="{Binding UpgradeBackup}" Content="Back up first" Margin="0,0,12,8" VerticalAlignment="Center" />
+            </WrapPanel>
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
+                <Button Content="Cancel" Command="{Binding CancelUpgradeCommand}" />
+                <Button Classes="danger armed" Content="Upgrade now" Command="{Binding UpgradeNowCommand}" />
+              </StackPanel>
+              <TextBox Text="{Binding UpgradeConfirmText}" PlaceholderText="{Binding UpgradeConfirmHint}" MinHeight="30" />
+            </DockPanel>
+          </StackPanel>
+        </Border>
+
+        <TextBlock DockPanel.Dock="Top" Classes="error" Text="{Binding Error}" TextWrapping="Wrap" Margin="0,0,0,12"
+                   IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+        <ScrollViewer>
+          <StackPanel Spacing="16" MaxWidth="900" HorizontalAlignment="Left">
+
+            <!-- A downloaded update waiting to install -->
+            <Border IsVisible="{Binding HasPending}" Background="{DynamicResource Accent.Subtle}" CornerRadius="8" Padding="16,12">
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Cancel the update" Command="{Binding CancelPendingCommand}" IsEnabled="{Binding !IsBusy}"
+                        VerticalAlignment="Center" Margin="12,0,0,0" ToolTip.Tip="Stops an automatic update that is waiting to install" />
+                <StackPanel Spacing="3">
+                  <TextBlock Text="An update is waiting" FontWeight="SemiBold" />
+                  <TextBlock Classes="meta" Text="{Binding PendingText}" TextWrapping="Wrap" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+
+            <Border Classes="card">
+              <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
+                <TextBlock Classes="meta" Text="Built" VerticalAlignment="Center" />
+                <SelectableTextBlock Grid.Column="1" Text="{Binding BuildText}" TextWrapping="Wrap" />
+
+                <TextBlock Grid.Row="1" Classes="meta" Text="Automatic updates" VerticalAlignment="Top" Margin="0,6,0,0" />
+                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Text="{Binding AutoMinutes}" Width="80" MinHeight="30" HorizontalContentAlignment="Right"
+                             ToolTip.Tip="Minutes between a package arriving and installing it. 0 turns it off." />
+                    <TextBlock Text="minutes" VerticalAlignment="Center" />
+                    <Button Content="Save" Command="{Binding SaveAutoCommand}" IsEnabled="{Binding !IsBusy}" />
+                  </StackPanel>
+                  <TextBlock Classes="meta" Text="{Binding AutoText}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <TextBlock Grid.Row="2" Classes="meta" Text="Content packages" VerticalAlignment="Center" />
+                <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding ContentAuto}" IsEnabled="{Binding !IsBusy}"
+                          Content="Install content-only packages as soon as they arrive" />
+              </Grid>
+            </Border>
+
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="Installed packages" />
+              <TextBlock Classes="meta" Text="None besides the Neuron itself." IsVisible="{Binding !HasInstalled}" />
+              <ItemsControl ItemsSource="{Binding Installed}" IsVisible="{Binding HasInstalled}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <SelectableTextBlock Classes="mono" Text="{Binding}" Margin="0,2" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="Downloaded packages" />
+              <TextBlock Classes="meta" TextWrapping="Wrap" IsVisible="{Binding !HasPackages}"
+                         Text="None. Packages arrive from the update service on the Neuron's parent broker; Check for updates asks it now." />
+              <ItemsControl ItemsSource="{Binding Packages}" IsVisible="{Binding HasPackages}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="sw:SoftwarePackage">
+                    <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
+                      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <Border Grid.Column="1" Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding IsInstalled}">
+                          <TextBlock Text="Installed" Foreground="{DynamicResource Ink.Secondary}" />
+                        </Border>
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="meta" Margin="0,3,0,0" TextTrimming="CharacterEllipsis">
+                          <Run Text="{Binding Size}" /><Run Text=" · published " /><Run Text="{Binding Published}" /><Run Text=" · from " /><Run Text="{Binding From}" />
+                        </TextBlock>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Spacing="8" IsVisible="{Binding HasLog}">
+              <TextBlock Classes="section" Text="What the Neuron said" />
+              <ItemsControl ItemsSource="{Binding Log}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:UpdateLogLine">
+                    <Grid ColumnDefinitions="70,*" Margin="0,2">
+                      <TextBlock Classes="meta" Text="{Binding Time}" />
+                      <SelectableTextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+
+      <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360" Spacing="6">
+        <TextBlock Text="Pick a Neuron" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="Its build, packages and update settings open here." />
+      </StackPanel>
+    </Panel>
+  </Grid>
+</UserControl>
