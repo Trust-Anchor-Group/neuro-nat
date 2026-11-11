@@ -192,7 +192,7 @@
     <StackPanel IsVisible="{Binding !HasConversation}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
       <TextBlock Text="Pick someone to talk to" FontWeight="SemiBold" HorizontalAlignment="Center" />
       <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                 Text="Conversations from all your accounts are in one list. Neurons are contacts too: open one to reach its chat admin console." />
+                 Text="People and rooms from all your accounts are here. To talk to a Neuron, open its page and use the Console tab." />
     </StackPanel>
   </Panel>
 </UserControl>

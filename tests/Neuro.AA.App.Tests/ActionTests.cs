@@ -518,8 +518,9 @@ public class ActionTests
 		// Go to: from an event to its Neuron on another screen.
 		ItemAction goTo = events.ActionsFor([socket]).First(a => a.Text.StartsWith("Go to "));
 		Assert.Contains(goTo.Children!, a => a.Text == "Console");
-		await goTo.Children!.First(a => a.Text == "Neurons list").RunAsync();
-		Assert.Equal(WorkspaceKind.Fleet, s.Vm.Workspace);
+		await goTo.Children!.First(a => a.Text == "Its page").RunAsync();
+		Assert.Equal(WorkspaceKind.Neuron, s.Vm.Workspace);
+		Assert.Equal(socket.Source.NeuronJid, s.Vm.Page?.BareJid);
 		Assert.Equal(socket.Source.NeuronJid, s.Vm.Fleet.SelectedRow?.BareJid);
 		window.Close();
 	}
@@ -575,10 +576,10 @@ public class ActionTests
 		RightClick(window, at);
 		ContextMenu menu = ActionMenu.Last!;
 		List<string> texts = Texts(menu);
-		Assert.Equal("Show its events", texts[0]);
-		foreach (string expected in new[] { "Copy address", "Copy version", "Copy status summary", "Sources", "Console", "Map", "Chat", "Software", "Read its health now", "Check for updates", "Reboot…" })
+		Assert.Equal("Open", texts[0]);
+		foreach (string expected in new[] { "Copy address", "Copy version", "Copy status summary", "Its events", "Sources", "Console", "Software", "Identity", "Map", "Read its health now", "Check for updates", "Reboot…" })
 			Assert.Contains(expected, texts);
-		Assert.DoesNotContain("Neurons list", texts);
+		Assert.DoesNotContain("Its page", texts);
 		CaptureWithMenu(window, menu, at, $"neurons-menu-{t}-1440");
 		menu.Close();
 
@@ -588,7 +589,7 @@ public class ActionTests
 		s.Vm.ShowConsoleCommand.Execute(null);
 		ConsoleTargetViewModel target = s.Vm.Console.Targets.First(x => x.BareJid == jid);
 		List<string> onConsole = [.. s.Vm.Console.ActionsFor([target]).Where(a => a.Group == ActionGroup.GoTo).Select(a => a.Text)];
-		Assert.Equal(onRow.Where(x => x != "Console"), onConsole.Where(x => x != "Neurons list" && x != "Events"));
+		Assert.Equal(onRow, onConsole.Where(x => x != "Its page"));
 		NeuronChipViewModel chip = s.Vm.NeuronChips.First(c => c.BareJid == jid);
 		Assert.Contains(s.Vm.ActionsFor([chip]), a => a.Text == "Copy status summary");
 
@@ -609,10 +610,13 @@ public class ActionTests
 		Assert.Equal(WorkspaceKind.Console, s.Vm.Workspace);
 		Assert.Equal(3, s.Vm.Console.Targets.Count(x => x.IsChecked));
 
-		// Reboot goes through the Console, which asks for the Neuron's name before it runs.
+		// Reboot goes through the Neuron's own Console, which asks for the Neuron's name before it runs.
 		await s.Vm.NeuronActions(jid).First(a => a.Text == "Reboot…").RunAsync();
-		Assert.Equal("Reboot", s.Vm.Console.CommandText);
-		Assert.Single(s.Vm.Console.Targets, x => x.IsChecked);
+		Assert.Equal(WorkspaceKind.NeuronConsole, s.Vm.Workspace);
+		Assert.Equal(jid, s.Vm.Page?.BareJid);
+		Assert.Equal("Reboot", s.Vm.PageConsole?.CommandText);
+		Assert.Single(s.Vm.PageConsole!.Targets, x => x.IsChecked);
+		Assert.Equal(jid, s.Vm.PageConsole.Targets.Single(x => x.IsChecked).BareJid);
 
 		// The filter box narrows the list, and a filter that hides a Neuron is cleared to show it.
 		s.Vm.ShowFleetCommand.Execute(null);

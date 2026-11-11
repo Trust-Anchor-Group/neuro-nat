@@ -154,7 +154,7 @@
 
             <!-- Claim -->
             <StackPanel Spacing="12" IsVisible="{Binding IsClaiming}">
-              <StackPanel Spacing="4">
+              <StackPanel Spacing="4" IsVisible="{Binding !IsOneAccount}">
                 <TextBlock Classes="label" Text="Account" />
                 <ComboBox ItemsSource="{Binding AccountChoices}" SelectedItem="{Binding Account}" MinWidth="260" />
               </StackPanel>

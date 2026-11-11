@@ -37,10 +37,13 @@ public sealed partial class PubSubViewModel : ObservableObject
 	[ObservableProperty] private DeviceAccountChoice? account;
 
 	[ObservableProperty]
-	[NotifyPropertyChangedFor(nameof(IsService))]
+	[NotifyPropertyChangedFor(nameof(IsService), nameof(Title))]
 	private bool isPersonal;
 
 	public bool IsService => !this.IsPersonal;
+
+	/// <summary>What the list of nodes is called where it is shown.</summary>
+	public string Title => !this.IsPinned ? "Publish/subscribe" : this.IsPersonal ? "Storage" : "Nodes";
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasNode))]
@@ -58,14 +61,56 @@ public sealed partial class PubSubViewModel : ObservableObject
 	[ObservableProperty] private string publishXml = "<value xmlns='urn:example'>42</value>";
 	[ObservableProperty] private bool isConfirmingDelete;
 
-	partial void OnAccountChanged(DeviceAccountChoice? value) => _ = this.LoadNodesAsync();
-	partial void OnIsPersonalChanged(bool value) => _ = this.LoadNodesAsync();
+	partial void OnAccountChanged(DeviceAccountChoice? value)
+	{
+		if (!this.loading)
+			_ = this.LoadNodesAsync();
+	}
+
+	partial void OnIsPersonalChanged(bool value)
+	{
+		if (!this.loading)
+			_ = this.LoadNodesAsync();
+	}
 
 	partial void OnSelectedNodeChanged(PubSubNodeInfo? value)
 	{
 		this.IsConfirmingDelete = false;
 		_ = this.LoadItemsAsync();
 	}
+
+	/// <summary>True on an account's or a Neuron's page, where the account and the kind of nodes are already chosen.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(Title))]
+	private bool isPinned;
+
+	/// <summary>
+	/// Shows one account's nodes: its personal storage (on the account's page) or the nodes of the
+	/// publish/subscribe service on its Neuron (on the Neuron's page).
+	/// </summary>
+	public void Show(Guid accountId, bool personal)
+	{
+		this.IsPinned = true;
+		this.Activate();
+		DeviceAccountChoice? choice = this.AccountChoices.FirstOrDefault(c => c.Id == accountId);
+		if (!ReferenceEquals(choice, this.Account) || this.IsPersonal != personal)
+		{
+			this.loading = true;
+			try
+			{
+				this.Account = choice;
+				this.IsPersonal = personal;
+			}
+			finally
+			{
+				this.loading = false;
+			}
+
+			_ = this.LoadNodesAsync();
+		}
+	}
+
+	private bool loading;
 
 	/// <summary>Called when the workspace opens.</summary>
 	public void Activate()

@@ -223,9 +223,9 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 		if (rows.Count == 1)
 		{
 			FleetRowViewModel row = rows[0];
-			list.Open("Show its events", () => this.ShowEventsFor?.Invoke(row.BareJid), icon: "Events");
+			list.Open("Open", () => this.Open(row), icon: "Fleet");
 			if (this.Shell is IShell shell)
-				list.AddRange(shell.NeuronActions(row.BareJid, row.AccountId, WorkspaceKind.Fleet).Where(a => a.Text != "Events"));
+				list.AddRange(shell.NeuronActions(row.BareJid, row.AccountId, WorkspaceKind.Fleet));
 			else
 				list.Copy("Copy address", () => row.BareJid, "the address", "Ctrl+C");
 
@@ -317,6 +317,18 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 
 	[RelayCommand]
 	private Task RefreshNow() => this.fleet.RefreshAsync();
+
+	/// <summary>Set by the shell: opens a Neuron's page.</summary>
+	public Action<FleetRowViewModel>? OpenNeuron { get; set; }
+
+	/// <summary>Opens the page of a Neuron: the one given, or the one selected.</summary>
+	[RelayCommand]
+	private void Open(FleetRowViewModel? row)
+	{
+		row ??= this.SelectedRow;
+		if (row is not null)
+			this.OpenNeuron?.Invoke(row);
+	}
 
 	[RelayCommand]
 	private void OpenEvents(FleetRowViewModel? row)

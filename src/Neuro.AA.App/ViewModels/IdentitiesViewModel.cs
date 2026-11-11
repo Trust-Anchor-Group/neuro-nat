@@ -270,6 +270,52 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 			this.Refresh();
 	}
 
+	private Guid? onlyAccount;
+	private (Guid Account, string Jid)? onlyNeuron;
+
+	/// <summary>True on an account's page: only that account's identities, with no switch to the Neurons.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(IsOpen), nameof(ShowsList))]
+	private bool isOneAccount;
+
+	/// <summary>True on a Neuron's page: only that Neuron's identity and the applications it has waiting.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(IsOpen), nameof(ShowsList))]
+	private bool isOneNeuron;
+
+	/// <summary>True when the screen shows everything and offers the switch between Mine and Neurons.</summary>
+	public bool IsOpen => !this.IsOneAccount && !this.IsOneNeuron;
+
+	/// <summary>A Neuron's page has one row, so it needs no list.</summary>
+	public bool ShowsList => !this.IsOneNeuron;
+
+	/// <summary>Shows one account's identities. Used by the account's page.</summary>
+	public void ShowAccount(Guid accountId)
+	{
+		this.onlyNeuron = null;
+		this.onlyAccount = accountId;
+		this.IsOneNeuron = false;
+		this.IsOneAccount = true;
+		this.Selected = null;
+		if (this.Mode != IdentitiesMode.Mine)
+			this.Mode = IdentitiesMode.Mine;
+		this.Activate();
+	}
+
+	/// <summary>Shows one Neuron's identity and its waiting applications. Used by the Neuron's page.</summary>
+	public void ShowNeuron(Guid accountId, string neuronJid)
+	{
+		this.onlyAccount = null;
+		this.onlyNeuron = (accountId, neuronJid);
+		this.IsOneAccount = false;
+		this.IsOneNeuron = true;
+		this.Selected = null;
+		if (this.Mode != IdentitiesMode.Neurons)
+			this.Mode = IdentitiesMode.Neurons;
+		this.Activate();
+		this.Selected = this.Rows.FirstOrDefault();
+	}
+
 	/// <summary>Loads the identities of every account that has the service. Call when the workspace opens.</summary>
 	public void Activate()
 	{
@@ -400,7 +446,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 
 		if (this.IsMine)
 		{
-			foreach (IdentityPetition pt in petitions)
+			foreach (IdentityPetition pt in petitions.Where(pt => this.onlyAccount is not Guid only || pt.AccountId == only))
 			{
 				IdentityRowViewModel r = Row("petition:" + pt.PetitionId, IdentityRowKind.Petition, pt.AccountId);
 				r.Petition = pt;
@@ -411,7 +457,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 				r.HasState = true;
 			}
 
-			foreach (AccountSession s in this.accounts.Sessions.OrderBy(s => s.Profile.Label, StringComparer.OrdinalIgnoreCase))
+			foreach (AccountSession s in this.accounts.Sessions.Where(s => this.onlyAccount is not Guid only || s.Profile.Id == only).OrderBy(s => s.Profile.Label, StringComparer.OrdinalIgnoreCase))
 			{
 				Guid id = s.Profile.Id;
 				IdentityRowViewModel a = Row("account:" + id, IdentityRowKind.Account, id);
@@ -446,11 +492,13 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 				}
 			}
 
-			this.RetiredCount = this.mine.Values.Sum(l => l.Count(i => !InUse(i)));
+			this.RetiredCount = this.mine.Where(m => this.onlyAccount is not Guid only || m.Key == only).Sum(m => m.Value.Count(i => !InUse(i)));
 		}
 		else
 		{
-			foreach (WatchedNeuron n in this.monitors.Neurons.OrderBy(n => n.Label, StringComparer.OrdinalIgnoreCase))
+			foreach (WatchedNeuron n in this.monitors.Neurons
+				.Where(n => this.onlyNeuron is not (Guid a, string j) || (n.AccountId == a && string.Equals(n.BareJid, j, StringComparison.OrdinalIgnoreCase)))
+				.OrderBy(n => n.Label, StringComparer.OrdinalIgnoreCase))
 			{
 				string jid = n.BareJid.ToLowerInvariant();
 				IdentityRowViewModel r = Row("neuron:" + n.AccountId + ":" + jid, IdentityRowKind.Neuron, n.AccountId);
@@ -507,6 +555,8 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 
 		if (selected is not null && !keep.Contains(selected))
 			this.Selected = null;
+		else if (this.Selected is null && keep.Count > 0 && this.IsOneNeuron)
+			this.Selected = keep[0];
 		else if (this.Selected is null && keep.Count > 0 && this.IsMine)
 			this.Selected = keep.FirstOrDefault(r => r.Kind == IdentityRowKind.Petition) ?? keep.FirstOrDefault(r => r.Kind == IdentityRowKind.Identity && r.Identity?.State == IdentityState.Approved) ?? keep[0];
 		else

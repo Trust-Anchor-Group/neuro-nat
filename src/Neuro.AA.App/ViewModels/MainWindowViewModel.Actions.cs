@@ -66,43 +66,36 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 		Guid? account = row?.AccountId ?? accountId;
 		ActionList list = [];
 
-		void Place(WorkspaceKind kind, string text, string icon, Action go)
+		// The tab you are on is not offered, and neither is the page while you are on it.
+		bool here = this.IsNeuronPage && this.Page is NeuronPageViewModel p && string.Equals(p.BareJid, neuronJid, StringComparison.OrdinalIgnoreCase);
+
+		void Tab(WorkspaceKind kind, string text, string icon)
 		{
-			if (except != kind)
-				list.GoTo(text, go, icon);
+			if (except != kind && !(here && this.Workspace == kind))
+				list.GoTo(text, () => this.OpenNeuron(neuronJid, account, kind), icon);
 		}
 
-		Place(WorkspaceKind.Events, "Events", "Events", () => this.ShowEventsOf(neuronJid));
-		Place(WorkspaceKind.Fleet, "Neurons list", "Fleet", () =>
+		if (row is not null)
 		{
-			this.Fleet.Select(neuronJid);
-			this.ShowFleet();
-		});
-
-		if (account is Guid a)
-		{
-			Place(WorkspaceKind.Sources, "Sources", "Sources", () =>
-			{
-				this.ShowSources();
-				this.Sources.Focus(a, neuronJid);
-			});
-			Place(WorkspaceKind.Console, "Console", "Console", () => this.ShowConsole([(a, neuronJid)]));
+			if (except != WorkspaceKind.Fleet)
+				Tab(WorkspaceKind.Neuron, here ? "Overview" : "Its page", "Fleet");
+			Tab(WorkspaceKind.NeuronEvents, "Its events", "Events");
+			Tab(WorkspaceKind.Sources, "Sources", "Sources");
+			Tab(WorkspaceKind.NeuronConsole, "Console", "Console");
+			Tab(WorkspaceKind.Updates, "Software", "Updates");
+			Tab(WorkspaceKind.Identities, "Identity", "Identities");
 		}
 
-		Place(WorkspaceKind.Topology, "Map", "Topology", () =>
-		{
-			this.ShowTopology();
-			this.Topology.SelectNeuron(neuronJid);
-		});
+		if (except != WorkspaceKind.Events)
+			list.GoTo(row is null ? "Events" : "Its events among all Neurons", () => this.ShowEventsOf(neuronJid), "Events");
 
-		if (account is Guid c)
+		if (except != WorkspaceKind.Topology)
 		{
-			Place(WorkspaceKind.Chat, "Chat", "Chat", () => this.ShowChat(c, neuronJid));
-			Place(WorkspaceKind.Updates, "Software", "Updates", () =>
+			list.GoTo("Map", () =>
 			{
-				this.ShowUpdates();
-				this.Updates.Focus(c, neuronJid);
-			});
+				this.ShowTopology();
+				this.Topology.SelectNeuron(neuronJid);
+			}, "Topology");
 		}
 
 		return list;
@@ -127,14 +120,19 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 		{
 			Guid a = row.AccountId;
 			list.Do("Read its health now", () => this.Fleet.RefreshNowCommand.Execute(null), icon: "Refresh");
+			list.Do("Watch its traffic", () => this.WatchTrafficOf(a, neuronJid), icon: "Sniffer");
 			list.Do("Check for updates", () =>
 			{
-				this.ShowUpdates();
-				this.Updates.Focus(a, neuronJid);
+				this.OpenNeuron(neuronJid, a, WorkspaceKind.Updates);
 				if (this.Updates.CheckCommand.CanExecute(null))
 					this.Updates.CheckCommand.Execute(null);
 			});
-			list.Do("Reboot…", () => this.ShowConsole([(a, neuronJid)], "Reboot"), danger: true);
+			list.Do("Reboot…", () =>
+			{
+				this.OpenNeuron(neuronJid, a, WorkspaceKind.NeuronConsole);
+				if (this.PageConsole is ConsoleViewModel console)
+					console.CommandText = "Reboot";
+			}, danger: true);
 		}
 
 		return list;
@@ -204,6 +202,9 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 				forChip.AddRange(this.NeuronActions(chip.BareJid, null, WorkspaceKind.Events));
 				return forChip;
 
+			case NeuronPageViewModel page:
+				return this.NeuronActions(page.BareJid, page.AccountId);
+
 			case AccountItemViewModel account:
 				ActionList forAccount = [];
 				string jid = account.Session.Profile.UserName + "@" + account.Session.Profile.EffectiveDomain;
@@ -246,6 +247,7 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 		switch (this.Workspace)
 		{
 			case WorkspaceKind.Fleet:
+			case WorkspaceKind.Neuron:
 				this.Fleet.RefreshNowCommand.Execute(null);
 				break;
 			case WorkspaceKind.Attention:

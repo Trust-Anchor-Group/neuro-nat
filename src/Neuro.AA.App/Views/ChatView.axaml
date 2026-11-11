@@ -69,23 +69,43 @@
     <!-- Contacts and conversations -->
     <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel Margin="12,14,12,12">
-        <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2">
-            <Button Classes="ghost" Command="{Binding ToggleJoinCommand}" ToolTip.Tip="Join or create a group chat room">
-              <StackPanel Classes="btn">
-                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Room}" />
-                <TextBlock Classes="btnLabel" Text="Room" />
-              </StackPanel>
-            </Button>
-            <Button Classes="ghost" Command="{Binding ToggleAddCommand}" ToolTip.Tip="Add a contact">
-              <StackPanel Classes="btn">
-                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Plus}" />
-                <TextBlock Classes="btnLabel" Text="Add" />
-              </StackPanel>
-            </Button>
-          </StackPanel>
-          <TextBlock Classes="section" Text="People" VerticalAlignment="Center" />
-        </DockPanel>
+        <!-- Two halves: the people you write to, and the rooms you are in. Each has its one way to add. -->
+        <Border DockPanel.Dock="Top" Margin="-12,-14,-12,10" Padding="8,0,8,0" Height="38" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <DockPanel>
+            <Panel DockPanel.Dock="Right" VerticalAlignment="Center">
+              <Button Classes="ghost" Command="{Binding ToggleAddCommand}" ToolTip.Tip="Add a contact by their address" IsVisible="{Binding ShowPeople}">
+                <StackPanel Classes="btn">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Plus}" />
+                  <TextBlock Classes="btnLabel" Text="Add" />
+                </StackPanel>
+              </Button>
+              <Button Classes="ghost" Command="{Binding ToggleJoinCommand}" ToolTip.Tip="Join a group chat room, or create one" IsVisible="{Binding ShowRooms}">
+                <StackPanel Classes="btn">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Plus}" />
+                  <TextBlock Classes="btnLabel" Text="Join" />
+                </StackPanel>
+              </Button>
+            </Panel>
+            <StackPanel Orientation="Horizontal">
+              <Button Classes="tab" Classes.current="{Binding ShowPeople}" Command="{Binding ShowPeopleTabCommand}" ToolTip.Tip="The people you write to, one at a time">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="People" VerticalAlignment="Center" />
+                  <Border Classes="unread" IsVisible="{Binding HasPeopleUnread}" ToolTip.Tip="Unread messages from people">
+                    <TextBlock Text="{Binding PeopleUnread}" />
+                  </Border>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Classes.current="{Binding ShowRooms}" Command="{Binding ShowRoomsTabCommand}" ToolTip.Tip="Group chats you have joined">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="Rooms" VerticalAlignment="Center" />
+                  <Border Classes="unread" IsVisible="{Binding HasRoomsUnread}" ToolTip.Tip="Unread messages in rooms">
+                    <TextBlock Text="{Binding RoomsUnread}" />
+                  </Border>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </DockPanel>
+        </Border>
 
         <!-- Sharing from another workspace: pick who gets it -->
         <Border DockPanel.Dock="Top" Classes="panel" Padding="12,10" Margin="0,0,0,10" Background="{DynamicResource Accent.Subtle}" BorderThickness="0"
@@ -189,7 +209,7 @@
           </StackPanel>
         </Border>
 
-        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding FilterText}" PlaceholderText="Filter people…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
+        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding FilterText}" PlaceholderText="{Binding FilterHint}" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
 
         <Panel>
           <ListBox Classes="rows" ItemsSource="{Binding People}" SelectedItem="{Binding SelectedPerson}"
@@ -225,9 +245,6 @@
                     <Border Classes="tag" IsVisible="{Binding IsNeuron}">
                       <TextBlock Text="Neuron" />
                     </Border>
-                    <Border Classes="tag" IsVisible="{Binding IsRoom}">
-                      <TextBlock Text="Room" />
-                    </Border>
                     <c:LineIcon Data="{StaticResource Icon.BellOff}" Width="12" Height="12" IsVisible="{Binding IsMuted}" VerticalAlignment="Center"
                                 Foreground="{DynamicResource Ink.Tertiary}" ToolTip.Tip="{Binding NotifyText}" />
                   </StackPanel>
@@ -246,9 +263,8 @@
 
           <StackPanel IsVisible="{Binding !HasPeople}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="260" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Chat}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
-            <TextBlock Text="No contacts yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                       Text="Contacts of your connected accounts show up here. Add a coworker with their address." />
+            <TextBlock Text="{Binding EmptyTitle}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="{Binding EmptyText}" />
           </StackPanel>
         </Panel>
       </DockPanel>

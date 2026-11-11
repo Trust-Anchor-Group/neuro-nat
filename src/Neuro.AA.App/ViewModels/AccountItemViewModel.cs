@@ -10,12 +10,14 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 {
 	private readonly Func<AccountItemViewModel, Task> remove;
 	private readonly Func<Guid, AccountSecret, Task> setSecret;
+	private readonly Func<Guid, string, Task>? changePassword;
 
-	public AccountItemViewModel(AccountSession session, Func<AccountItemViewModel, Task> remove, Func<Guid, AccountSecret, Task> setSecret)
+	public AccountItemViewModel(AccountSession session, Func<AccountItemViewModel, Task> remove, Func<Guid, AccountSecret, Task> setSecret, Func<Guid, string, Task>? changePassword = null)
 	{
 		this.Session = session;
 		this.remove = remove;
 		this.setSecret = setSecret;
+		this.changePassword = changePassword;
 		this.Sniffer = new SnifferViewModel(session.Sniffer, session.Profile.Label);
 		session.StatusChanged += this.Session_StatusChanged;
 		this.Refresh();
@@ -263,6 +265,81 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 	}
 
 	private bool CanSavePassword() => !string.IsNullOrEmpty(this.NewPassword);
+
+	// ---- Change password: on the Neuron and in the saved login, in one go -------------------
+
+	/// <summary>"Signs in as admin on alpha.lab.local:5222. The password is kept encrypted for your user."</summary>
+	public string SignInText => $"Signs in as {this.Session.Profile.UserName} on {this.Endpoint}. The password is kept encrypted for your user on this computer.";
+
+	[ObservableProperty] private bool isChangingPassword;
+	[ObservableProperty] private bool isPasswordBusy;
+	[ObservableProperty] private string? passwordError;
+	[ObservableProperty] private string? passwordNote;
+
+	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(ChangePasswordCommand))]
+	private string changedPassword = string.Empty;
+
+	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(ChangePasswordCommand))]
+	private string changedPasswordAgain = string.Empty;
+
+	[RelayCommand]
+	private void OpenChangePassword()
+	{
+		this.PasswordError = null;
+		this.PasswordNote = null;
+		this.ChangedPassword = string.Empty;
+		this.ChangedPasswordAgain = string.Empty;
+		this.IsChangingPassword = true;
+	}
+
+	[RelayCommand]
+	private void CancelChangePassword()
+	{
+		this.IsChangingPassword = false;
+		this.ChangedPassword = string.Empty;
+		this.ChangedPasswordAgain = string.Empty;
+		this.PasswordError = null;
+	}
+
+	private bool CanChangePassword() => this.ChangedPassword.Length > 0 && this.ChangedPasswordAgain.Length > 0 && !this.IsPasswordBusy;
+
+	[RelayCommand(CanExecute = nameof(CanChangePassword))]
+	private async Task ChangePassword()
+	{
+		this.PasswordError = null;
+		if (this.ChangedPassword != this.ChangedPasswordAgain)
+		{
+			this.PasswordError = "The two passwords are not the same.";
+			return;
+		}
+
+		if (this.changePassword is null || !this.IsOnline)
+		{
+			this.PasswordError = "Connect the account first. The password is changed on the Neuron.";
+			return;
+		}
+
+		this.IsPasswordBusy = true;
+		try
+		{
+			await this.changePassword(this.Session.Profile.Id, this.ChangedPassword);
+			this.IsChangingPassword = false;
+			this.ChangedPassword = string.Empty;
+			this.ChangedPasswordAgain = string.Empty;
+			this.PasswordNote = "Password changed, on the Neuron and in the saved login.";
+			Ui.Say("Password changed");
+		}
+		catch (Exception ex)
+		{
+			this.PasswordError = ex.Message;
+		}
+		finally
+		{
+			this.IsPasswordBusy = false;
+		}
+	}
 
 	[RelayCommand(CanExecute = nameof(CanSavePassword))]
 	private async Task SavePassword()

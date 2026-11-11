@@ -181,7 +181,7 @@ public enum InspectorMode
 }
 
 /// <summary>A sensor data field from a readout.</summary>
-public sealed record ReadoutRow(string Name, string Value, string Kind, string Time, bool IsProblem);
+public sealed record ReadoutRow(string Name, string Value, string Kind, string Time, bool IsProblem, bool IsChanged = false);
 
 /// <summary>
 /// The Sources workspace: a Neuron's data sources and nodes, the selected node's parameters,
@@ -410,10 +410,14 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		bool all = scope == "all";
 		Waher.Things.SensorData.FieldType types = all ? Waher.Things.SensorData.FieldType.All : Waher.Things.SensorData.FieldType.All & ~Waher.Things.SensorData.FieldType.Historical;
 
+		if (all)
+			this.IsWatching = false;
+
 		this.ReadoutRows.Clear();
 		this.ReadoutTitle = all ? "All sensor data, with history" : "Sensor data";
 		this.ReadoutStatus = "Reading…";
 		this.Mode = InspectorMode.Readout;
+		this.watchedAt = DateTime.UtcNow;
 
 		try
 		{
@@ -428,20 +432,163 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		}
 	}
 
+	private static List<ReadoutRow> RowsOf(Readout r)
+	{
+		List<ReadoutRow> rows = [];
+		foreach (Waher.Things.SensorData.Field f in r.Fields.OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase).ThenByDescending(f => f.Timestamp))
+		{
+			rows.Add(new ReadoutRow(f.Name, f.ValueString, KindText(f.Type),
+				Local(f.Timestamp).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture), false));
+		}
+
+		foreach (Waher.Things.ThingError e in r.Errors)
+			rows.Add(new ReadoutRow("Error", e.ErrorMessage, string.Empty, Local(e.Timestamp).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture), true));
+
+		return rows;
+	}
+
+	// ---- Watch: live values --------------------------------------------------------------
+
+	/// <summary>How often a watched node is read again.</summary>
+	public static readonly TimeSpan WatchEvery = TimeSpan.FromSeconds(5);
+
+	/// <summary>
+	/// On: the node's values are read again every few seconds, in place, and the ones that
+	/// changed are marked. Off again when you leave the readings, pick another node or go to
+	/// another Neuron.
+	/// </summary>
+	[ObservableProperty] private bool isWatching;
+
+	private DispatcherTimer? watchTimer;
+	private NodeItemViewModel? watchedNode;
+	private NeuronConcentrator? watchedThrough;
+	private DateTime watchedAt;
+	private bool watchBusy;
+	private int watchFailures;
+
+	partial void OnIsWatchingChanged(bool value)
+	{
+		if (!value)
+		{
+			this.watchTimer?.Stop();
+			if (this.IsReadout && this.readout is not null && this.ReadoutRows.Count > 0)
+				this.ReadoutStatus = CountText(this.ReadoutRows.Count(x => !x.IsProblem)) + " · no longer watching";
+			return;
+		}
+
+		this.watchedNode = this.SelectedNode;
+		this.watchedThrough = this.Concentrator;
+		this.watchFailures = 0;
+		this.watchTimer ??= new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => _ = this.WatchTickAsync());
+		this.watchTimer.Start();
+		_ = this.WatchTickAsync();
+	}
+
+	private static string CountText(int fields) => fields == 1 ? "1 field" : $"{fields} fields";
+
+	private async Task WatchTickAsync()
+	{
+		if (!this.IsWatching)
+			return;
+
+		// Watching ends by itself when what it watches is no longer what you look at.
+		if (!this.IsReadout || this.watchedNode is null || !ReferenceEquals(this.SelectedNode, this.watchedNode) ||
+			this.Concentrator is not NeuronConcentrator c || !ReferenceEquals(c, this.watchedThrough))
+		{
+			this.IsWatching = false;
+			return;
+		}
+
+		if (this.watchBusy)
+			return;
+
+		double since = (DateTime.UtcNow - this.watchedAt).TotalSeconds;
+		if (since < WatchEvery.TotalSeconds || this.readout is { IsFinished: false })
+		{
+			if (this.readout is { IsFinished: true } && this.watchFailures == 0)
+				this.ReadoutStatus = "Watching · " + CountText(this.ReadoutRows.Count(x => !x.IsProblem)) + " · read " + AgoText(since);
+			return;
+		}
+
+		this.watchBusy = true;
+		NodeItemViewModel node = this.watchedNode;
+		try
+		{
+			Readout r = await c.ReadAsync(node.Node, Waher.Things.SensorData.FieldType.All & ~Waher.Things.SensorData.FieldType.Historical);
+			TaskCompletionSource done = new(TaskCreationOptions.RunContinuationsAsynchronously);
+			r.Changed += (_, _) =>
+			{
+				if (r.IsFinished)
+					done.TrySetResult();
+			};
+			if (!r.IsFinished)
+				await done.Task.WaitAsync(TimeSpan.FromSeconds(20));
+
+			if (!this.IsWatching || !ReferenceEquals(this.SelectedNode, node) || !this.IsReadout)
+				return;
+
+			this.readout = r;
+			this.ReadoutTitle = "Sensor data";
+			Merge(this.ReadoutRows, RowsOf(r));
+			this.watchFailures = 0;
+			this.watchedAt = DateTime.UtcNow;
+			this.ReadoutStatus = "Watching · " + CountText(r.Fields.Count) + " · read just now";
+		}
+		catch (Exception ex)
+		{
+			// One slow answer is not the end of it. Three in a row is.
+			this.watchedAt = DateTime.UtcNow;
+			if (++this.watchFailures >= 3)
+			{
+				this.IsWatching = false;
+				this.ReadoutStatus = "Stopped watching: " + ex.Message;
+			}
+			else
+				this.ReadoutStatus = "Watching · the last reading did not arrive, trying again";
+		}
+		finally
+		{
+			this.watchBusy = false;
+		}
+	}
+
+	private static string AgoText(double seconds)
+		=> seconds < 1.5 ? "just now" : ((int)seconds).ToString(CultureInfo.CurrentCulture) + " s ago";
+
+	/// <summary>
+	/// Puts a fresh reading into the rows that are shown, without rebuilding the list: a row that
+	/// is the same stays where it is (so your place and selection stay), and a value that is not
+	/// what it was is marked as changed.
+	/// </summary>
+	public static void Merge(IList<ReadoutRow> shown, IReadOnlyList<ReadoutRow> fresh)
+	{
+		Dictionary<string, string> before = [];
+		foreach (ReadoutRow row in shown)
+			before.TryAdd(row.Name + "\n" + row.Kind, row.Value);
+
+		for (int i = 0; i < fresh.Count; i++)
+		{
+			ReadoutRow row = fresh[i];
+			bool changed = before.TryGetValue(row.Name + "\n" + row.Kind, out string? was) && was != row.Value;
+			row = row with { IsChanged = changed };
+			if (i >= shown.Count)
+				shown.Add(row);
+			else if (shown[i] != row)
+				shown[i] = row;
+		}
+
+		while (shown.Count > fresh.Count)
+			shown.RemoveAt(shown.Count - 1);
+	}
+
 	private void ShowReadout(Readout r)
 	{
 		if (!ReferenceEquals(this.readout, r))
 			return;
 
 		this.ReadoutRows.Clear();
-		foreach (Waher.Things.SensorData.Field f in r.Fields.OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase).ThenByDescending(f => f.Timestamp))
-		{
-			this.ReadoutRows.Add(new ReadoutRow(f.Name, f.ValueString, KindText(f.Type),
-				Local(f.Timestamp).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture), false));
-		}
-
-		foreach (Waher.Things.ThingError e in r.Errors)
-			this.ReadoutRows.Add(new ReadoutRow("Error", e.ErrorMessage, string.Empty, Local(e.Timestamp).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture), true));
+		foreach (ReadoutRow row in RowsOf(r))
+			this.ReadoutRows.Add(row);
 
 		this.ReadoutStatus = r.State switch
 		{
@@ -605,6 +752,21 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		}
 
 		this.OnPropertyChanged(nameof(this.HasNeurons));
+
+		if (this.pinned is (Guid pinnedAccount, string pinnedJid))
+		{
+			// On a Neuron's page: only that Neuron, and nothing while it is away.
+			NeuronChoice? mine = this.Neurons.FirstOrDefault(n => n.AccountId == pinnedAccount && string.Equals(n.BareJid, pinnedJid, StringComparison.OrdinalIgnoreCase));
+			this.PinnedNote = mine is null ? pinnedJid + " is not online through this account, so its sources cannot be read. They show here when it is back." : null;
+			if (!ReferenceEquals(mine, this.SelectedNeuron))
+			{
+				this.SelectedNeuron = mine;
+				return;
+			}
+
+			if (mine is null)
+				return;
+		}
 
 		if (this.SelectedNeuron is not NeuronChoice selected || !this.Neurons.Contains(selected))
 		{
@@ -798,14 +960,24 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 	/// <summary>Set by the shell: the moves to other screens.</summary>
 	public IShell? Shell { get; set; }
 
-	/// <summary>Opens a Neuron's sources. Used by "Go to" on other screens.</summary>
+	private (Guid Account, string Jid)? pinned;
+
+	/// <summary>True on a Neuron's page: the Neuron is already chosen, so there is no list to pick it from.</summary>
+	[ObservableProperty] private bool isPinned;
+
+	/// <summary>Why the page's Neuron has no sources to show right now.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasPinnedNote))]
+	private string? pinnedNote;
+
+	public bool HasPinnedNote => this.PinnedNote is not null;
+
+	/// <summary>Shows one Neuron's sources. Used by the Neuron's page.</summary>
 	public void Focus(Guid accountId, string neuronJid)
 	{
+		this.pinned = (accountId, neuronJid);
+		this.IsPinned = true;
 		this.SyncNeurons();
-		if (this.Neurons.FirstOrDefault(n => n.AccountId == accountId && string.Equals(n.BareJid, neuronJid, StringComparison.OrdinalIgnoreCase)) is NeuronChoice n)
-			this.SelectedNeuron = n;
-		else
-			Ui.Say(neuronJid + " is not online, so its sources cannot be read");
 	}
 
 	private string ParametersAsText()

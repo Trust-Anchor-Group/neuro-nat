@@ -120,6 +120,19 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 
 	partial void OnConfirmPromptChanged(string? value) => this.OnPropertyChanged(nameof(this.IsConfirming));
 
+	/// <summary>True for the console on a Neuron's page, which talks to that Neuron only.</summary>
+	[ObservableProperty] private bool isPinned;
+
+	private (Guid Account, string Jid)? pinned;
+
+	/// <summary>Makes this the console of one Neuron: it is the only target, and stays so.</summary>
+	public void Pin(Guid accountId, string bareJid)
+	{
+		this.pinned = (accountId, bareJid);
+		this.IsPinned = true;
+		this.Focus(accountId, bareJid);
+	}
+
 	/// <summary>Selects one Neuron as the only target. Used when opening the console from elsewhere.</summary>
 	public void Focus(Guid accountId, string bareJid)
 	{
@@ -248,7 +261,12 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 			t.AccountColorIndex = p?.ColorIndex ?? 0;
 		}
 
-		if (!this.Targets.Any(t => t.IsChecked) && this.Targets.FirstOrDefault(t => t.IsOnline) is ConsoleTargetViewModel first)
+		if (this.pinned is (Guid account, string jid))
+		{
+			foreach (ConsoleTargetViewModel t in this.Targets)
+				t.IsChecked = t.AccountId == account && string.Equals(t.BareJid, jid, StringComparison.OrdinalIgnoreCase);
+		}
+		else if (!this.Targets.Any(t => t.IsChecked) && this.Targets.FirstOrDefault(t => t.IsOnline) is ConsoleTargetViewModel first)
 			first.IsChecked = true;
 
 		this.TargetsChanged();

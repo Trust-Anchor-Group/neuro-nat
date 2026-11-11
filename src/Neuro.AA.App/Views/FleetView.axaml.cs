@@ -17,7 +17,7 @@ public partial class FleetView : UserControl
 		if (this.DataContext is FleetViewModel vm && vm.SelectedRow is not null && e.Source is Avalonia.Visual v &&
 			Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<ListBoxItem>(v, true) is not null)
 		{
-			vm.OpenEventsCommand.Execute(vm.SelectedRow);
+			vm.OpenCommand.Execute(vm.SelectedRow);
 		}
 	}
 }

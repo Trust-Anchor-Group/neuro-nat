@@ -151,11 +151,18 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 		return list;
 	}
 
-	/// <summary>Selects a Neuron in the list.</summary>
+	/// <summary>True on a Neuron's page: the Neuron is already chosen, so the list of Neurons is not shown.</summary>
+	[ObservableProperty] private bool isPinned;
+
+	/// <summary>Shows one Neuron's software. Used by the Neuron's page.</summary>
 	public void Focus(Guid accountId, string neuronJid)
 	{
+		this.IsPinned = true;
 		this.Sync();
-		this.Selected = this.Rows.FirstOrDefault(r => r.AccountId == accountId && string.Equals(r.NeuronJid, neuronJid, StringComparison.OrdinalIgnoreCase)) ?? this.Selected;
+		UpdateRowViewModel? row = this.Rows.FirstOrDefault(r => r.AccountId == accountId && string.Equals(r.NeuronJid, neuronJid, StringComparison.OrdinalIgnoreCase));
+		this.Selected = row;
+		if (row is { IsLive: true, Software: null })
+			_ = this.ReadAsync(row, quiet: true);
 	}
 
 	/// <summary>Called when the workspace opens: reads every live Neuron not read yet.</summary>

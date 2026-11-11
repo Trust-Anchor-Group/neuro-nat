@@ -151,6 +151,56 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	public ObservableCollection<AccountChoice> AccountChoices { get; } = [];
 
 	[ObservableProperty] private string filterText = string.Empty;
+
+	/// <summary>
+	/// Which half of Chat the list shows: people, or rooms. Neurons are not people: they have a
+	/// page of their own, and only show up among people while a message from one is unread, or
+	/// when you type their name in the filter.
+	/// </summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(ShowPeople), nameof(FilterHint), nameof(EmptyTitle), nameof(EmptyText))]
+	private bool showRooms;
+
+	public bool ShowPeople => !this.ShowRooms;
+	public string FilterHint => this.ShowRooms ? "Filter rooms…" : "Filter people…";
+	public string EmptyTitle => this.FilterText.Trim().Length > 0 ? "Nothing matches" : this.ShowRooms ? "No rooms yet" : "No contacts yet";
+	public string EmptyText => this.FilterText.Trim().Length > 0 ? "Nothing here matches \"" + this.FilterText.Trim() + "\"."
+		: this.ShowRooms ? "A room is a group chat. Join one by its name, or create your own."
+		: "Contacts of your connected accounts show up here. Add a coworker with their address.";
+
+	[ObservableProperty] private int peopleUnread;
+	[ObservableProperty] private int roomsUnread;
+	[ObservableProperty] private bool hasPeopleUnread;
+	[ObservableProperty] private bool hasRoomsUnread;
+
+	private PersonViewModel? lastPerson;
+	private PersonViewModel? lastRoom;
+	private List<PersonViewModel> everyone = [];
+
+	partial void OnShowRoomsChanged(bool value)
+	{
+		// Each half remembers the conversation you had open in it.
+		this.IsJoinOpen = false;
+		this.IsAddOpen = false;
+		PersonViewModel? back = value ? this.lastRoom : this.lastPerson;
+		this.SelectedPerson = null;
+		this.Refresh();
+		if (back is not null && this.everyone.Contains(back))
+		{
+			if (!this.People.Contains(back))
+				this.People.Insert(0, back);
+
+			this.SelectedPerson = back;
+			this.Refresh();
+		}
+	}
+
+	[RelayCommand]
+	private void ShowPeopleTab() => this.ShowRooms = false;
+
+	[RelayCommand]
+	private void ShowRoomsTab() => this.ShowRooms = true;
+
 	[ObservableProperty] private bool hasRequests;
 	[ObservableProperty] private int requestCount;
 	[ObservableProperty] private bool hasInvitations;
@@ -209,7 +259,12 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	/// <summary>Set by the shell: opens the console of a Neuron.</summary>
 	public Action<Guid, string>? OpenConsoleFor { get; set; }
 
-	partial void OnFilterTextChanged(string value) => Interlocked.Exchange(ref this.dirty, 1);
+	partial void OnFilterTextChanged(string value)
+	{
+		Interlocked.Exchange(ref this.dirty, 1);
+		this.OnPropertyChanged(nameof(this.EmptyTitle));
+		this.OnPropertyChanged(nameof(this.EmptyText));
+	}
 
 	private bool reordering;
 
@@ -226,6 +281,11 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		this.Messages.Clear();
 		if (value is not null)
 		{
+			if (value.IsRoom)
+				this.lastRoom = value;
+			else
+				this.lastPerson = value;
+
 			this.LoadConversation(value, true);
 			this.CanSendFiles = this.chat.CanSendFiles(value.AccountId);
 
@@ -281,7 +341,10 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	{
 		DateTime now = DateTime.Now;
 		Dictionary<Guid, AccountProfile> profiles = this.accounts.Sessions.ToDictionary(s => s.Profile.Id, s => s.Profile);
-		Dictionary<string, PersonViewModel> existing = this.People.ToDictionary(p => p.AccountId.ToString("N") + "|" + p.BareJid.ToLowerInvariant());
+		// Everyone known so far, shown or not: the half you are not looking at keeps its rows.
+		Dictionary<string, PersonViewModel> existing = [];
+		foreach (PersonViewModel known in this.everyone.Concat(this.People))
+			existing.TryAdd(known.AccountId.ToString("N") + "|" + known.BareJid.ToLowerInvariant(), known);
 		List<PersonViewModel> list = [];
 
 		PersonViewModel Person(Guid account, string jid)
@@ -348,9 +411,12 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			p.LastActivity = conv.LastActivity;
 		}
 
-		// Someone who wrote without being a contact has no presence to show.
+		// Someone who wrote without being a contact has no presence to show. A Neuron is a
+		// Neuron whether or not it is a contact.
 		foreach (PersonViewModel p in list.Where(p => !p.IsRoom && !p.InRoster && p.PresenceText.Length == 0))
 			p.PresenceText = "Not a contact";
+		foreach (PersonViewModel p in list.Where(p => !p.IsRoom && !p.IsNeuron))
+			p.IsNeuron = this.chat.IsNeuron(p.AccountId, p.BareJid);
 
 		foreach (PersonViewModel p in list.Where(p => !p.IsRoom))
 		{
@@ -387,14 +453,26 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			p.TimeText = last is null ? string.Empty : RelativeTime.Format(last.Timestamp, now);
 		}
 
+		this.everyone = list;
+		this.PeopleUnread = list.Where(p => !p.IsRoom && !p.IsMuted).Sum(p => p.Unread);
+		this.RoomsUnread = list.Where(p => p.IsRoom && !p.IsMuted).Sum(p => p.Unread);
+		this.HasPeopleUnread = this.PeopleUnread > 0;
+		this.HasRoomsUnread = this.RoomsUnread > 0;
+
+		// One half at a time. A Neuron is among the people only while it has something unread,
+		// while its conversation is open, or when the filter asks for it by name.
 		string filter = this.FilterText.Trim();
-		IEnumerable<PersonViewModel> shown = list;
+		bool rooms = this.ShowRooms;
+		PersonViewModel? open = this.SelectedPerson;
+		IEnumerable<PersonViewModel> shown = list.Where(p => p.IsRoom == rooms);
 		if (filter.Length > 0)
 		{
 			shown = shown.Where(p => p.Label.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
 				p.BareJid.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
 				p.AccountLabel.Contains(filter, StringComparison.OrdinalIgnoreCase));
 		}
+		else
+			shown = shown.Where(p => !p.IsNeuron || p.Unread > 0 || ReferenceEquals(p, open));
 
 		List<PersonViewModel> ordered = [.. shown
 			.OrderByDescending(p => p.Unread > 0)
@@ -402,7 +480,11 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			.ThenByDescending(p => p.IsOnline)
 			.ThenBy(p => p.Label, StringComparer.CurrentCultureIgnoreCase)];
 
+		// The open conversation stays in the list while you filter, as long as it belongs to this half.
 		PersonViewModel? selected = this.SelectedPerson;
+		if (selected is not null && selected.IsRoom != rooms)
+			selected = null;
+
 		this.reordering = true;
 		try
 		{
@@ -521,14 +603,24 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	{
 		this.FilterText = string.Empty;
 		this.Refresh();
-		PersonViewModel? p = this.People.FirstOrDefault(x => x.AccountId == accountId && string.Equals(x.BareJid, bareJid, StringComparison.OrdinalIgnoreCase));
+		PersonViewModel? p = this.everyone.FirstOrDefault(x => x.AccountId == accountId && string.Equals(x.BareJid, bareJid, StringComparison.OrdinalIgnoreCase));
 		if (p is null)
 			return false;
+
+		// Go to the half it lives in, and put it in the list even when it is a quiet Neuron.
+		if (p.IsRoom)
+			this.lastRoom = p;
+		else
+			this.lastPerson = p;
+		this.ShowRooms = p.IsRoom;
+		if (!this.People.Contains(p))
+			this.People.Insert(0, p);
 
 		if (ReferenceEquals(this.SelectedPerson, p))
 			this.LoadConversation(p, false);
 		else
 			this.SelectedPerson = p;
+		this.Refresh();
 		return true;
 	}
 

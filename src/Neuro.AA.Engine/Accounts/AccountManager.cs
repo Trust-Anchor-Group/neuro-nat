@@ -137,6 +137,32 @@ public sealed class AccountManager(IAccountStore store, ICredentialVault vault) 
 	public Task SetSecretAsync(Guid accountId, AccountSecret secret, CancellationToken cancel = default)
 		=> vault.SetAsync(accountId, secret, cancel);
 
+	/// <summary>
+	/// Changes the account's password on its Neuron, and keeps the new one for the next sign-in.
+	/// The account must be connected: the Neuron is the one that changes it.
+	/// </summary>
+	public async Task ChangePasswordAsync(Guid accountId, string newPassword, CancellationToken cancel = default)
+	{
+		AccountSession session = this.Get(accountId) ?? throw new KeyNotFoundException("Unknown account.");
+		if (session.Client is not Waher.Networking.XMPP.XmppClient client || session.Status != ConnectionStatus.Connected)
+			throw new InvalidOperationException("Connect the account first. The password is changed on the Neuron.");
+
+		TaskCompletionSource<string?> done = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		await client.ChangePassword(newPassword, (_, e) =>
+		{
+			done.TrySetResult(e.Ok ? null : string.IsNullOrWhiteSpace(e.ErrorText) ? "The Neuron did not change the password." : e.ErrorText);
+			return Task.CompletedTask;
+		}, null);
+
+		if (await Task.WhenAny(done.Task, Task.Delay(TimeSpan.FromSeconds(20), cancel)) != done.Task)
+			throw new TimeoutException("The Neuron did not answer in time. The password may or may not have changed.");
+
+		if (await done.Task is string error)
+			throw new InvalidOperationException(error);
+
+		await vault.SetAsync(accountId, AccountSecret.FromPassword(newPassword), cancel);
+	}
+
 	/// <summary>Disconnects and removes an account and its secret.</summary>
 	public async Task RemoveAsync(Guid accountId, CancellationToken cancel = default)
 	{

@@ -132,6 +132,25 @@ public sealed partial class DevicesViewModel : ObservableObject
 		this.ShowDetail();
 	}
 
+	/// <summary>The account whose devices show. Null shows every account's.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(IsOneAccount))]
+	private Guid? onlyAccount;
+
+	/// <summary>True on an account's page, where the account is already chosen.</summary>
+	public bool IsOneAccount => this.OnlyAccount is not null;
+
+	/// <summary>Shows one account's devices, registry searches and questions. Used by the account's page.</summary>
+	public void ShowAccount(Guid accountId)
+	{
+		this.OnlyAccount = accountId;
+		this.SyncAccounts();
+		this.Account = this.AccountChoices.FirstOrDefault(c => c.Id == accountId) ?? this.Account;
+		this.Activate();
+	}
+
+	private bool Shows(Guid accountId) => this.OnlyAccount is not Guid only || only == accountId;
+
 	/// <summary>Called when the workspace opens.</summary>
 	public void Activate()
 	{
@@ -192,7 +211,7 @@ public sealed partial class DevicesViewModel : ObservableObject
 		switch (this.Mode)
 		{
 			case DevicesMode.Mine:
-				foreach ((Guid id, IReadOnlyList<RegistryThing> list) in this.mine)
+				foreach ((Guid id, IReadOnlyList<RegistryThing> list) in this.mine.Where(m => this.Shows(m.Key)))
 				{
 					foreach (RegistryThing t in list.OrderBy(t => t.Label, StringComparer.OrdinalIgnoreCase))
 					{
@@ -209,7 +228,7 @@ public sealed partial class DevicesViewModel : ObservableObject
 				break;
 
 			case DevicesMode.Search:
-				foreach ((Guid id, RegistryThing t) in this.found)
+				foreach ((Guid id, RegistryThing t) in this.found.Where(f => this.Shows(f.Account)))
 				{
 					DeviceRowViewModel r = Row($"found:{id}:{t.Jid}:{t.NodeId}:{t.SourceId}", id);
 					bool owned = this.mine.TryGetValue(id, out IReadOnlyList<RegistryThing>? m) && m.Any(x => x.Jid == t.Jid && x.NodeId == t.NodeId);
@@ -222,7 +241,7 @@ public sealed partial class DevicesViewModel : ObservableObject
 				break;
 
 			case DevicesMode.Questions:
-				foreach (DeviceQuestion q in questions.OrderByDescending(q => q.Received))
+				foreach (DeviceQuestion q in questions.Where(q => this.Shows(q.AccountId)).OrderByDescending(q => q.Received))
 				{
 					DeviceRowViewModel r = Row("question:" + q.Id, q.AccountId);
 					(r.Question, r.Thing, r.Owned) = (q, null, false);

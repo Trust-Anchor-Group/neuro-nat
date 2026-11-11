@@ -316,6 +316,28 @@
     <Setter Property="CornerRadius" Value="0,6,6,0" />
   </Style>
 
+  <!-- A name you can click to open what it names: looks like text until the pointer is on it -->
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.link:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+  </Style>
+  <Style Selector="Button.link:pressed">
+    <Setter Property="RenderTransform" Value="none" />
+  </Style>
+  <Style Selector="Button.link:pointerover TextBlock">
+    <Setter Property="TextDecorations" Value="Underline" />
+    <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+  </Style>
+
   <!-- Section tabs in the top bar: text with an accent underline on the current one -->
   <Style Selector="Button.tab">
     <Setter Property="Background" Value="Transparent" />

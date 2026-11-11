@@ -76,14 +76,17 @@
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:FleetRowViewModel">
                 <Grid ColumnDefinitions="2.4*,1.3*,1.3*,132,1.6*,1*,72,84,84" ColumnSpacing="12" RowDefinitions="Auto,Auto"
-                      ToolTip.Tip="Double-click for this Neuron's events. Right-click for everything else.">
+                      ToolTip.Tip="Double-click to open this Neuron's page. Right-click for everything else.">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                     <Ellipse Classes="dot" VerticalAlignment="Center"
                              Classes.ok="{Binding State, Converter={x:Static conv:EventConverters.IsLive}}"
                              Classes.busy="{Binding State, Converter={x:Static conv:EventConverters.IsPending}}"
                              Classes.bad="{Binding State, Converter={x:Static conv:EventConverters.IsProblem}}" />
                     <StackPanel Grid.Column="1" Spacing="2">
-                      <TextBlock Classes="mono" Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding BareJid}" />
+                      <Button Classes="link" Command="{Binding $parent[UserControl].((vm:FleetViewModel)DataContext).OpenCommand}" CommandParameter="{Binding}"
+                              ToolTip.Tip="Open this Neuron's page">
+                        <TextBlock Classes="mono" Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      </Button>
                       <StackPanel Orientation="Horizontal" Spacing="5">
                         <Border Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center"
                                 Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">

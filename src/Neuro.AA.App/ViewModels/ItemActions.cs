@@ -155,7 +155,10 @@ public interface IActionSource
 /// </summary>
 public interface IShell
 {
-	/// <summary>"Go to" entries for a Neuron: Events, Sources, Console, Map, Chat and Software.</summary>
+	/// <summary>Opens a Neuron's page, on its Overview or on the tab asked for.</summary>
+	void OpenNeuron(string neuronJid, Guid? accountId = null, WorkspaceKind? tab = null);
+
+	/// <summary>"Go to" entries for a Neuron: its page and the tabs on it, its events among all, and the map.</summary>
 	IReadOnlyList<ItemAction> NeuronPlaces(string neuronJid, Guid? accountId = null, WorkspaceKind? except = null);
 
 	/// <summary>Everything that can be done to a Neuron, wherever it appears.</summary>

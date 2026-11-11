@@ -120,11 +120,22 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 			this.OpenConsoleFor?.Invoke(a, jid);
 	}
 
-	/// <summary>Opens what a double click on the map points at: the console of a Neuron.</summary>
+	/// <summary>Set by the shell: opens a Neuron's page.</summary>
+	public Action<Guid?, string>? OpenNeuronFor { get; set; }
+
+	/// <summary>Opens the page of the selected Neuron.</summary>
+	[RelayCommand]
+	private void OpenPage()
+	{
+		if (this.Node(this.SelectedId) is { NeuronJid: string jid } n)
+			this.OpenNeuronFor?.Invoke(n.AccountId, jid);
+	}
+
+	/// <summary>Opens what a double click on the map points at: the page of a Neuron.</summary>
 	public void Activated(string id)
 	{
 		this.SelectedId = id;
-		this.OpenConsole();
+		this.OpenPage();
 	}
 
 	private async Task ScanAsync()
@@ -172,6 +183,8 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 		this.Rebuild();
 		if (first)
 			this.FitVersion++;
+
+		this.Scanned?.Invoke(this, EventArgs.Empty);
 	}
 
 	/// <summary>Set by the shell: the moves to other screens.</summary>
@@ -193,6 +206,39 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 		list.Do("Scan again", () => this.ScanCommand.Execute(null), icon: "Refresh", key: "F5");
 		return list;
 	}
+
+	/// <summary>True once the Neurons have been asked how they are connected.</summary>
+	public bool HasScan => this.snapshot.Nodes.Count > 0;
+
+	/// <summary>Raised when a scan has been loaded.</summary>
+	public event EventHandler? Scanned;
+
+	/// <summary>
+	/// What a Neuron is connected to, from the last scan: its parent, what is connected under it,
+	/// and the servers it is federated with. Groups are left out; they are people, not Neurons.
+	/// </summary>
+	public IReadOnlyList<TopologyConnection> ConnectionsOf(string neuronJid)
+	{
+		if (this.snapshot.Nodes.FirstOrDefault(x => string.Equals(x.NeuronJid, neuronJid, StringComparison.OrdinalIgnoreCase)) is not TopologyNode n)
+			return [];
+
+		List<TopologyConnection> list = [];
+		foreach (IGrouping<string, TopologyEdge> g in this.snapshot.Edges
+			.Where(e => e.Kind != TopologyLink.Group && (e.From == n.Id || e.To == n.Id))
+			.GroupBy(e => e.From == n.Id ? e.To : e.From)
+			.OrderBy(g => g.Min(e => e.Kind)).ThenBy(g => this.Node(g.Key)?.Label ?? g.Key, StringComparer.OrdinalIgnoreCase))
+		{
+			string relation = string.Join(", ", g.OrderBy(e => e.Kind).Select(e => e.Kind == TopologyLink.Parent
+				? (e.From == n.Id ? "its parent" : "connected under it")
+				: e.Label is null ? "federated" : "federated over " + e.Label));
+			list.Add(new TopologyConnection(g.Key, this.Node(g.Key)?.Label ?? g.Key, char.ToUpperInvariant(relation[0]) + relation[1..]));
+		}
+
+		return list;
+	}
+
+	/// <summary>The address of the Neuron behind a point on the map, when it is one.</summary>
+	public string? NeuronAt(string id) => this.Node(id)?.NeuronJid;
 
 	/// <summary>Selects a Neuron on the map by its address. Does nothing when the map does not have it yet.</summary>
 	public void SelectNeuron(string neuronJid)

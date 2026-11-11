@@ -24,6 +24,21 @@ public enum WorkspaceKind
 	Devices,
 	PubSub,
 	Settings,
+
+	/// <summary>A Neuron's page, on its Overview.</summary>
+	Neuron,
+
+	/// <summary>The Events tab of a Neuron's page.</summary>
+	NeuronEvents,
+
+	/// <summary>The Console tab of a Neuron's page.</summary>
+	NeuronConsole,
+
+	/// <summary>The Identities tab of an account's page.</summary>
+	AccountIdentities,
+
+	/// <summary>The Storage tab of an account's page.</summary>
+	AccountStorage,
 }
 
 /// <summary>Shell view model: workspace navigation, the account lens, and the Accounts workspace.</summary>
@@ -37,6 +52,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	private readonly DispatcherTimer statusTimer;
 	private long lastEventTicks;
 	private WorkspaceKind lastNeuronsScreen = WorkspaceKind.Fleet;
+	private WorkspaceKind lastBoard = WorkspaceKind.Fleet;
 	private WorkspaceKind lastAccountsScreen = WorkspaceKind.Accounts;
 
 	public MainWindowViewModel(AccountManager accounts, FleetService fleet, Engine.Chat.ChatService? chat = null, Engine.Identity.IdentityService? identities = null,
@@ -46,6 +62,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.fleet = fleet;
 		this.Search = new SearchViewModel(this.SearchItems);
 		this.Events = new EventsViewModel(fleet.Monitors);
+		this.NeuronEvents = new EventsViewModel(fleet.Monitors);
 		this.Fleet = new FleetViewModel(fleet, accounts) { ShowEventsFor = this.ShowEventsOf };
 		this.Attention = new AttentionViewModel(fleet.Monitors, accounts) { ShowEventsFor = this.ShowEventsOf };
 		this.Sources = new SourcesViewModel(fleet.Monitors, accounts);
@@ -57,21 +74,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.Console = new ConsoleViewModel(chatService, fleet.Monitors, accounts);
 		this.Chat = new ChatViewModel(chatService, accounts)
 		{
-			OpenConsoleFor = (account, jid) =>
-			{
-				this.Console.Focus(account, jid);
-				this.Workspace = WorkspaceKind.Console;
-			},
+			OpenConsoleFor = (account, jid) => this.OpenNeuron(jid, account, WorkspaceKind.NeuronConsole),
 		};
 		this.Identities = new IdentitiesViewModel(this.identityService, fleet.Monitors, accounts);
 		this.Topology = new TopologyViewModel(new Engine.Topology.TopologyService(fleet.Monitors, chatService), fleet, accounts)
 		{
-			ShowEventsFor = this.ShowEventsOf,
-			OpenConsoleFor = (account, jid) =>
-			{
-				this.Console.Focus(account, jid);
-				this.Workspace = WorkspaceKind.Console;
-			},
+			ShowEventsFor = jid => this.OpenNeuron(jid, null, WorkspaceKind.NeuronEvents),
+			OpenNeuronFor = (account, jid) => this.OpenNeuron(jid, account),
+			OpenConsoleFor = (account, jid) => this.OpenNeuron(jid, account, WorkspaceKind.NeuronConsole),
 		};
 		this.Updates = new UpdatesViewModel(new Engine.Software.SoftwareService(fleet.Monitors, chatService), fleet.Monitors, accounts);
 		this.Devices = new DevicesViewModel(this.devicesService, accounts);
@@ -109,10 +119,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		{
 			this.RefreshLastEvent();
 			this.PruneNotices();
+			if (this.IsNeuronOverview)
+				this.RefreshPage();
 		});
 		this.statusTimer.Start();
 		this.RefreshLastEvent();
 		this.StartActions();
+		this.StartPages();
 	}
 
 	// ----- Places: the rail has five, plus Accounts. Each holds one or more screens. -----
@@ -126,7 +139,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		WorkspaceKind.Events => PlaceKind.Events,
 		WorkspaceKind.Chat => PlaceKind.Chat,
 		WorkspaceKind.Console => PlaceKind.Console,
-		WorkspaceKind.Accounts or WorkspaceKind.Devices => PlaceKind.Accounts,
+		WorkspaceKind.Accounts or WorkspaceKind.Devices or WorkspaceKind.AccountIdentities or WorkspaceKind.AccountStorage => PlaceKind.Accounts,
 		WorkspaceKind.Settings => PlaceKind.Settings,
 		_ => PlaceKind.Neurons,
 	};
@@ -139,7 +152,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	{
 		// Coming back to a place returns to the screen you left it on.
 		if (PlaceOf(value) == PlaceKind.Neurons)
+		{
 			this.lastNeuronsScreen = value;
+			if (!IsPageScreen(value))
+				this.lastBoard = value;
+		}
 		else if (PlaceOf(value) == PlaceKind.Accounts)
 			this.lastAccountsScreen = value;
 
@@ -172,8 +189,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	/// <summary>Settings: your status, the look, pop-ups and sounds.</summary>
 	public SettingsViewModel Settings { get; }
 
+	/// <summary>
+	/// The Neurons button on the rail: back to where you were among the Neurons. Pressed while
+	/// already on a Neuron's page, it goes up to the board of all of them.
+	/// </summary>
 	[RelayCommand]
-	private void ShowNeurons() => this.Show(this.lastNeuronsScreen);
+	private void ShowNeurons() => this.Show(this.IsNeuronPage ? this.lastBoard : this.lastNeuronsScreen);
 
 	[RelayCommand]
 	private void ShowAccountsPlace() => this.Show(this.lastAccountsScreen);
@@ -186,14 +207,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			case WorkspaceKind.Attention: this.ShowAttention(); break;
 			case WorkspaceKind.Fleet: this.ShowFleet(); break;
 			case WorkspaceKind.Topology: this.ShowTopology(); break;
-			case WorkspaceKind.Sources: this.ShowSources(); break;
-			case WorkspaceKind.Updates: this.ShowUpdates(); break;
-			case WorkspaceKind.PubSub: this.ShowPubSub(); break;
-			case WorkspaceKind.Identities: this.ShowIdentities(); break;
+			case WorkspaceKind.Neuron:
+			case WorkspaceKind.NeuronEvents:
+			case WorkspaceKind.NeuronConsole:
+			case WorkspaceKind.Sources:
+			case WorkspaceKind.Updates:
+			case WorkspaceKind.PubSub:
+			case WorkspaceKind.Identities:
+				this.ShowPageTab(screen);
+				break;
 			case WorkspaceKind.Events: this.ShowEvents(); break;
 			case WorkspaceKind.Chat: this.ShowChat(); break;
 			case WorkspaceKind.Console: this.ShowConsole(); break;
-			case WorkspaceKind.Devices: this.ShowDevices(); break;
+			case WorkspaceKind.Devices:
+			case WorkspaceKind.AccountIdentities:
+			case WorkspaceKind.AccountStorage:
+				this.ShowAccountTab(screen);
+				break;
 			case WorkspaceKind.Settings: this.ShowSettings(); break;
 			default: this.ShowAccounts(); break;
 		}
@@ -326,12 +356,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		yield return new SearchItem("Chat", "People and rooms", Icon("Chat"), this.ShowChat);
 		yield return new SearchItem("Console", "Send commands to Neurons", Icon("Console"), this.ShowConsole);
 		yield return new SearchItem("Map", "How the Neurons connect", Icon("Topology"), this.ShowTopology);
-		yield return new SearchItem("Sources", "Data sources and nodes", Icon("Sources"), this.ShowSources);
-		yield return new SearchItem("Software", "Versions and updates", Icon("Updates"), this.ShowUpdates);
-		yield return new SearchItem("Publish/subscribe", "Nodes and personal storage", Icon("PubSub"), this.ShowPubSub);
-		yield return new SearchItem("Identities", "Legal identities", Icon("Identities"), this.ShowIdentities);
 		yield return new SearchItem("Accounts", "Your accounts and their connections", Icon("Accounts"), this.ShowAccounts);
-		yield return new SearchItem("Devices", "Devices you own", Icon("Devices"), this.ShowDevices);
+		yield return new SearchItem("Devices", "Devices your account owns", Icon("Devices"), this.ShowDevices);
+		yield return new SearchItem("Identities", "Your legal identities", Icon("Identities"), this.ShowIdentities);
+		yield return new SearchItem("Storage", "Your account's personal storage", Icon("PubSub"), this.ShowPubSub);
 		yield return new SearchItem("Settings", "Status, look, pop-ups and sounds", Icon("Settings"), this.ShowSettings);
 		yield return new SearchItem(this.Settings.IsDoNotDisturb ? "Available" : "Do not disturb", this.Settings.IsDoNotDisturb ? "Let pop-ups and sounds through again" : "Hold back pop-ups and sounds",
 			Icon(this.Settings.IsDoNotDisturb ? "Bell" : "BellOff"), () => this.Settings.SetStatus(this.Settings.IsDoNotDisturb ? OwnStatus.Available : OwnStatus.DoNotDisturb));
@@ -339,7 +367,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		foreach (NeuronChipViewModel chip in this.NeuronChips)
 		{
 			string jid = chip.BareJid;
-			yield return new SearchItem(chip.Label, "Neuron: show its events", Icon("Events"), () => this.ShowEventsOf(jid));
+			yield return new SearchItem(chip.Label, "Neuron: open its page", Icon("Fleet"), () => this.OpenNeuron(jid));
+			yield return new SearchItem(chip.Label + " sources", "Neuron: its data sources and nodes", Icon("Sources"), () => this.OpenNeuron(jid, null, WorkspaceKind.Sources));
+			yield return new SearchItem(chip.Label + " console", "Neuron: send it commands", Icon("Console"), () => this.OpenNeuron(jid, null, WorkspaceKind.NeuronConsole));
+			yield return new SearchItem(chip.Label + " software", "Neuron: versions and updates", Icon("Updates"), () => this.OpenNeuron(jid, null, WorkspaceKind.Updates));
+			yield return new SearchItem(chip.Label + " events", "Neuron: its problems and live stream", Icon("Events"), () => this.OpenNeuron(jid, null, WorkspaceKind.NeuronEvents));
 		}
 
 		foreach (AccountItemViewModel account in this.Accounts)
@@ -420,8 +452,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 			default:
 				this.Fleet.Refresh();
-				this.Fleet.SelectedRow = this.Fleet.Rows.FirstOrDefault(r => string.Equals(r.BareJid, alert.NeuronJid, StringComparison.OrdinalIgnoreCase)) ?? this.Fleet.SelectedRow;
-				this.Workspace = WorkspaceKind.Fleet;
+				if (alert.NeuronJid is string neuron && this.RowOf(neuron, alert.AccountId) is not null)
+					this.OpenNeuron(neuron, alert.AccountId);
+				else
+					this.Workspace = WorkspaceKind.Fleet;
 				break;
 		}
 	}
@@ -481,7 +515,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(IsAccounts), nameof(IsEvents), nameof(IsFleet), nameof(IsAttention), nameof(IsSources), nameof(IsChat), nameof(IsConsole), nameof(IsIdentities), nameof(IsTopology), nameof(IsUpdates), nameof(IsDevices), nameof(IsPubSub), nameof(IsSettings), nameof(WorkspaceTitle),
-		nameof(Place), nameof(IsPlaceInbox), nameof(IsPlaceNeurons), nameof(IsPlaceAccounts), nameof(IsLensVisible))]
+		nameof(Place), nameof(IsPlaceInbox), nameof(IsPlaceNeurons), nameof(IsPlaceAccounts), nameof(IsLensVisible),
+		nameof(IsNeuronPage), nameof(IsNeuronBoard), nameof(IsNeuronOverview), nameof(IsNeuronEvents), nameof(IsNeuronConsole), nameof(IsAccountIdentities), nameof(IsAccountStorage))]
 	private WorkspaceKind workspace = WorkspaceKind.Accounts;
 
 	public bool IsAccounts => this.Workspace == WorkspaceKind.Accounts;
@@ -501,40 +536,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	[RelayCommand]
 	private void ShowSettings() => this.Workspace = WorkspaceKind.Settings;
 
+	/// <summary>Publish/subscribe has two homes: an account's Storage, and the nodes on a Neuron's page.</summary>
 	[RelayCommand]
-	private void ShowPubSub()
-	{
-		this.PubSub.Activate();
-		this.Workspace = WorkspaceKind.PubSub;
-	}
+	private void ShowPubSub() => this.ShowAccountTab(WorkspaceKind.AccountStorage);
 
 	[RelayCommand]
-	private void ShowDevices()
-	{
-		this.Devices.Activate();
-		this.Workspace = WorkspaceKind.Devices;
-	}
+	private void ShowDevices() => this.ShowAccountTab(WorkspaceKind.Devices);
 
 	[RelayCommand]
-	private void ShowUpdates()
-	{
-		this.Updates.Activate();
-		this.Workspace = WorkspaceKind.Updates;
-	}
+	private void ShowUpdates() => this.ShowPageTab(WorkspaceKind.Updates);
 
 	[RelayCommand]
 	private void ShowTopology()
 	{
+		// From the list to the map: the Neuron you had picked stays picked.
+		bool fromList = this.Workspace == WorkspaceKind.Fleet;
 		this.Topology.Activate();
+		if (fromList && this.Fleet.SelectedRow is FleetRowViewModel row)
+			this.Topology.SelectNeuron(row.BareJid);
+
 		this.Workspace = WorkspaceKind.Topology;
 	}
 
+	/// <summary>Your own identities, on the account's page. A Neuron's identity is a tab on its page.</summary>
 	[RelayCommand]
-	private void ShowIdentities()
-	{
-		this.Identities.Activate();
-		this.Workspace = WorkspaceKind.Identities;
-	}
+	private void ShowIdentities() => this.ShowAccountTab(WorkspaceKind.AccountIdentities);
 
 	[RelayCommand]
 	private void ShowChat()
@@ -551,11 +577,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	}
 
 	[RelayCommand]
-	private void ShowSources()
-	{
-		this.Sources.SyncNeurons();
-		this.Workspace = WorkspaceKind.Sources;
-	}
+	private void ShowSources() => this.ShowPageTab(WorkspaceKind.Sources);
 
 	[RelayCommand]
 	private void ShowAttention()
@@ -565,9 +587,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	}
 
 	[RelayCommand]
-	private void ShowFleet() => this.Workspace = WorkspaceKind.Fleet;
-	/// <summary>The name of the current place, shown in the top bar.</summary>
-	public string WorkspaceTitle => this.Place.ToString();
+	private void ShowFleet()
+	{
+		// From the map to the list: the Neuron you had picked stays picked, when the list shows it.
+		if (this.Workspace == WorkspaceKind.Topology && this.Topology.SelectedId is string id && this.Topology.NeuronAt(id) is string jid &&
+			this.Fleet.Shown.FirstOrDefault(r => string.Equals(r.BareJid, jid, StringComparison.OrdinalIgnoreCase)) is FleetRowViewModel row)
+		{
+			this.Fleet.SelectedRow = row;
+		}
+
+		this.Workspace = WorkspaceKind.Fleet;
+	}
+
+	/// <summary>The name of the current place, shown in the top bar. On a Neuron's page, the Neuron.</summary>
+	public string WorkspaceTitle => this.IsNeuronPage && this.Page is NeuronPageViewModel p ? p.Label : this.Place.ToString();
 
 	[RelayCommand]
 	private void ShowAccounts() => this.Workspace = WorkspaceKind.Accounts;
@@ -686,7 +719,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		{
 			if (!this.Accounts.Any(a => a.Session == s))
 			{
-				AccountItemViewModel item = new(s, this.RemoveAsync, (id, secret) => accounts.SetSecretAsync(id, secret));
+				AccountItemViewModel item = new(s, this.RemoveAsync, (id, secret) => accounts.SetSecretAsync(id, secret), (id, password) => accounts.ChangePasswordAsync(id, password));
 				item.PropertyChanged += (_, e) =>
 				{
 					if (e.PropertyName == nameof(AccountItemViewModel.IsOnline))

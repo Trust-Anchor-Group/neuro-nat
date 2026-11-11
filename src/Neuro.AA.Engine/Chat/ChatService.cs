@@ -234,11 +234,29 @@ public sealed partial class ChatService : IAsyncDisposable
 	// ---- Roster ----------------------------------------------------------------------------
 
 	/// <summary>Contacts of an account, as the server's roster has them now.</summary>
+	private readonly List<Contact> previewContacts = [];
+
+	/// <summary>Adds a contact as it is, for previews and UI tests.</summary>
+	internal void Preview(Contact c)
+	{
+		lock (this.previewContacts)
+			this.previewContacts.Add(c);
+
+		this.RosterChanged?.Invoke(this, c.AccountId);
+	}
+
+	/// <summary>True when the address is one of the Neurons the account watches, contact or not.</summary>
+	public bool IsNeuron(Guid accountId, string bareJid)
+		=> this.monitors.For(accountId)?.Neurons.Any(n => string.Equals(n.BareJid, bareJid, StringComparison.OrdinalIgnoreCase)) == true;
+
 	public IReadOnlyList<Contact> Contacts(Guid accountId)
 	{
 		XmppClient? c = this.ClientOf(accountId);
 		if (c is null)
-			return [];
+		{
+			lock (this.previewContacts)
+				return [.. this.previewContacts.Where(x => x.AccountId == accountId)];
+		}
 
 		NeuronMonitor? m = this.monitors.For(accountId);
 		HashSet<string> neurons = new(m?.Neurons.Select(n => n.BareJid) ?? [], StringComparer.OrdinalIgnoreCase);

@@ -205,13 +205,13 @@ public class ShellRenderTests
 		Assert.True(box.IsFocused);
 		Assert.True(vm.Search.IsOpen);
 
-		window.KeyTextInput("soft");
+		window.KeyTextInput("sett");
 		Dispatcher.UIThread.RunJobs();
-		Assert.Equal("Software", vm.Search.Selected?.Title);
+		Assert.Equal("Settings", vm.Search.Selected?.Title);
 
 		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.Enter, Avalonia.Input.RawInputModifiers.None);
 		Dispatcher.UIThread.RunJobs();
-		Assert.Equal(WorkspaceKind.Updates, vm.Workspace);
+		Assert.Equal(WorkspaceKind.Settings, vm.Workspace);
 		Assert.False(vm.Search.IsOpen);
 		Assert.False(box.IsFocused);
 		Assert.Equal(string.Empty, vm.Search.Query);
@@ -225,7 +225,7 @@ public class ShellRenderTests
 		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.Escape, Avalonia.Input.RawInputModifiers.None);
 		Dispatcher.UIThread.RunJobs();
 		Assert.False(vm.Search.IsOpen);
-		Assert.Equal(WorkspaceKind.Updates, vm.Workspace);
+		Assert.Equal(WorkspaceKind.Settings, vm.Workspace);
 
 		// A click on a result goes there too.
 		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.K, Avalonia.Input.RawInputModifiers.Control);
@@ -297,12 +297,22 @@ public class ShellRenderTests
 		Assert.Equal(PlaceKind.Neurons, vm.Place);
 		Assert.False(vm.Search.IsOpen);
 
-		// A Neuron in the search list opens its events.
+		// A Neuron in the search list opens its page, and "beta soft" goes straight to a tab of it.
 		vm.Search.Open();
 		vm.Search.Query = "beta";
 		vm.Search.Run();
-		Assert.Equal(WorkspaceKind.Events, vm.Workspace);
-		Assert.Equal("beta@lab.local", vm.LensJid);
+		Assert.Equal(WorkspaceKind.Neuron, vm.Workspace);
+		Assert.Equal("beta@lab.local", vm.Page?.BareJid);
+		Assert.Equal(PlaceKind.Neurons, vm.Place);
+		vm.Search.Open();
+		vm.Search.Query = "beta soft";
+		vm.Search.Run();
+		Assert.Equal(WorkspaceKind.Updates, vm.Workspace);
+		Assert.Equal("beta@lab.local", vm.Page?.BareJid);
+
+		// Back leaves the page for the list or the map, whichever you came from.
+		vm.BackToNeuronsCommand.Execute(null);
+		Assert.Equal(WorkspaceKind.Topology, vm.Workspace);
 
 		// Leaving a place and coming back returns to the screen you were on.
 		vm.ShowTopologyCommand.Execute(null);

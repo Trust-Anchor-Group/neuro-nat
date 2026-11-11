@@ -112,6 +112,9 @@
     <Style Selector="Border.rail">
       <Setter Property="Width" Value="76" />
     </Style>
+    <Style Selector="TextBlock.pageTitle">
+      <Setter Property="MaxWidth" Value="420" />
+    </Style>
     <Style Selector="Border.accountList">
       <Setter Property="Width" Value="340" />
     </Style>
@@ -136,6 +139,16 @@
     </Style>
     <Style Selector=".maxw960 Border.rail">
       <Setter Property="Width" Value="56" />
+    </Style>
+    <!-- A Neuron's page: its name gets shorter as the window narrows, and its tabs sit closer. -->
+    <Style Selector=".maxw960 TextBlock.pageTitle">
+      <Setter Property="MaxWidth" Value="260" />
+    </Style>
+    <Style Selector=".maxw780 TextBlock.pageTitle">
+      <Setter Property="MaxWidth" Value="200" />
+    </Style>
+    <Style Selector=".maxw780 Button.tab.pageTab">
+      <Setter Property="Padding" Value="8,2,8,0" />
     </Style>
     <Style Selector=".maxw1100 TextBox.search">
       <Setter Property="Width" Value="200" />
@@ -185,10 +198,10 @@
     
   </Window.Styles>
 
-  <Grid x:Name="Root" ColumnDefinitions="Auto,*" RowDefinitions="48,*,Auto">
+  <Grid x:Name="Root" ColumnDefinitions="Auto,*" RowDefinitions="48,Auto,*,Auto">
 
     <!-- Rail: five places, with Accounts and the look at the bottom -->
-    <Border Grid.RowSpan="3" Classes="rail" Background="{DynamicResource Surface.Rail}"
+    <Border Grid.RowSpan="4" Classes="rail" Background="{DynamicResource Surface.Rail}"
             BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel Margin="0,10,0,12">
         <TextBlock DockPanel.Dock="Top" Text="N·AA" HorizontalAlignment="Center" FontWeight="Bold" FontSize="13"
@@ -270,7 +283,15 @@
     <!-- Top bar: the place, its screens, the Neuron chips and the search box -->
     <Border Grid.Column="1" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
       <DockPanel Margin="20,0,16,0">
-        <TextBlock DockPanel.Dock="Left" Classes="title" Text="{Binding WorkspaceTitle}" VerticalAlignment="Center" Margin="0,0,16,0" />
+        <!-- On a Neuron's page: the way back to all Neurons, and how the Neuron is doing -->
+        <Button DockPanel.Dock="Left" Classes="ghost" Padding="6" Margin="-8,0,6,0" VerticalAlignment="Center" IsVisible="{Binding IsNeuronPage}"
+                Command="{Binding BackToNeuronsCommand}" ToolTip.Tip="Back to all Neurons" AutomationProperties.Name="Back to all Neurons">
+          <c:LineIcon Data="{StaticResource Icon.Back}" Width="16" Height="16" />
+        </Button>
+        <Ellipse DockPanel.Dock="Left" Classes="dot" VerticalAlignment="Center" Margin="0,0,9,0" IsVisible="{Binding IsNeuronPage}"
+                 Classes.ok="{Binding Page.IsOk}" Classes.busy="{Binding Page.IsBusy}" Classes.bad="{Binding Page.IsBad}" ToolTip.Tip="{Binding Page.StateText}" />
+        <TextBlock DockPanel.Dock="Left" Classes="title" Classes.pageTitle="{Binding IsNeuronPage}" Text="{Binding WorkspaceTitle}" VerticalAlignment="Center" Margin="0,0,16,0"
+                   TextTrimming="CharacterEllipsis" />
 
         <!-- Search: Ctrl+K from anywhere -->
         <Panel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0">
@@ -283,44 +304,32 @@
           </Border>
         </Panel>
 
-        <!-- The screens inside Neurons -->
-        <ScrollViewer DockPanel.Dock="Left" IsVisible="{Binding IsPlaceNeurons}" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-          <StackPanel Orientation="Horizontal">
-            <Button Classes="tab" Classes.current="{Binding IsFleet}" Command="{Binding ShowFleetCommand}" Content="List"
-                    ToolTip.Tip="Every Neuron: version, health and errors" />
-            <Button Classes="tab" Classes.current="{Binding IsTopology}" Command="{Binding ShowTopologyCommand}" Content="Map"
-                    ToolTip.Tip="How your Neurons connect: parents, federation and groups" />
-            <Button Classes="tab" Classes.current="{Binding IsSources}" Command="{Binding ShowSourcesCommand}" Content="Sources"
-                    ToolTip.Tip="Data sources and nodes on your Neurons" />
-            <Button Classes="tab" Classes.current="{Binding IsUpdates}" Command="{Binding ShowUpdatesCommand}" Content="Software"
-                    ToolTip.Tip="Versions and updates on your Neurons" />
-            <Button Classes="tab" Classes.current="{Binding IsPubSub}" Command="{Binding ShowPubSubCommand}" Content="Publish/subscribe"
-                    ToolTip.Tip="Publish/subscribe nodes and personal storage" />
-            <Button Classes="tab" Classes.current="{Binding IsIdentities}" Command="{Binding ShowIdentitiesCommand}"
-                    ToolTip.Tip="Legal identities: yours, the Neurons', and applications waiting for review">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <TextBlock Text="Identities" VerticalAlignment="Center" />
-                <Border Classes="count alert" IsVisible="{Binding Identities.HasPetitions}">
-                  <TextBlock Text="{Binding Identities.PetitionCount}" />
-                </Border>
-              </StackPanel>
-            </Button>
-          </StackPanel>
-        </ScrollViewer>
-
-        <!-- The screens inside Accounts -->
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" IsVisible="{Binding IsPlaceAccounts}">
-          <Button Classes="tab" Classes.current="{Binding IsAccounts}" Command="{Binding ShowAccountsCommand}" Content="Accounts"
-                  ToolTip.Tip="Your accounts and their connections" />
-          <Button Classes="tab" Classes.current="{Binding IsDevices}" Command="{Binding ShowDevicesCommand}"
-                  ToolTip.Tip="Devices you own, the thing registry, and questions only an owner can answer">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <TextBlock Text="Devices" VerticalAlignment="Center" />
-              <Border Classes="count alert" IsVisible="{Binding Devices.HasQuestions}">
-                <TextBlock Text="{Binding Devices.QuestionCount}" />
-              </Border>
+        <!-- What you reach for most on a Neuron's page -->
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" IsVisible="{Binding IsNeuronPage}">
+          <Button Classes="ghost" Command="{Binding WatchPageTrafficCommand}" ToolTip.Tip="Open the traffic of the account that reaches this Neuron, at the lines that mention it">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Sniffer}" />
+              <TextBlock Classes="btnLabel pageAction" Text="Watch traffic" />
             </StackPanel>
           </Button>
+          <Button Classes="ghost" Command="{Binding CheckPageUpdatesCommand}" ToolTip.Tip="Ask this Neuron whether newer software is waiting">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Updates}" />
+              <TextBlock Classes="btnLabel pageAction" Text="Check for updates" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Padding="7,5" c:ActionMenu.Source="{Binding}" c:ActionMenu.Item="{Binding Page}" c:ActionMenu.OnClick="True"
+                  ToolTip.Tip="Everything else you can do with this Neuron" AutomationProperties.Name="More">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
+          </Button>
+        </StackPanel>
+
+        <!-- All Neurons: as a list or as a map -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" IsVisible="{Binding IsNeuronBoard}">
+          <Button Classes="tab" Classes.current="{Binding IsFleet}" Command="{Binding ShowFleetCommand}" Content="List"
+                  ToolTip.Tip="Every Neuron: version, health and errors" />
+          <Button Classes="tab" Classes.current="{Binding IsTopology}" Command="{Binding ShowTopologyCommand}" Content="Map"
+                  ToolTip.Tip="How your Neurons connect: parents, federation and groups" />
         </StackPanel>
 
         <!-- Neuron chips: click one to show only that Neuron -->
@@ -354,8 +363,50 @@
       </DockPanel>
     </Border>
 
+    <!-- One Neuron: the tabs of its page, in a row of their own so that all of them fit in a small window -->
+    <Border Grid.Row="1" Grid.Column="1" Height="38" Padding="9,0" IsVisible="{Binding IsNeuronPage}"
+            Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="tab pageTab" Classes.current="{Binding IsNeuronOverview}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Neuron}"
+                  ToolTip.Tip="How it is doing, what is wrong and what waits for you">
+            <TextBlock Text="Overview" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsNeuronEvents}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronEvents}"
+                  ToolTip.Tip="This Neuron's problems and its live stream">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Events" VerticalAlignment="Center" />
+              <Border Classes="count alert" IsVisible="{Binding Page.HasErrors}" ToolTip.Tip="Errors in the last hour">
+                <TextBlock Text="{Binding Page.ErrorsLastHour}" />
+              </Border>
+            </StackPanel>
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsSources}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Sources}"
+                  ToolTip.Tip="Its data sources and nodes">
+            <TextBlock Text="Sources" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsNeuronConsole}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronConsole}"
+                  ToolTip.Tip="Send commands to this Neuron">
+            <TextBlock Text="Console" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsUpdates}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Updates}"
+                  ToolTip.Tip="Its version, packages and updates">
+            <TextBlock Text="Software" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsPubSub}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.PubSub}"
+                  ToolTip.Tip="The nodes of its publish/subscribe service" IsVisible="{Binding Page.HostsAccount}">
+            <TextBlock Text="Publish/subscribe" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsIdentities}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Identities}"
+                  ToolTip.Tip="Its own legal identity, and applications waiting for review">
+            <TextBlock Text="Identity" VerticalAlignment="Center" />
+          </Button>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
     <!-- Status strip: always says how the Neurons and the accounts are doing -->
-    <Border Grid.Row="2" Grid.Column="1" Height="28" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+    <Border Grid.Row="3" Grid.Column="1" Height="28" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
       <DockPanel Margin="20,0,10,0">
         <Button DockPanel.Dock="Right" Classes="ghost strip" Margin="2,0,0,0" ToolTip.Tip="Your status: what contacts see, and whether pop-ups and sounds reach you"
                 AutomationProperties.Name="Your status">
@@ -395,7 +446,7 @@
     </Border>
 
     <!-- Search results: floats under the search box -->
-    <Border Grid.Row="1" Grid.Column="1" Classes="float" ZIndex="20" Width="380" HorizontalAlignment="Right" VerticalAlignment="Top"
+    <Border Grid.Row="2" Grid.Column="1" Classes="float" ZIndex="20" Width="380" HorizontalAlignment="Right" VerticalAlignment="Top"
             Margin="0,6,16,0" Padding="4" IsVisible="{Binding Search.IsOpen}">
       <Panel>
         <ListBox x:Name="SearchResults" Classes="rows search" ItemsSource="{Binding Search.Results}" SelectedItem="{Binding Search.Selected}"
@@ -416,13 +467,13 @@
 
     <!-- The short note that confirms what just happened: "Copied 3 events". It sits in the
          status bar, where no list and no selection bar is in its way. -->
-    <Border Grid.Row="2" Grid.Column="1" ZIndex="40" Classes="flash" IsVisible="{Binding HasFlash}" HorizontalAlignment="Center" VerticalAlignment="Center"
+    <Border Grid.Row="3" Grid.Column="1" ZIndex="40" Classes="flash" IsVisible="{Binding HasFlash}" HorizontalAlignment="Center" VerticalAlignment="Center"
             IsHitTestVisible="False">
       <TextBlock Text="{Binding Flash}" />
     </Border>
 
     <!-- Pop-ups: bottom right, above everything else in the window -->
-    <ItemsControl Grid.Row="1" Grid.Column="1" ZIndex="30" ItemsSource="{Binding Notices}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,12">
+    <ItemsControl Grid.Row="2" Grid.Column="1" ZIndex="30" ItemsSource="{Binding Notices}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,12">
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:NoticeViewModel">
           <views:NoticeCard Width="360" Margin="0,10,0,0" />
@@ -431,23 +482,27 @@
     </ItemsControl>
 
     <!-- The screens -->
-    <views:InboxView Grid.Row="1" Grid.Column="1" DataContext="{Binding Inbox}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAttention}" />
-    <views:SettingsView Grid.Row="1" Grid.Column="1" DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettings}" />
-    <views:ChatView Grid.Row="1" Grid.Column="1" DataContext="{Binding Chat}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsChat}" />
-    <views:ConsoleView Grid.Row="1" Grid.Column="1" DataContext="{Binding Console}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsConsole}" />
-    <views:PubSubView Grid.Row="1" Grid.Column="1" DataContext="{Binding PubSub}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPubSub}" />
-    <views:DevicesView Grid.Row="1" Grid.Column="1" DataContext="{Binding Devices}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDevices}" />
-    <views:UpdatesView Grid.Row="1" Grid.Column="1" DataContext="{Binding Updates}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsUpdates}" />
-    <views:TopologyView Grid.Row="1" Grid.Column="1" DataContext="{Binding Topology}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsTopology}" />
-    <views:IdentitiesView Grid.Row="1" Grid.Column="1" DataContext="{Binding Identities}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsIdentities}" />
-    <views:SourcesView Grid.Row="1" Grid.Column="1" DataContext="{Binding Sources}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSources}" />
-    <views:FleetView Grid.Row="1" Grid.Column="1" DataContext="{Binding Fleet}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFleet}" />
+    <views:InboxView Grid.Row="2" Grid.Column="1" DataContext="{Binding Inbox}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAttention}" />
+    <views:SettingsView Grid.Row="2" Grid.Column="1" DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettings}" />
+    <views:ChatView Grid.Row="2" Grid.Column="1" DataContext="{Binding Chat}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsChat}" />
+    <views:ConsoleView Grid.Row="2" Grid.Column="1" DataContext="{Binding Console}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsConsole}" />
+    <views:PubSubView Grid.Row="2" Grid.Column="1" DataContext="{Binding PubSub}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPubSub}" />
+    <views:UpdatesView Grid.Row="2" Grid.Column="1" DataContext="{Binding Updates}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsUpdates}" />
+    <views:TopologyView Grid.Row="2" Grid.Column="1" DataContext="{Binding Topology}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsTopology}" />
+    <views:IdentitiesView Grid.Row="2" Grid.Column="1" DataContext="{Binding Identities}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsIdentities}" />
+    <views:SourcesView Grid.Row="2" Grid.Column="1" DataContext="{Binding Sources}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSources}" />
+    <views:FleetView Grid.Row="2" Grid.Column="1" DataContext="{Binding Fleet}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFleet}" />
 
     <!-- Events workspace -->
-    <views:EventsView Grid.Row="1" Grid.Column="1" DataContext="{Binding Events}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsEvents}" />
+    <views:EventsView Grid.Row="2" Grid.Column="1" DataContext="{Binding Events}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsEvents}" />
+
+    <!-- A Neuron's page: its Overview, and its own Events and Console. Its other tabs are the screens above. -->
+    <views:NeuronOverviewView Grid.Row="2" Grid.Column="1" IsVisible="{Binding IsNeuronOverview}" />
+    <views:EventsView Grid.Row="2" Grid.Column="1" DataContext="{Binding NeuronEvents}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNeuronEvents}" />
+    <views:ConsoleView Grid.Row="2" Grid.Column="1" DataContext="{Binding PageConsole}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNeuronConsole}" />
 
     <!-- Accounts workspace -->
-    <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="Auto,*" IsVisible="{Binding IsAccounts}">
+    <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="Auto,*" IsVisible="{Binding IsPlaceAccounts}">
 
       <!-- Account list with the inline add form -->
       <Border Classes="accountList" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
@@ -602,65 +657,130 @@
             </DockPanel>
           </Border>
 
-          <!-- Why it is not connected, and how to fix it here -->
-          <Border DockPanel.Dock="Top" Margin="20,14,20,0" Padding="12,10" CornerRadius="{StaticResource Radius}"
-                  Background="{DynamicResource State.Bad.Subtle}"
-                  IsVisible="{Binding LastError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <StackPanel Spacing="10">
-              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                <c:LineIcon Data="{StaticResource Icon.Alert}" Width="16" Height="16" Foreground="{DynamicResource State.Bad}" VerticalAlignment="Top" Margin="0,1,0,0" />
-                <SelectableTextBlock Grid.Column="1" Text="{Binding LastError}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Content="Enter password" Command="{Binding OpenPasswordPromptCommand}" VerticalAlignment="Center"
-                        IsVisible="{Binding CanEnterPassword}" IsEnabled="{Binding !IsPasswordPromptOpen}" />
-              </Grid>
-              <TextBlock Classes="meta" Margin="26,0,0,0" TextWrapping="Wrap" Text="{Binding RecoveryHint}"
-                         IsVisible="{Binding RecoveryHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="26,0,0,0" IsVisible="{Binding IsPasswordPromptOpen}">
-                <TextBox Text="{Binding NewPassword}" PasswordChar="•" PlaceholderText="Password for this account" />
-                <Button Grid.Column="1" Classes="ghost" Content="Cancel" Command="{Binding CancelPasswordPromptCommand}" />
-                <Button Grid.Column="2" Classes="primary" Content="Save and connect" Command="{Binding SavePasswordCommand}"
-                        IsDefault="{Binding IsPasswordPromptOpen}" />
-              </Grid>
-            </StackPanel>
-          </Border>
-
-          <!-- Traffic -->
-          <DockPanel DockPanel.Dock="Top" Margin="20,16,16,8">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
-              <ToggleButton Classes="ghost" IsChecked="{Binding IsRawOpen, Mode=OneWay}" Command="{Binding ToggleRawCommand}" ToolTip.Tip="Send an XMPP stanza by hand">
-                <StackPanel Classes="btn">
-                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Console}" />
-                  <TextBlock Classes="btnLabel" Text="Send XML" />
+          <!-- The tabs of the account's page -->
+          <Border DockPanel.Dock="Top" Height="38" Padding="9,0" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+              <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccounts}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
+                      CommandParameter="{x:Static vm:WorkspaceKind.Accounts}" ToolTip.Tip="How it signs in, and everything it sends and receives">
+                <TextBlock Text="Connection" VerticalAlignment="Center" />
+              </Button>
+              <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDevices}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
+                      CommandParameter="{x:Static vm:WorkspaceKind.Devices}" ToolTip.Tip="Devices this account owns, the thing registry, and questions only an owner can answer">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="Devices" VerticalAlignment="Center" />
+                  <Border Classes="count alert" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Devices.HasQuestions}" ToolTip.Tip="Questions from devices, on all your accounts">
+                    <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Devices.QuestionCount}" />
+                  </Border>
                 </StackPanel>
-              </ToggleButton>
+              </Button>
+              <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountIdentities}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
+                      CommandParameter="{x:Static vm:WorkspaceKind.AccountIdentities}" ToolTip.Tip="This account's legal identities, and requests to see or sign with them">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="Identities" VerticalAlignment="Center" />
+                  <Border Classes="count alert" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Identities.HasPetitions}" ToolTip.Tip="Requests waiting, on all your accounts">
+                    <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Identities.PetitionCount}" />
+                  </Border>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountStorage}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
+                      CommandParameter="{x:Static vm:WorkspaceKind.AccountStorage}" ToolTip.Tip="What this account keeps on its Neuron: avatar, nickname, keys and other personal nodes">
+                <TextBlock Text="Storage" VerticalAlignment="Center" />
+              </Button>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <TextBlock Classes="section" Text="Traffic" />
-              <TextBlock Classes="meta trafficHint" Text="Everything this account sends and receives" VerticalAlignment="Center" />
-            </StackPanel>
-          </DockPanel>
-
-          <!-- Raw stanza console -->
-          <Border DockPanel.Dock="Top" Classes="panel" Margin="20,0,20,10" Padding="14,12" IsVisible="{Binding IsRawOpen}">
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-              <StackPanel Spacing="8">
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                  <ComboBox ItemsSource="{x:Static vm:AccountItemViewModel.RawKinds}" SelectedItem="{Binding RawKind}" MinWidth="110" />
-                  <TextBox Grid.Column="1" Text="{Binding RawTo}" PlaceholderText="To: a JID" FontFamily="{StaticResource Font.Mono}" />
-                  <Button Grid.Column="2" Classes="primary" Content="Send" Command="{Binding SendRawCommand}" />
-                </Grid>
-                <TextBox Text="{Binding RawXml}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" MaxHeight="200"
-                         FontFamily="{StaticResource Font.Mono}" PlaceholderText="The stanza's payload, such as &lt;query xmlns='jabber:iq:version'/&gt;" />
-              </StackPanel>
-              <Border Grid.Column="1" Classes="panel" Background="{DynamicResource Surface.Code}" Padding="10,8" MaxHeight="240">
-                <ScrollViewer>
-                  <SelectableTextBlock Classes="mono" Text="{Binding RawResult}" TextWrapping="Wrap" />
-                </ScrollViewer>
-              </Border>
-            </Grid>
           </Border>
 
-          <views:TrafficView DataContext="{Binding Sniffer}" Margin="20,0,20,20" />
+          <Panel>
+            <!-- Connection -->
+            <DockPanel IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccounts}">
+    <!-- Why it is not connected, and how to fix it here -->
+              <Border DockPanel.Dock="Top" Margin="20,14,20,0" Padding="12,10" CornerRadius="{StaticResource Radius}"
+                      Background="{DynamicResource State.Bad.Subtle}"
+                      IsVisible="{Binding LastError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <c:LineIcon Data="{StaticResource Icon.Alert}" Width="16" Height="16" Foreground="{DynamicResource State.Bad}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                    <SelectableTextBlock Grid.Column="1" Text="{Binding LastError}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Content="Enter password" Command="{Binding OpenPasswordPromptCommand}" VerticalAlignment="Center"
+                            IsVisible="{Binding CanEnterPassword}" IsEnabled="{Binding !IsPasswordPromptOpen}" />
+                  </Grid>
+                  <TextBlock Classes="meta" Margin="26,0,0,0" TextWrapping="Wrap" Text="{Binding RecoveryHint}"
+                             IsVisible="{Binding RecoveryHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="26,0,0,0" IsVisible="{Binding IsPasswordPromptOpen}">
+                    <TextBox Text="{Binding NewPassword}" PasswordChar="•" PlaceholderText="Password for this account" />
+                    <Button Grid.Column="1" Classes="ghost" Content="Cancel" Command="{Binding CancelPasswordPromptCommand}" />
+                    <Button Grid.Column="2" Classes="primary" Content="Save and connect" Command="{Binding SavePasswordCommand}"
+                            IsDefault="{Binding IsPasswordPromptOpen}" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <!-- How it signs in, and the way to change the password -->
+              <Border DockPanel.Dock="Top" Classes="panel" Margin="20,14,20,0" Padding="14,10">
+                <StackPanel Spacing="10">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Change password" Command="{Binding OpenChangePasswordCommand}" IsVisible="{Binding !IsChangingPassword}" VerticalAlignment="Center"
+                            ToolTip.Tip="Change the password on the Neuron and in the saved login, in one go" />
+                    <StackPanel Spacing="2" VerticalAlignment="Center">
+                      <TextBlock Text="Sign-in" FontWeight="SemiBold" />
+                      <TextBlock Classes="meta" Text="{Binding SignInText}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </DockPanel>
+                  <Grid ColumnDefinitions="*,*,Auto,Auto" ColumnSpacing="8" IsVisible="{Binding IsChangingPassword}">
+                    <TextBox Text="{Binding ChangedPassword}" PasswordChar="•" PlaceholderText="New password" />
+                    <TextBox Grid.Column="1" Text="{Binding ChangedPasswordAgain}" PasswordChar="•" PlaceholderText="The new password again" />
+                    <Button Grid.Column="2" Classes="ghost" Content="Cancel" Command="{Binding CancelChangePasswordCommand}" />
+                    <Button Grid.Column="3" Classes="primary" Content="Change password" Command="{Binding ChangePasswordCommand}" IsDefault="{Binding IsChangingPassword}" />
+                  </Grid>
+                  <TextBlock Classes="error" Text="{Binding PasswordError}" TextWrapping="Wrap"
+                             IsVisible="{Binding PasswordError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <TextBlock Classes="meta" Text="{Binding PasswordNote}" TextWrapping="Wrap"
+                             IsVisible="{Binding PasswordNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+              </Border>
+
+              <!-- Traffic -->
+              <DockPanel DockPanel.Dock="Top" Margin="20,16,16,8">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                  <ToggleButton Classes="ghost" IsChecked="{Binding IsRawOpen, Mode=OneWay}" Command="{Binding ToggleRawCommand}" ToolTip.Tip="Send an XMPP stanza by hand">
+                    <StackPanel Classes="btn">
+                      <c:LineIcon Classes="btn" Data="{StaticResource Icon.Console}" />
+                      <TextBlock Classes="btnLabel" Text="Send XML" />
+                    </StackPanel>
+                  </ToggleButton>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                  <TextBlock Classes="section" Text="Traffic" />
+                  <TextBlock Classes="meta trafficHint" Text="Everything this account sends and receives" VerticalAlignment="Center" />
+                </StackPanel>
+              </DockPanel>
+
+              <!-- Raw stanza console -->
+              <Border DockPanel.Dock="Top" Classes="panel" Margin="20,0,20,10" Padding="14,12" IsVisible="{Binding IsRawOpen}">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                      <ComboBox ItemsSource="{x:Static vm:AccountItemViewModel.RawKinds}" SelectedItem="{Binding RawKind}" MinWidth="110" />
+                      <TextBox Grid.Column="1" Text="{Binding RawTo}" PlaceholderText="To: a JID" FontFamily="{StaticResource Font.Mono}" />
+                      <Button Grid.Column="2" Classes="primary" Content="Send" Command="{Binding SendRawCommand}" />
+                    </Grid>
+                    <TextBox Text="{Binding RawXml}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" MaxHeight="200"
+                             FontFamily="{StaticResource Font.Mono}" PlaceholderText="The stanza's payload, such as &lt;query xmlns='jabber:iq:version'/&gt;" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Classes="panel" Background="{DynamicResource Surface.Code}" Padding="10,8" MaxHeight="240">
+                    <ScrollViewer>
+                      <SelectableTextBlock Classes="mono" Text="{Binding RawResult}" TextWrapping="Wrap" />
+                    </ScrollViewer>
+                  </Border>
+                </Grid>
+              </Border>
+
+              <views:TrafficView DataContext="{Binding Sniffer}" Margin="20,0,20,20" />
+            </DockPanel>
+
+            <views:DevicesView DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Devices}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDevices}" />
+            <views:IdentitiesView DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Identities}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountIdentities}" />
+            <views:PubSubView DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PubSub}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountStorage}" />
+          </Panel>
         </DockPanel>
       </DockPanel>
 

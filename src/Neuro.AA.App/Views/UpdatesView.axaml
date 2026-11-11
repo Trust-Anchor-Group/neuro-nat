@@ -37,8 +37,8 @@
 
   <Grid ColumnDefinitions="Auto,*">
 
-    <!-- The Neurons -->
-    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+    <!-- The Neurons. Not shown on a Neuron's page, where the Neuron is already chosen. -->
+    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0" IsVisible="{Binding !IsPinned}">
       <DockPanel Margin="12,14,12,12">
         <TextBlock DockPanel.Dock="Top" Classes="section" Text="Software" Margin="6,0,0,12" />
         <Panel>
@@ -90,8 +90,10 @@
                     ToolTip.Tip="Install downloaded packages. The Neuron restarts." />
           </StackPanel>
           <StackPanel Spacing="4" Margin="0,0,16,0">
-            <TextBlock Classes="title" Text="{Binding Selected.Label}" TextWrapping="Wrap" />
-            <TextBlock Classes="meta" Text="{Binding Selected.NeuronJid}" />
+            <TextBlock Classes="title" Text="{Binding Selected.Label}" TextWrapping="Wrap" IsVisible="{Binding !IsPinned}" />
+            <TextBlock Classes="title" Text="Software" IsVisible="{Binding IsPinned}" />
+            <TextBlock Classes="meta" Text="{Binding Selected.NeuronJid}" IsVisible="{Binding !IsPinned}" />
+            <TextBlock Classes="meta" Text="{Binding Selected.Meta}" IsVisible="{Binding IsPinned}" />
           </StackPanel>
         </DockPanel>
 

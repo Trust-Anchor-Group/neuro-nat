@@ -57,10 +57,10 @@
   <Grid ColumnDefinitions="Auto,*">
 
     <!-- The list -->
-    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0" IsVisible="{Binding ShowsList}">
       <DockPanel Margin="12,14,12,12">
         <DockPanel DockPanel.Dock="Top" Margin="6,0,0,12">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" IsVisible="{Binding IsOpen}">
             <ToggleButton Classes="seg first" IsChecked="{Binding IsMine, Mode=OneWay}"
                           Command="{Binding SetModeCommand}" CommandParameter="{x:Static vm:IdentitiesMode.Mine}"
                           ToolTip.Tip="Your accounts' legal identities">

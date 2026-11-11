@@ -139,13 +139,16 @@
               </StackPanel>
 
               <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding SelectedIsNeuron}">
+                <Button Classes="primary" Command="{Binding OpenPageCommand}" ToolTip.Tip="Open this Neuron's page (double click on the map)">
+                  <TextBlock Text="Open" />
+                </Button>
                 <Button Command="{Binding ShowEventsCommand}" ToolTip.Tip="This Neuron's events">
                   <StackPanel Classes="btn">
                     <c:LineIcon Classes="btn" Data="{StaticResource Icon.Events}" />
                     <TextBlock Classes="btnLabel" Text="Events" />
                   </StackPanel>
                 </Button>
-                <Button Command="{Binding OpenConsoleCommand}" ToolTip.Tip="Chat admin on this Neuron (double click on the map)">
+                <Button Command="{Binding OpenConsoleCommand}" ToolTip.Tip="Send commands to this Neuron">
                   <StackPanel Classes="btn">
                     <c:LineIcon Classes="btn" Data="{StaticResource Icon.Console}" />
                     <TextBlock Classes="btnLabel" Text="Console" />

@@ -13,6 +13,11 @@
       <Setter Property="Width" Value="360" />
     </Style>
     <!-- Window width 1180 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <!-- A watched value that is not what it was a moment ago -->
+    <Style Selector="TextBlock.changed">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+    </Style>
     <Style Selector=".maxw1180 Border.treePane">
       <Setter Property="Width" Value="300" />
     </Style>
@@ -92,23 +97,6 @@
           <TextBlock Classes="section" Text="Sources" VerticalAlignment="Center" />
         </DockPanel>
 
-        <ComboBox DockPanel.Dock="Top" Margin="6,0,4,12" HorizontalAlignment="Stretch" ItemsSource="{Binding Neurons}" SelectedItem="{Binding SelectedNeuron}"
-                  IsVisible="{Binding HasNeurons}" ToolTip.Tip="The Neuron to browse, and the account it is reached through">
-          <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:NeuronChoice">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Border Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
-                        Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
-                  <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="10" FontWeight="SemiBold"
-                             HorizontalAlignment="Center" VerticalAlignment="Center"
-                             Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
-                </Border>
-                <TextBlock Classes="mono" Text="{Binding Label}" VerticalAlignment="Center" />
-              </StackPanel>
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-
         <DockPanel DockPanel.Dock="Top" Margin="6,0,4,10" IsVisible="{Binding HasNeuron}">
           <Button DockPanel.Dock="Right" Classes="ghost" Margin="6,0,0,0" Command="{Binding ClearSearchCommand}" IsVisible="{Binding HasSearchResults}"
                   ToolTip.Tip="Back to the tree">
@@ -167,11 +155,10 @@
             </TreeView.ItemTemplate>
           </TreeView>
 
-          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="260" Spacing="6" IsVisible="{Binding !HasNeurons}">
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="260" Spacing="6" IsVisible="{Binding HasPinnedNote}">
             <c:LineIcon Data="{StaticResource Icon.Sources}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
-            <TextBlock Text="No Neuron online" FontWeight="SemiBold" HorizontalAlignment="Center" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                       Text="Sources and nodes appear when a Neuron you administer is online through one of your accounts." />
+            <TextBlock Text="Not online" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="{Binding PinnedNote}" />
           </StackPanel>
           <TextBlock Classes="meta" Text="Reading the sources…" IsVisible="{Binding IsLoadingTree}" Margin="8,4" VerticalAlignment="Top" />
           <TextBlock Classes="error" Text="{Binding TreeError}" TextWrapping="Wrap" Margin="8,4" VerticalAlignment="Top"
@@ -377,6 +364,12 @@
                 <Button Classes="ghost" Command="{Binding SaveReadoutCommand}" ToolTip.Tip="Save all readings to a file">
                   <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
                 </Button>
+                <ToggleButton Classes="ghost" IsChecked="{Binding IsWatching}" ToolTip.Tip="Read these values again every 5 seconds and mark the ones that change">
+                  <StackPanel Classes="btn">
+                    <c:LineIcon Classes="btn" Data="{StaticResource Icon.Eye}" />
+                    <TextBlock Classes="btnLabel" Text="Watch" />
+                  </StackPanel>
+                </ToggleButton>
                 <Button Content="Read again" Command="{Binding ReadCommand}" CommandParameter="momentary" />
                 <Button Content="Back to node" Command="{Binding BackToNodeCommand}" />
               </StackPanel>
@@ -399,7 +392,7 @@
                     <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,6">
                       <Grid ColumnDefinitions="2*,3*,1.4*,1.4*" ColumnSpacing="14">
                         <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Ink.Secondary}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Classes.error="{Binding IsProblem}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Classes.error="{Binding IsProblem}" Classes.changed="{Binding IsChanged}" />
                         <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Kind}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="3" Classes="mono tertiary" Text="{Binding Time}" />
                       </Grid>

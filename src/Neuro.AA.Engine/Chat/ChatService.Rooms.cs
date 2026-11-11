@@ -14,6 +14,23 @@ public sealed partial class ChatService
 
 	public IReadOnlyList<RoomInfo> Rooms => [.. this.rooms.Values];
 
+	/// <summary>Adds a room you are in, with the people in it, for previews and UI tests.</summary>
+	internal RoomInfo PreviewRoom(Guid accountId, string roomJid, string nickName, params string[] others)
+	{
+		RoomInfo room = this.rooms.GetOrAdd(Key(accountId, roomJid), _ => new RoomInfo(accountId, roomJid, nickName));
+		room.Joined = true;
+		lock (room.occupants)
+		{
+			room.occupants[nickName] = new RoomOccupant(nickName, "participant", "member", null);
+			foreach (string o in others)
+				room.occupants[o] = new RoomOccupant(o, "participant", "member", null);
+		}
+
+		this.GetRoom(accountId, roomJid);
+		this.RoomsChanged?.Invoke(this, EventArgs.Empty);
+		return room;
+	}
+
 	public RoomInfo? Room(Guid accountId, string roomJid)
 		=> this.rooms.TryGetValue(Key(accountId, roomJid), out RoomInfo? r) ? r : null;
 
