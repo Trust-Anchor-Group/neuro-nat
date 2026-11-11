@@ -45,7 +45,7 @@
             <TextBlock Text="{Binding KindLabel}" Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
           </Border>
           <Border Classes="pill" Background="{DynamicResource Accent.Subtle}" IsVisible="{Binding IsOpen}">
-            <TextBlock Text="Needs you" Foreground="{DynamicResource Accent.Ink}" />
+            <TextBlock Text="Waiting for you" Foreground="{DynamicResource Accent.Ink}" />
           </Border>
           <Border Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding IsHandled}">
             <TextBlock Text="Done" Foreground="{DynamicResource Ink.Secondary}" />

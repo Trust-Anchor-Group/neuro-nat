@@ -164,7 +164,10 @@
             <TextBlock Text="Not online" FontWeight="SemiBold" HorizontalAlignment="Center" />
             <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="{Binding PinnedNote}" />
           </StackPanel>
-          <TextBlock Classes="meta" Text="Reading the sources…" IsVisible="{Binding IsLoadingTree}" Margin="8,4" VerticalAlignment="Top" />
+          <StackPanel IsVisible="{Binding IsLoadingTree}" Margin="8,4" VerticalAlignment="Top" Spacing="6">
+            <TextBlock Classes="meta" Text="Reading the sources…" />
+            <c:Placeholder Rows="5" RowHeight="28" />
+          </StackPanel>
           <TextBlock Classes="error" Text="{Binding TreeError}" TextWrapping="Wrap" Margin="8,4" VerticalAlignment="Top"
                      IsVisible="{Binding TreeError, Converter={x:Static conv:EventConverters.HasText}}" />
         </Panel>
@@ -293,7 +296,10 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </StackPanel>
-              <TextBlock Classes="meta" Text="Reading commands…" IsVisible="{Binding IsLoadingCommands}" />
+              <StackPanel IsVisible="{Binding IsLoadingCommands}" Spacing="6">
+                <TextBlock Classes="meta" Text="Reading commands…" />
+                <c:Placeholder Rows="2" RowHeight="26" />
+              </StackPanel>
 
               <StackPanel Spacing="6" IsVisible="{Binding HasParameters}">
                 <TextBlock Classes="label" Text="Parameters" />

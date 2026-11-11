@@ -68,28 +68,28 @@ public sealed record WatchedNeuron
 
 	public string? HistoryError { get; init; }
 
-	/// <summary>One line for chips and tooltips, for example "Live · 239 past events".</summary>
+	/// <summary>One line for chips and tooltips, for example "Listening · 239 earlier events loaded".</summary>
 	public string StatusText
 	{
 		get
 		{
 			string state = this.State switch
 			{
-				WatchState.Live => "Live",
-				WatchState.Waiting => "Waiting for presence",
+				WatchState.Live => "Listening",
+				WatchState.Waiting => "Waiting for it to come online",
 				WatchState.Discovering => "Checking",
-				WatchState.Subscribing => "Starting stream",
-				WatchState.Forbidden => "Not admin",
+				WatchState.Subscribing => "Starting to listen",
+				WatchState.Forbidden => "No access",
 				WatchState.Offline => "Offline",
-				WatchState.Failed => "Failed",
+				WatchState.Failed => "Could not listen",
 				_ => string.Empty,
 			};
 
 			string history = this.HistoryState switch
 			{
-				HistoryState.Loading => this.HistoryCount > 0 ? $" · loading history ({this.HistoryCount})" : " · loading history",
-				HistoryState.Loaded => this.HistoryCount == 1 ? " · 1 past event" : $" · {this.HistoryCount} past events",
-				HistoryState.Failed => " · history incomplete",
+				HistoryState.Loading => this.HistoryCount > 0 ? $" · reading earlier events ({this.HistoryCount})" : " · reading earlier events",
+				HistoryState.Loaded => this.HistoryCount == 1 ? " · 1 earlier event loaded" : $" · {this.HistoryCount} earlier events loaded",
+				HistoryState.Failed => " · earlier events incomplete",
 				_ => string.Empty,
 			};
 

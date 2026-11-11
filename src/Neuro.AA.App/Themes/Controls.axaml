@@ -478,6 +478,25 @@
     <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
+  <!-- Undo, inside the note: the note's own colours turned round, so it reads as a button on it -->
+  <Style Selector="Button.flashUndo">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Surface.Panel}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Surface.Panel}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
+    <Setter Property="Padding" Value="9,0" />
+    <Setter Property="MinHeight" Value="18" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.flashUndo:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.flashUndo:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Surface.Panel}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink.Primary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Surface.Panel}" />
+  </Style>
   <Style Selector="ToolTip">
     <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
     <Setter Property="Padding" Value="9,6" />
@@ -496,5 +515,10 @@
   <!-- Numbers that line up in columns -->
   <Style Selector="TextBlock.num">
     <Setter Property="FontFeatures" Value="+tnum" />
+  </Style>
+  <!-- Rows on their way: grey bars where they will be -->
+  <Style Selector="c|Placeholder">
+    <Setter Property="Bar" Value="{DynamicResource Line}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
   </Style>
 </Styles>

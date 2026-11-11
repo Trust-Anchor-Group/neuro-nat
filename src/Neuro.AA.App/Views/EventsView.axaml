@@ -42,8 +42,26 @@
     <Style Selector=".maxw960 Border.issuesPane">
       <Setter Property="Width" Value="260" />
     </Style>
-    <Style Selector=".maxw960 TextBox.streamFilter">
+    <!-- The bar over the stream gives way step by step, so nothing in it is ever cut off:
+         a narrower filter box, then the level picker in fewer words and no title, then copy,
+         save and mute from the right-click menu only. -->
+    <Style Selector="TextBox.streamFilter">
+      <Setter Property="Width" Value="260" />
+    </Style>
+    <Style Selector=".maxw1280 TextBox.streamFilter">
+      <Setter Property="Width" Value="200" />
+    </Style>
+    <Style Selector=".maxw1100 TextBox.streamFilter">
       <Setter Property="Width" Value="160" />
+    </Style>
+    <Style Selector="TextBlock.short">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw1100 TextBlock.short">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector=".maxw1100 TextBlock.long, .maxw1100 TextBlock.streamTitle, .maxw860 :is(Control).roomy">
+      <Setter Property="IsVisible" Value="False" />
     </Style>
 
     <!-- Stream rows and their header share these column widths. -->
@@ -64,11 +82,11 @@
       <DockPanel Margin="12,14,12,12">
         <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
           <ToggleButton DockPanel.Dock="Right" Classes="ghost" IsChecked="{Binding ShowResolved}"
-                        ToolTip.Tip="Also show muted and resolved issues">
-            <TextBlock Text="Show resolved" FontSize="{StaticResource Type.Meta}" />
+                        ToolTip.Tip="Also show muted and fixed problems">
+            <TextBlock Text="Show fixed" FontSize="{StaticResource Type.Meta}" />
           </ToggleButton>
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center" Margin="0,0,8,0">
-            <TextBlock Classes="section" Text="Issues" />
+            <TextBlock Classes="section" Text="Problems" />
             <TextBlock Grid.Column="1" Classes="meta num" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                        ToolTip.Tip="Errors and critical events in the last hour, all Neurons">
               <Run Text="{Binding ErrorsLastHour}" /><Run Text=" errors last hour" />
@@ -76,10 +94,10 @@
           </Grid>
         </DockPanel>
 
-        <c:ActionBar x:Name="IssueBar" DockPanel.Dock="Bottom" Noun="issue" Margin="0,8,0,0" />
+        <c:ActionBar x:Name="IssueBar" DockPanel.Dock="Bottom" Noun="problem" Margin="0,8,0,0" />
 
         <Panel>
-          <ListBox x:Name="IssueList" Classes="rows" ItemsSource="{Binding Issues}" SelectedItem="{Binding SelectedIssue}" SelectionMode="Multiple"
+          <ListBox x:Name="IssueList" Classes="rows" c:Motion.NewRows="True" ItemsSource="{Binding Issues}" SelectedItem="{Binding SelectedIssue}" SelectionMode="Multiple"
                    c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #IssueBar}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:IssueItemViewModel">
@@ -121,9 +139,9 @@
 
           <StackPanel IsVisible="{Binding !HasIssues}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="300" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Events}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
-            <TextBlock Text="No open issues" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Text="No open problems" FontWeight="SemiBold" HorizontalAlignment="Center" />
             <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                       Text="Warnings, errors and critical events from your Neurons are grouped here, one issue per problem across all servers." />
+                       Text="Warnings, errors and critical events from your Neurons are grouped here: one problem for each thing that goes wrong, across all your Neurons." />
           </StackPanel>
         </Panel>
       </DockPanel>
@@ -139,12 +157,22 @@
             <StackPanel Orientation="Horizontal">
               <ToggleButton Classes="seg first" Content="All" IsChecked="{Binding IsAllSelected, Mode=OneWay}"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.All}" />
-              <ToggleButton Classes="seg" Content="Warnings and up" IsChecked="{Binding IsWarningsSelected, Mode=OneWay}" Margin="-1,0,0,0"
-                            Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.WarningsAndWorse}" />
-              <ToggleButton Classes="seg last" Content="Errors and up" IsChecked="{Binding IsErrorsSelected, Mode=OneWay}" Margin="-1,0,0,0"
-                            Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.ErrorsAndWorse}" />
+              <ToggleButton Classes="seg" IsChecked="{Binding IsWarningsSelected, Mode=OneWay}" Margin="-1,0,0,0" ToolTip.Tip="Warnings and worse"
+                            Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.WarningsAndWorse}">
+                <Panel>
+                  <TextBlock Classes="long" Text="Warnings and up" />
+                  <TextBlock Classes="short" Text="Warnings" />
+                </Panel>
+              </ToggleButton>
+              <ToggleButton Classes="seg last" IsChecked="{Binding IsErrorsSelected, Mode=OneWay}" Margin="-1,0,0,0" ToolTip.Tip="Errors and worse"
+                            Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.ErrorsAndWorse}">
+                <Panel>
+                  <TextBlock Classes="long" Text="Errors and up" />
+                  <TextBlock Classes="short" Text="Errors" />
+                </Panel>
+              </ToggleButton>
             </StackPanel>
-            <TextBox Classes="streamFilter find" Text="{Binding SearchText}" PlaceholderText="Filter messages, modules, Neurons…" Width="260" MinHeight="28" Padding="10,4"
+            <TextBox Classes="streamFilter find" Text="{Binding SearchText}" PlaceholderText="Filter messages, modules, Neurons…" MinHeight="28" Padding="10,4"
                      ToolTip.Tip="Filter the events (Ctrl+F)" />
             <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause the stream (events are still collected)">
               <StackPanel Classes="btn">
@@ -152,14 +180,14 @@
                 <TextBlock Classes="btnLabel wideOnly" Text="Pause" />
               </StackPanel>
             </ToggleButton>
-            <Button Classes="ghost" Command="{Binding CopyStreamCommand}" ToolTip.Tip="Copy the selected events, or every event shown when none is selected">
+            <Button Classes="ghost roomy" Command="{Binding CopyStreamCommand}" ToolTip.Tip="Copy the selected events, or every event shown when none is selected">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
             </Button>
-            <Button Classes="ghost" Command="{Binding SaveStreamCommand}" ToolTip.Tip="Save the selected events to a file, or every event shown when none is selected">
+            <Button Classes="ghost roomy" Command="{Binding SaveStreamCommand}" ToolTip.Tip="Save the selected events to a file, or every event shown when none is selected">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
             </Button>
           </StackPanel>
-          <TextBlock Classes="section" Text="{Binding StreamTitle}" VerticalAlignment="Center" />
+          <TextBlock Classes="section streamTitle" Text="{Binding StreamTitle}" VerticalAlignment="Center" />
         </DockPanel>
 
         <Panel IsVisible="{Binding HasSelectedIssue}">
@@ -167,21 +195,23 @@
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <Button Content="Acknowledge" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).AcknowledgeCommand}" CommandParameter="{Binding}"
                     IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsOpenOrAck}}" />
-            <Button Content="Mute" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).MuteCommand}" CommandParameter="{Binding}"
-                    IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsOpenOrAck}}" />
-            <Button Content="Resolve" Classes="primary" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ResolveCommand}" CommandParameter="{Binding}"
+            <Panel Classes="roomy">
+              <Button Content="Mute" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).MuteCommand}" CommandParameter="{Binding}"
+                      IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsOpenOrAck}}" />
+            </Panel>
+            <Button Content="Mark fixed" Classes="primary" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ResolveCommand}" CommandParameter="{Binding}"
                     IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsOpenOrAck}}" />
             <Button Content="Reopen" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ReopenCommand}" CommandParameter="{Binding}"
                     IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsResolvedOrMuted}}" />
             <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ShareIssueCommand}" CommandParameter="{Binding}"
-                    ToolTip.Tip="Send this issue to a coworker or a room">
+                    ToolTip.Tip="Send this problem to a coworker or a room">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
                 <TextBlock Classes="btnLabel" Text="Share" />
               </StackPanel>
             </Button>
             <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ClearIssueCommand}"
-                    ToolTip.Tip="Back to the live stream" Margin="12,0,0,0">
+                    ToolTip.Tip="Back to all events" Margin="12,0,0,0">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Close}" />
                 <TextBlock Classes="btnLabel" Text="All events" />
@@ -212,7 +242,7 @@
             </Grid>
           </Border>
         <Panel>
-          <ListBox x:Name="StreamList" Classes="stream" ItemsSource="{Binding Stream}" SelectedItem="{Binding SelectedEvent}" Margin="0,2,0,4" SelectionMode="Multiple"
+          <ListBox x:Name="StreamList" Classes="stream" c:Motion.NewRows="True" ItemsSource="{Binding Stream}" SelectedItem="{Binding SelectedEvent}" Margin="0,2,0,4" SelectionMode="Multiple"
                    c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #StreamBar}">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>

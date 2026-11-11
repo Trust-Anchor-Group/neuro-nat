@@ -46,7 +46,8 @@ public sealed partial class MainWindowViewModel
 		string? jid = parts.Length > 2 && parts[2].Length > 0 ? parts[2] : null;
 		string? lens = parts.Length > 3 && parts[3].Length > 0 ? parts[3] : null;
 
-		if (lens is not null && !string.Equals(this.LensJid, lens, StringComparison.OrdinalIgnoreCase))
+		// The main window keeps the Neuron it is filtered to in Settings; the others keep theirs here.
+		if (lens is not null && this.IsExtra && !string.Equals(this.LensJid, lens, StringComparison.OrdinalIgnoreCase))
 		{
 			this.wantedLens = lens;
 			this.SyncNeurons();
@@ -79,8 +80,52 @@ public sealed partial class MainWindowViewModel
 	/// <summary>Tries again to show what <see cref="GoTo"/> could not yet. Called as Neurons and accounts appear.</summary>
 	private void TryWanted()
 	{
-		if (this.wantedAddress is string wanted)
-			this.GoTo(wanted);
+		if (this.wantedAddress is not string wanted)
+			return;
+
+		// The main window does not wait for long: being moved to another screen a minute into working is worse than starting on the list.
+		if (this.wantedUntil is DateTime until && DateTime.UtcNow > until)
+		{
+			this.wantedAddress = null;
+			this.wantedUntil = null;
+			return;
+		}
+
+		this.GoTo(wanted);
+	}
+
+	private DateTime? wantedUntil;
+
+	/// <summary>
+	/// The app opens where you left it. The first time, and when that was the empty Accounts
+	/// screen, it opens on the Neurons list. Called once the accounts are read.
+	/// </summary>
+	private void OpenWhereLeft()
+	{
+		if (this.IsExtra || !this.Settings.HasStore || this.Accounts.Count == 0 || this.Workspace != WorkspaceKind.Accounts)
+			return;
+
+		string? left = this.Settings.MainWindow?.Showing;
+		if (left is null || this.GoTo(left))
+		{
+			if (left is null)
+				this.ShowFleet();
+			return;
+		}
+
+		// What it showed is not there yet, as nothing has connected: the list in the meantime, and the screen when it can be shown.
+		this.goingTo = true;
+		try
+		{
+			this.ShowFleet();
+		}
+		finally
+		{
+			this.goingTo = false;
+		}
+
+		this.wantedAddress = left;
+		this.wantedUntil = DateTime.UtcNow.AddSeconds(30);
 	}
 
 	/// <summary>

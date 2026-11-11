@@ -79,7 +79,7 @@ public sealed class NodeSniffer : IAsyncDisposable
 			NeuronConcentrator? c = this.concentrator();
 			if (c is null)
 			{
-				this.Set(NodeSnifferState.Failed, "The Neuron is not online through its account. The sniffer starts again when it is.");
+				this.Set(NodeSnifferState.Failed, "The Neuron is not online through its account. Watching starts again when it is.");
 				return;
 			}
 

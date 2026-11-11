@@ -46,9 +46,11 @@ It speaks the Neuron's own protocols with the Neuron's own libraries, so everyth
 - Event volume can be high; lists must stay fast with hundreds of thousands of rows.
 - Destructive server actions (reboot, stop, repair, upgrade, delete node) must always be explicit about which server they hit.
 
+Decided:
+- The app opens on the screen it was closed on, with its windows where they were. The first time, with an account set up, it opens on the Neurons list.
+
 Undecided:
 - Whether contracts (browse and sign) are in scope, or only identities.
-- What an operator should see first when the app opens.
 - What "Neuro.AA" stands for and whether the app carries Neuro / TAG branding.
 
 ## Brand Commitments

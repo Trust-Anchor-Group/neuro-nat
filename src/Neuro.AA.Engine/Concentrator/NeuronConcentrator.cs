@@ -281,7 +281,7 @@ public sealed class NeuronConcentrator
 			else if (e.ErrorType == ErrorType.Auth || e.StanzaError is Waher.Networking.XMPP.StanzaErrors.ForbiddenException)
 				tcs.TrySetException(new ConcentratorException("Only the Neuron's administrators can sniff: a notification address, or a user with the Admin privilege."));
 			else
-				tcs.TrySetException(Fail(e, "The Neuron did not start the sniffer."));
+				tcs.TrySetException(Fail(e, "The Neuron did not start sending the traffic."));
 			return Task.CompletedTask;
 		}, null);
 		return tcs.Task.WaitAsync(Timeout);

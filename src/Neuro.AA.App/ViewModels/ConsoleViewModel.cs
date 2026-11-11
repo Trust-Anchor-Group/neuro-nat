@@ -20,6 +20,9 @@ public sealed partial class ConsoleTargetViewModel(Guid accountId, string bareJi
 	[ObservableProperty] private int accountColorIndex;
 	[ObservableProperty] private bool isChecked;
 	[ObservableProperty] private bool isOnline;
+
+	/// <summary>False while the filter box hides it. A ticked Neuron is never hidden: you see what the command goes to.</summary>
+	[ObservableProperty] private bool isShown = true;
 }
 
 /// <summary>What one Neuron answered to a command.</summary>
@@ -104,6 +107,21 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 	[ObservableProperty]
 	[NotifyCanExecuteChangedFor(nameof(RunCommand))]
 	private string commandText = string.Empty;
+
+	/// <summary>What the filter box over the Neurons holds: part of a name, an address or an account.</summary>
+	[ObservableProperty] private string targetFilter = string.Empty;
+
+	partial void OnTargetFilterChanged(string value) => this.ApplyTargetFilter();
+
+	private void ApplyTargetFilter()
+	{
+		string f = this.TargetFilter.Trim();
+		foreach (ConsoleTargetViewModel t in this.Targets)
+		{
+			t.IsShown = f.Length == 0 || t.IsChecked || t.Label.Contains(f, StringComparison.OrdinalIgnoreCase) ||
+				t.BareJid.Contains(f, StringComparison.OrdinalIgnoreCase) || t.AccountLabel.Contains(f, StringComparison.OrdinalIgnoreCase);
+		}
+	}
 
 	[ObservableProperty] private string targetSummary = "Pick a Neuron";
 	[ObservableProperty] private bool hasTargets;
@@ -269,6 +287,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 		else if (!this.Targets.Any(t => t.IsChecked) && this.Targets.FirstOrDefault(t => t.IsOnline) is ConsoleTargetViewModel first)
 			first.IsChecked = true;
 
+		this.ApplyTargetFilter();
 		this.TargetsChanged();
 	}
 

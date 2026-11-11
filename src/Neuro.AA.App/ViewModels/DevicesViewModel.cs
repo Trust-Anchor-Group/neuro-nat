@@ -252,7 +252,7 @@ public sealed partial class DevicesViewModel : ObservableObject
 						_ => $"{q.RemoteJid} wants to control it",
 					};
 					r.Meta = q.NodeId is null ? q.DeviceJid : $"{q.DeviceJid} · {q.NodeId}";
-					(r.StateLabel, r.Tone, r.HasState) = ("Needs you", "busy", true);
+					(r.StateLabel, r.Tone, r.HasState) = ("Waiting for you", "busy", true);
 				}
 				this.EmptyText = "No questions. When someone wants access to a device you own, its Neuron asks you here.";
 				break;

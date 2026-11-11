@@ -84,6 +84,13 @@ public partial class MainWindow : Window
 			e.Handled = true;
 		}
 
+		// Ctrl+Z while a note offers Undo, and no text box has the keyboard: take it back.
+		else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Z && vm.HasFlashUndo && this.FocusManager?.GetFocusedElement() is not TextBox)
+		{
+			vm.UndoFlashCommand.Execute(null);
+			e.Handled = true;
+		}
+
 		// Ctrl+Shift+N: what is showing, in a window of its own. F11: the Wall view.
 		else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.N)
 		{

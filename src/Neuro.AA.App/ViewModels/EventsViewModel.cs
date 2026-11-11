@@ -155,7 +155,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 
 	public bool HasSelectedIssue => this.SelectedIssue is not null;
 	public bool HasSelectedEvent => this.SelectedEvent is not null;
-	public string StreamTitle => this.SelectedIssue is null ? "Live stream" : "Events in this issue";
+	public string StreamTitle => this.SelectedIssue is null ? "All events" : "Events in this problem";
 
 	/// <summary>Set by the view: copies text to the clipboard.</summary>
 	public Func<string, Task>? CopyToClipboard { get; set; }
@@ -177,7 +177,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 		if (issue is null)
 			return;
 
-		this.ShareTo?.Invoke("Issue: " + issue.Issue.Title, IssueMarkdown(issue.Issue));
+		this.ShareTo?.Invoke("Problem: " + issue.Issue.Title, IssueMarkdown(issue.Issue));
 	}
 
 	partial void OnSeverityFilterChanged(SeverityFilter value) => this.Rebuild();
@@ -235,7 +235,35 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 	{
 		issue ??= this.SelectedIssue;
 		if (issue is not null)
-			this.monitors.Hub.SetState(issue.Fingerprint, state);
+			this.SetStates([issue], state);
+	}
+
+	/// <summary>
+	/// Acknowledges, mutes, marks fixed or reopens problems, says so, and offers to take it
+	/// back for a few seconds: these are one click, and easy to do to the wrong row.
+	/// </summary>
+	private void SetStates(IReadOnlyList<IssueItemViewModel> issues, IssueState state)
+	{
+		List<(string Fingerprint, IssueState Was)> before = [.. issues.Where(i => i.State != state).Select(i => (i.Fingerprint, i.State))];
+		if (before.Count == 0)
+			return;
+
+		foreach ((string fingerprint, IssueState _) in before)
+			this.monitors.Hub.SetState(fingerprint, state);
+
+		string done = state switch
+		{
+			IssueState.Acknowledged => "acknowledged",
+			IssueState.Muted => "muted",
+			IssueState.Resolved => "marked fixed",
+			_ => "reopened",
+		};
+		string note = before.Count == 1 ? char.ToUpperInvariant(done[0]) + done[1..] : Ui.Count(before.Count, "problem") + " " + done;
+		Ui.Say(note, () =>
+		{
+			foreach ((string fingerprint, IssueState was) in before)
+				this.monitors.Hub.SetState(fingerprint, was);
+		});
 	}
 
 	private void Hub_EventAdded(object? sender, NeuronEvent e) => this.pendingEvents.Enqueue(e);
@@ -410,8 +438,8 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 		this.NeuronSummary = list.Count switch
 		{
 			0 => "No Neurons yet",
-			1 => this.LiveNeuronCount == 1 ? "1 Neuron, live" : "1 Neuron, not live",
-			_ => $"{list.Count} Neurons, {this.LiveNeuronCount} live",
+			1 => this.LiveNeuronCount == 1 ? "1 Neuron, reporting" : "1 Neuron, not reporting",
+			_ => $"{list.Count} Neurons, {this.LiveNeuronCount} reporting",
 		};
 	}
 
@@ -562,7 +590,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 	private static string IssueMarkdown(Issue i)
 	{
 		StringBuilder sb = new();
-		sb.Append("**Issue:** ").AppendLine(i.Title).AppendLine();
+		sb.Append("**Problem:** ").AppendLine(i.Title).AppendLine();
 		sb.AppendLine("| | |");
 		sb.AppendLine("|:--|:--|");
 		sb.Append("| Severity | ").Append(i.Severity).AppendLine(" |");
@@ -577,19 +605,12 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 	private ActionList IssueActions(List<IssueItemViewModel> issues)
 	{
 		ActionList list = [];
-		string what = Ui.Count(issues.Count, "issue");
+		string what = Ui.Count(issues.Count, "problem");
 		bool anyOpen = issues.Any(i => i.State is IssueState.Open or IssueState.Acknowledged);
 		bool anyNew = issues.Any(i => i.State == IssueState.Open);
 		bool anyClosed = issues.Any(i => i.State is IssueState.Resolved or IssueState.Muted);
 
-		void All(IssueState state)
-		{
-			foreach (IssueItemViewModel i in issues)
-				this.monitors.Hub.SetState(i.Fingerprint, state);
-
-			if (issues.Count > 1)
-				Ui.Say(what + (state == IssueState.Open ? " reopened" : " " + state.ToString().ToLowerInvariant()));
-		}
+		void All(IssueState state) => this.SetStates(issues, state);
 
 		if (issues.Count == 1)
 		{
@@ -599,7 +620,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 
 			list.Copy("Copy title", () => issue.Title, "the title", "Ctrl+C");
 			list.Copy("Copy summary as Markdown", () => IssueMarkdown(issue.Issue), "the summary", "Ctrl+Shift+C");
-			list.Save("Save its events…", Ui.FileName("Issue " + issue.Title[..Math.Min(40, issue.Title.Length)]),
+			list.Save("Save its events…", Ui.FileName("Problem " + issue.Title[..Math.Min(40, issue.Title.Length)]),
 				Formats([.. this.monitors.Hub.EventsOf(issue.Fingerprint, MaxStream)]));
 
 			if (this.Shell is IShell shell)
@@ -625,7 +646,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 		if (anyOpen)
 		{
 			list.Do("Mute", () => All(IssueState.Muted), inBar: true, icon: "BellOff");
-			list.Do("Resolve", () => All(IssueState.Resolved), inBar: true);
+			list.Do("Mark fixed", () => All(IssueState.Resolved), inBar: true);
 		}
 
 		if (anyClosed)

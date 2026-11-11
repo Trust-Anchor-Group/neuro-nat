@@ -170,6 +170,17 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 	public string RetiredText => $"Show {this.RetiredCount} retired or rejected";
 
 	partial void OnShowRetiredChanged(bool value) => this.Refresh();
+
+	/// <summary>What the filter box over the list holds: part of a name, an account or a state.</summary>
+	[ObservableProperty] private string filterText = string.Empty;
+
+	partial void OnFilterTextChanged(string value) => this.Refresh();
+
+	/// <summary>The list is empty because nothing matches the filter box.</summary>
+	public bool IsEmptyFiltered => !this.HasRows && this.FilterText.Trim().Length > 0;
+
+	/// <summary>The list is empty because there is nothing to list yet.</summary>
+	public bool IsEmptyUnfiltered => !this.HasRows && this.FilterText.Trim().Length == 0;
 	[ObservableProperty] private string summary = string.Empty;
 
 	/// <summary>Requests to see an identity or have something signed, for the rail badge.</summary>
@@ -452,7 +463,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 				r.Petition = pt;
 				r.Title = (pt.RequestorName ?? pt.From) + (pt.Kind == "signature" ? " asks for your signature" : " asks to see your identity");
 				r.Meta = string.IsNullOrWhiteSpace(pt.Purpose) ? pt.From : pt.Purpose;
-				r.StateLabel = "Needs you";
+				r.StateLabel = "Waiting for you";
 				r.Tone = "busy";
 				r.HasState = true;
 			}
@@ -537,6 +548,16 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 			}
 		}
 
+		// The filter box: rows that say what was typed, and the account each of them belongs to.
+		string filter = this.FilterText.Trim();
+		if (filter.Length > 0)
+		{
+			bool Says(IdentityRowViewModel r) => r.Title.Contains(filter, StringComparison.OrdinalIgnoreCase) || r.Meta.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+				r.StateLabel.Contains(filter, StringComparison.OrdinalIgnoreCase) || r.AccountLabel.Contains(filter, StringComparison.OrdinalIgnoreCase);
+			HashSet<Guid> withMatches = [.. keep.Where(r => !r.IsAccount && Says(r)).Select(r => r.AccountId)];
+			keep.RemoveAll(r => r.IsAccount ? !withMatches.Contains(r.AccountId) && !Says(r) : !Says(r));
+		}
+
 		IdentityRowViewModel? selected = this.Selected;
 		for (int i = this.Rows.Count - 1; i >= 0; i--)
 		{
@@ -563,6 +584,8 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 			this.ShowDetail();
 
 		this.HasRows = keep.Count > 0;
+		this.OnPropertyChanged(nameof(this.IsEmptyFiltered));
+		this.OnPropertyChanged(nameof(this.IsEmptyUnfiltered));
 		int total = this.mine.Values.Sum(l => l.Count(i => i.State is IdentityState.Approved or IdentityState.Created));
 		this.Summary = this.IsMine
 			? (petitions.Count > 0 ? $"{petitions.Count} request{(petitions.Count == 1 ? "" : "s")}" : total == 0 ? "None in use" : $"{total} in use")
@@ -636,7 +659,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 			case IdentityRowKind.Petition when r.Petition is IdentityPetition p:
 				this.DetailTitle = r.Title;
 				this.DetailSubtitle = accountText;
-				(this.DetailState, this.DetailTone) = ("Needs you", "busy");
+				(this.DetailState, this.DetailTone) = ("Waiting for you", "busy");
 				this.Facts.Add(new IdentityFact("From", p.From, true));
 				if (p.RequestorName is not null)
 					this.Facts.Add(new IdentityFact("Name", p.RequestorName));

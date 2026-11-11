@@ -78,6 +78,9 @@
           </StackPanel>
         </DockPanel>
 
+        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding FilterText}" PlaceholderText="Filter by name, account or state…" MinHeight="28" Padding="10,4" Margin="2,0,2,10"
+                 ToolTip.Tip="Filter the list (Ctrl+F)" />
+
         <CheckBox DockPanel.Dock="Bottom" Margin="6,10,0,0" IsChecked="{Binding ShowRetired}"
                   IsVisible="{Binding ShowsRetiredToggle}">
           <TextBlock Classes="meta" Text="{Binding RetiredText}" />
@@ -119,7 +122,12 @@
             </ListBox.ItemTemplate>
           </ListBox>
 
-          <StackPanel IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="290" Spacing="6">
+          <StackPanel IsVisible="{Binding IsEmptyFiltered}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="290" Spacing="6">
+            <TextBlock Text="Nothing matches the filter" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="Clear the filter box to see them all." />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsEmptyUnfiltered}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="290" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Identities}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
             <TextBlock Text="No accounts yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsMine}" />
             <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding IsMine}"

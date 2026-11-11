@@ -10,6 +10,10 @@ namespace Neuro.AA.App.Controls;
 /// <summary>A point on the map, placed by the layout.</summary>
 public sealed record MapNode(string Id, string Label, string Sub, TopologyNodeKind Kind, double X, double Y, string Tone)
 {
+	/// <summary>How big the layout took the card to be. The card is drawn that size, so rows and columns line up. 0 to measure the text.</summary>
+	public double Width { get; init; }
+	public double Height { get; init; }
+
 	/// <summary>Load figures shown under the name: CPU, free memory, free disk.</summary>
 	public IReadOnlyList<MapLoad> Load { get; init; } = [];
 }
@@ -57,7 +61,7 @@ public sealed class TopologyMap : Control
 	/// <summary>About how big a card is drawn, for the layout to keep cards apart before they are measured.</summary>
 	public static (double W, double H) EstimateSize(string label, string sub, TopologyNodeKind kind, bool hasLoad = false)
 	{
-		double text = Math.Max(label.Length * (kind == TopologyNodeKind.Contact ? 6.6 : 7.6), sub.Length * 6.3);
+		double text = Math.Max(label.Length * (kind == TopologyNodeKind.Contact ? 6.9 : 8), sub.Length * 6.5);
 		double w = Math.Clamp(text + 34, MinCardWidth, MaxCardWidth);
 		double h = kind == TopologyNodeKind.Contact ? ContactHeight : CardHeight;
 		return hasLoad ? (Math.Max(w, LoadCardWidth), h + LoadHeight) : (w, h);
@@ -199,6 +203,9 @@ public sealed class TopologyMap : Control
 				w = Math.Max(w, LoadCardWidth);
 				h += LoadHeight;
 			}
+			if (n.Width > 0 && n.Height > 0)
+				(w, h) = (n.Width, n.Height);
+
 			this.cards[n.Id] = (new Rect(n.X - w / 2, n.Y - h / 2, w, h), title, sub);
 		}
 	}
@@ -266,66 +273,139 @@ public sealed class TopologyMap : Control
 		{
 			Typeface labelFace = this.Face(FontWeight.Normal);
 
-			// Two points can be linked in more than one way (a parent that is also federated):
-			// draw those links side by side.
+			// Two points can be linked in more than one way. A parent that is also federated is
+			// one line, in the federation colour. Anything else that doubles is drawn side by side.
+			static (string, string) Pair(MapEdge e) => string.CompareOrdinal(e.From, e.To) < 0 ? (e.From, e.To) : (e.To, e.From);
+			HashSet<(string, string)> parentPairs = [.. g.Edges.Where(e => e.Kind == TopologyLink.Parent).Select(Pair)];
+			HashSet<(string, string)> federatedPairs = [.. g.Edges.Where(e => e.Kind == TopologyLink.Federation).Select(Pair)];
+			List<MapEdge> drawn = [.. g.Edges.Where(e => e.Kind != TopologyLink.Federation || !parentPairs.Contains(Pair(e)))];
+
 			Dictionary<(string, string), int> pairCount = [];
-			foreach (MapEdge e in g.Edges)
-			{
-				(string, string) k = string.CompareOrdinal(e.From, e.To) < 0 ? (e.From, e.To) : (e.To, e.From);
-				pairCount[k] = pairCount.GetValueOrDefault(k) + 1;
-			}
+			foreach (MapEdge e in drawn)
+				pairCount[Pair(e)] = pairCount.GetValueOrDefault(Pair(e)) + 1;
 			Dictionary<(string, string), int> pairIndex = [];
 
-			// Links under the cards.
-			foreach (MapEdge e in g.Edges)
+			// Which cards hang in a column under their parent: their line comes down beside them.
+			Dictionary<string, string> parentOf = [];
+			foreach (MapEdge e in g.Edges.Where(e => e.Kind == TopologyLink.Parent))
+				parentOf.TryAdd(e.From, e.To);
+			bool Hangs(string id, Rect box)
+			{
+				if (!parentOf.TryGetValue(id, out string? parent))
+					return false;
+
+				foreach ((string other, string otherParent) in parentOf)
+				{
+					if (other != id && otherParent == parent && this.cards.TryGetValue(other, out var o) &&
+						Math.Abs(o.Box.Left - box.Left) < 1 && Math.Abs(o.Box.Center.Y - box.Center.Y) > 1)
+						return true;
+				}
+
+				return false;
+			}
+
+			// Links under the cards. The ones of what is selected last, so they lie on top.
+			foreach (MapEdge e in drawn.OrderBy(e => selected is not null && (e.From == selected || e.To == selected) ? 1 : 0))
 			{
 				if (!this.cards.TryGetValue(e.From, out var a) || !this.cards.TryGetValue(e.To, out var b))
 					continue;
 
-				(string, string) pair = string.CompareOrdinal(e.From, e.To) < 0 ? (e.From, e.To) : (e.To, e.From);
+				(string, string) pair = Pair(e);
 				int index = pairIndex.GetValueOrDefault(pair);
 				pairIndex[pair] = index + 1;
-				Vector shift = default;
-				if (pairCount[pair] > 1)
-				{
-					Point ca = a.Box.Center, cb = b.Box.Center;
-					double ax = cb.X - ca.X, ay = cb.Y - ca.Y;
-					double len = Math.Sqrt(ax * ax + ay * ay);
-					if (len > 0.001)
-					{
-						// The same side whichever way the link points.
-						double sign = string.CompareOrdinal(e.From, e.To) < 0 ? 1 : -1;
-						Vector normal = new(-ay / len * sign, ax / len * sign);
-						shift = normal * ((index - (pairCount[pair] - 1) / 2.0) * 7);
-					}
-				}
 
 				bool dim = filtering && !(matching.Contains(e.From) && matching.Contains(e.To));
 				bool lit = selected is not null && (e.From == selected || e.To == selected);
-				IBrush stroke = e.Kind switch
-				{
-					TopologyLink.Federation => lit ? accent : Fade(accent, 0.55),
-					TopologyLink.Group => lit ? ink2 : Fade(ink3, 0.7),
-					_ => lit ? ink2 : lineStrong,
-				};
+				bool federated = e.Kind == TopologyLink.Federation || (e.Kind == TopologyLink.Parent && federatedPairs.Contains(pair));
+				IBrush stroke = federated ? (lit ? accent : Fade(accent, 0.6))
+					: e.Kind == TopologyLink.Group ? (lit ? ink2 : Fade(ink3, 0.7))
+					: lit ? ink2 : lineStrong;
 				if (dim)
 					stroke = Fade(stroke, 0.25);
 
-				Pen pen = new(stroke, (lit ? 2 : 1.4) / Math.Max(this.zoom, 0.6),
-					e.Kind == TopologyLink.Group ? new DashStyle([3, 3], 0) : e.Kind == TopologyLink.Parent ? null : new DashStyle([7, 4], 0));
+				double thickness = (lit ? 2 : 1.4) / Math.Max(this.zoom, 0.6);
+				Pen pen = new(stroke, thickness,
+					e.Kind == TopologyLink.Group ? new DashStyle([3, 3], 0) : e.Kind == TopologyLink.Parent ? null : new DashStyle([7, 4], 0))
+				{
+					LineJoin = PenLineJoin.Round,
+				};
 
-				Point p1 = Edge(a.Box, b.Box.Center) + shift, p2 = Edge(b.Box, a.Box.Center) + shift;
-				context.DrawLine(pen, p1, p2);
+				Point labelAt;
+				if (e.Kind == TopologyLink.Parent && b.Box.Bottom + 16 <= a.Box.Top)
+				{
+					// A tree: down from the parent, along under it, and into the child from above.
+					// A child that hangs in a column is entered from its left side.
+					Point into = new(b.Box.Center.X, b.Box.Bottom);
+					double bar = b.Box.Bottom + Engine.Topology.TopologyLayout.RowGap / 2;
+					List<Point> route = [];
+					if (Hangs(e.From, a.Box))
+					{
+						double down = a.Box.Left - Engine.Topology.TopologyLayout.HangIndent / 2;
+						route.Add(new Point(a.Box.Left, a.Box.Center.Y));
+						route.Add(new Point(down, a.Box.Center.Y));
+						route.Add(new Point(down, bar));
+						labelAt = new Point(down, (a.Box.Center.Y + bar) / 2);
+					}
+					else
+					{
+						route.Add(new Point(a.Box.Center.X, a.Box.Top));
+						route.Add(new Point(a.Box.Center.X, bar));
+						labelAt = new Point(a.Box.Center.X, (a.Box.Top + bar) / 2);
+					}
 
-				// Parent links point at the parent; federation links have no direction.
-				if (e.Kind != TopologyLink.Federation)
-					Arrow(context, new Pen(stroke, pen.Thickness), p1, p2);
+					route.Add(new Point(into.X, bar));
+					route.Add(into);
+					context.DrawGeometry(null, pen, Rounded(route, 6));
+					Arrow(context, new Pen(stroke, thickness), new Point(into.X, bar), into);
+				}
+				else if (e.Kind != TopologyLink.Parent && Math.Abs(a.Box.Center.Y - b.Box.Center.Y) < 8 && Math.Abs(a.Box.Center.X - b.Box.Center.X) > (a.Box.Width + b.Box.Width) / 2 + 60)
+				{
+					// Two in the same row with others between them: under the row, not through it.
+					var (left, right) = a.Box.Center.X < b.Box.Center.X ? (a.Box, b.Box) : (b.Box, a.Box);
+					Point p1 = new(left.Center.X + left.Width / 4, left.Bottom), p2 = new(right.Center.X - right.Width / 4, right.Bottom);
+					double dip = Math.Max(left.Bottom, right.Bottom) + 22 + index * 7;
+					StreamGeometry arc = new();
+					using (StreamGeometryContext c = arc.Open())
+					{
+						c.BeginFigure(p1, false);
+						c.CubicBezierTo(new Point(p1.X, dip), new Point(p2.X, dip), p2);
+						c.EndFigure(false);
+					}
+
+					context.DrawGeometry(null, pen, arc);
+					labelAt = new Point((p1.X + p2.X) / 2, dip - 6);
+				}
+				else
+				{
+					Vector shift = default;
+					if (pairCount[pair] > 1)
+					{
+						Point ca = a.Box.Center, cb = b.Box.Center;
+						double ax = cb.X - ca.X, ay = cb.Y - ca.Y;
+						double len = Math.Sqrt(ax * ax + ay * ay);
+						if (len > 0.001)
+						{
+							// The same side whichever way the link points.
+							double sign = string.CompareOrdinal(e.From, e.To) < 0 ? 1 : -1;
+							Vector normal = new(-ay / len * sign, ax / len * sign);
+							shift = normal * ((index - (pairCount[pair] - 1) / 2.0) * 7);
+						}
+					}
+
+					Point p1 = Edge(a.Box, b.Box.Center) + shift, p2 = Edge(b.Box, a.Box.Center) + shift;
+					context.DrawLine(pen, p1, p2);
+
+					// Parent links point at the parent; the others have no direction.
+					if (e.Kind == TopologyLink.Parent)
+						Arrow(context, new Pen(stroke, thickness), p1, p2);
+
+					labelAt = new Point((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2);
+				}
 
 				if (e.Label is string label && this.zoom >= 0.55)
 				{
 					FormattedText t = new(label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, labelFace, 10.5, dim ? Fade(ink2, 0.4) : ink2);
-					Point mid = new((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2);
-					Rect chip = new(mid.X - t.Width / 2 - 5, mid.Y - t.Height / 2 - 1, t.Width + 10, t.Height + 2);
+					Rect chip = new(labelAt.X - t.Width / 2 - 5, labelAt.Y - t.Height / 2 - 1, t.Width + 10, t.Height + 2);
 					context.DrawRectangle(ground, new Pen(line, 1), chip, 4, 4);
 					context.DrawText(t, new Point(chip.X + 5, chip.Y + 1));
 				}
@@ -420,6 +500,32 @@ public sealed class TopologyMap : Control
 		"bad" => "State.Bad",
 		_ => "State.Idle",
 	};
+
+	/// <summary>A line through the points, with its corners rounded.</summary>
+	private static StreamGeometry Rounded(IReadOnlyList<Point> points, double radius)
+	{
+		StreamGeometry path = new();
+		using StreamGeometryContext c = path.Open();
+		c.BeginFigure(points[0], false);
+		for (int i = 1; i < points.Count - 1; i++)
+		{
+			Point before = points[i - 1], corner = points[i], after = points[i + 1];
+			Vector toBefore = before - corner, toAfter = after - corner;
+			double r = Math.Min(radius, Math.Min(toBefore.Length, toAfter.Length) / 2);
+			if (r < 0.5)
+			{
+				c.LineTo(corner);
+				continue;
+			}
+
+			c.LineTo(corner + toBefore / toBefore.Length * r);
+			c.QuadraticBezierTo(corner, corner + toAfter / toAfter.Length * r);
+		}
+
+		c.LineTo(points[^1]);
+		c.EndFigure(false);
+		return path;
+	}
 
 	/// <summary>Where the line from a card's center towards a point leaves the card.</summary>
 	private static Point Edge(Rect box, Point towards)

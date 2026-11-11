@@ -38,6 +38,22 @@ public static class Ui
 			Said?.Invoke(note);
 	}
 
+	/// <summary>Raised with a note and the way to take back what it says. May come from any thread.</summary>
+	public static event Action<string, Action>? Offered;
+
+	/// <summary>
+	/// Says what just happened and offers to take it back: the note shows with an Undo button
+	/// for a few seconds. For things done with one click that are easy to do by mistake.
+	/// </summary>
+	public static void Say(string note, Action undo)
+	{
+		if (string.IsNullOrWhiteSpace(note))
+			return;
+
+		Said?.Invoke(note);
+		Offered?.Invoke(note, undo);
+	}
+
 	/// <summary>Copies text and confirms it. <paramref name="what"/> finishes the sentence "Copied …".</summary>
 	public static async Task Copy(string? text, string what)
 	{

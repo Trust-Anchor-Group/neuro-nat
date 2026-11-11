@@ -119,6 +119,73 @@ public class TopologyRenderTests
 		window.Close();
 	}
 
+	[AvaloniaTheory]
+	[InlineData("Light")]
+	[InlineData("Dark")]
+	public async Task ABrokerWithManyNeuronsHangsThemInColumns(string theme)
+	{
+		Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+
+		EngineRuntime.Initialize();
+		string store = Path.Combine(Path.GetTempPath(), "NeuroAA.Render." + Guid.NewGuid().ToString("N"), "accounts.json");
+		AccountManager manager = new(new JsonAccountStore(store), new InMemoryCredentialVault());
+		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.tagroot.io", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		MonitorService monitors = new(manager, new EventHub());
+		FleetService fleet = new(monitors);
+		DateTime now = DateTime.Now;
+
+		// Synthetic sample data: one broker with a regional Neuron and eleven sites under it.
+		List<TopologyService.NeuronAnswer> answers = [];
+		void Neuron(string jid, string name, string parent, params string[] federated)
+		{
+			WatchedNeuron n = new() { AccountId = ops.Profile.Id, BareJid = jid, Name = name, State = WatchState.Live };
+			monitors.For(ops.Profile.Id)!.Preview(n);
+			fleet.Preview(new NeuronHealth
+			{
+				AccountId = ops.Profile.Id,
+				NeuronJid = jid,
+				Software = "Waher.IoTGateway 3.11.1.0",
+				Cpu = new SampleSeries(14, [12, 14], "%"),
+				FreeMemory = new SampleSeries(5210, [5210], "MB"),
+				FreeDisk = new SampleSeries(182, [182], "GB"),
+				ReadAt = now,
+			});
+			answers.Add(new(n, jid, DotGraph.Edges($"\"{parent}\" -> \"{jid}\" [dir=back];"),
+				DotGraph.Edges(string.Concat(federated.Select(f => $"\"{jid}\" -> \"{f}\";"))), [], null));
+		}
+
+		Neuron("north.lab.tagroot.io", "North region", "lab.tagroot.io", "lab.tagroot.io", "partner.org");
+		Neuron("kiruna.north.lab.tagroot.io", "Kiruna", "north.lab.tagroot.io", "north.lab.tagroot.io");
+		Neuron("umea.north.lab.tagroot.io", "Umeå", "north.lab.tagroot.io");
+		for (int i = 1; i <= 11; i++)
+			Neuron($"site{i:00}.lab.tagroot.io", $"Site {i:00}", "lab.tagroot.io", i % 3 == 0 ? ["lab.tagroot.io"] : []);
+
+		MainWindowViewModel vm = new(manager, fleet);
+		await vm.StartAsync();
+		vm.Workspace = WorkspaceKind.Topology;
+		vm.Topology.Load(TopologyService.Merge(answers, now.AddMinutes(-2)), includesGroups: false);
+		vm.Topology.ShowOtherServers = true;
+
+		MainWindow window = new() { DataContext = vm, Width = 1440, Height = 900 };
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		await Task.Delay(300);
+		Capture(window, $"topology-many-{theme.ToLowerInvariant()}-1440");
+
+		// The broker on top, the region with its own two beside the sites, the sites in columns.
+		IReadOnlyList<Controls.MapNode> nodes = vm.Topology.Graph.Nodes;
+		Controls.MapNode broker = nodes.Single(n => n.Id == "lab.tagroot.io");
+		Controls.MapNode north = nodes.Single(n => n.Id == "north.lab.tagroot.io");
+		List<Controls.MapNode> sites = [.. nodes.Where(n => n.Id.StartsWith("site", StringComparison.Ordinal))];
+		Assert.Equal(11, sites.Count);
+		Assert.All(sites, s => Assert.True(s.Y > broker.Y));
+		Assert.True(north.Y > broker.Y);
+		Assert.True(nodes.Single(n => n.Id == "kiruna.north.lab.tagroot.io").Y > north.Y);
+		Assert.True(sites.Select(s => s.X).Distinct().Count() is >= 2 and <= 6);
+		Assert.True(sites.Select(s => s.Y).Distinct().Count() >= 2);
+		window.Close();
+	}
+
 	private static void Capture(MainWindow window, string name)
 	{
 		Dispatcher.UIThread.RunJobs();

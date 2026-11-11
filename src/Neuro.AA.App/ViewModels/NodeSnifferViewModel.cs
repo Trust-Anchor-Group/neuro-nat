@@ -44,7 +44,7 @@ public sealed partial class NodeSnifferViewModel : ObservableObject, IAsyncDispo
 		this.StateText = this.Sniffer.State switch
 		{
 			NodeSnifferState.Starting => "Starting…",
-			NodeSnifferState.Live => "Live on " + this.NeuronLabel,
+			NodeSnifferState.Live => "Listening on " + this.NeuronLabel,
 			NodeSnifferState.Stopped => "Stopped",
 			_ => this.Sniffer.Error ?? "Failed",
 		};

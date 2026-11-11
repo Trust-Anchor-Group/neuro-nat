@@ -1,13 +1,15 @@
 ---
 name: Neuro.AA
-description: A calm, dense operator console for running many Neurons at once, in designed light and dark.
+description: A calm, dense desktop app for running many Neurons at once, in designed light and dark, at any window size.
 colors:
   accent: "#3358D4"
   accent-hover: "#2A4BBE"
+  accent-pressed: "#223FA3"
   accent-subtle: "#EAEFFC"
   accent-ink: "#2440A8"
   accent-dark: "#7B9BFF"
   accent-hover-dark: "#94AEFF"
+  accent-pressed-dark: "#6A8BF0"
   accent-subtle-dark: "#1C2541"
   accent-ink-dark: "#B4C6FF"
   surface-ground: "#F5F6F8"
@@ -16,12 +18,16 @@ colors:
   surface-pressed: "#E7EAEE"
   surface-rail: "#ECEEF2"
   surface-code: "#FAFBFC"
+  surface-raised: "#FFFFFF"
+  surface-header: "#F7F8FA"
   surface-ground-dark: "#101215"
   surface-panel-dark: "#16191D"
   surface-hover-dark: "#1D2126"
   surface-pressed-dark: "#242930"
   surface-rail-dark: "#0C0E11"
   surface-code-dark: "#121519"
+  surface-raised-dark: "#1C2026"
+  surface-header-dark: "#13161A"
   line: "#E2E5EA"
   line-strong: "#CDD2D9"
   line-dark: "#252A31"
@@ -38,11 +44,15 @@ colors:
   state-busy: "#B26B00"
   state-bad: "#C8312B"
   state-bad-subtle: "#FCEBEA"
+  state-ok-subtle: "#E6F4EC"
+  state-busy-subtle: "#FBF1DF"
   state-idle: "#8A929E"
   state-ok-dark: "#45C27D"
   state-busy-dark: "#E5A63F"
   state-bad-dark: "#F26D64"
   state-bad-subtle-dark: "#2E1A1A"
+  state-ok-subtle-dark: "#142A1E"
+  state-busy-subtle-dark: "#2E2412"
   state-idle-dark: "#6E7682"
   severity-debug: "#8A929E"
   severity-informational: "#545D6B"
@@ -82,6 +92,10 @@ typography:
     fontSize: "18px"
     fontWeight: 600
     letterSpacing: "-0.2px"
+  number:
+    fontFamily: "Inter, sans-serif"
+    fontSize: "20px"
+    fontWeight: 600
   section:
     fontFamily: "Inter, sans-serif"
     fontSize: "15px"
@@ -119,7 +133,9 @@ typography:
     fontSize: "11px"
     fontWeight: 700
 rounded:
+  small: "4px"
   base: "6px"
+  float: "8px"
   pill: "999px"
 spacing:
   hair: "2px"
@@ -232,165 +248,205 @@ components:
 
 # Design System: Neuro.AA
 
+This file records the app as it is built. The XAML is the source of truth: colours, type and shapes are resources in `src/Neuro.AA.App/Themes/Tokens.axaml`, the restyled controls are in `Themes/Controls.axaml`, motion is in `Themes/Motion.axaml`, and the shared behaviour (right-click menus, the selection bar, panes, the note at the bottom) is in `Controls/` and `ViewModels/Ui.cs`. When this file and the XAML disagree, the XAML is right and this file needs an edit.
+
 ## Overview
 
-**Creative North Star: "The Quiet Console"**
+**North star: "The Quiet Console".** Neuro.AA is a native Avalonia 12 desktop app for Windows, macOS and Linux. It replaces IoTClient and Lil'Sis for the people who run Neurons. The look is the calm, dense layout operators already know, built with care: hierarchy from type weight, spacing and 1 px lines, and colour only where it means something. The app stays open for hours, so its resting state is quiet.
 
-Neuro.AA is a native Avalonia 12 desktop app for Windows, macOS and Linux, not a website. Its design system lives in XAML, not CSS: colour, type and shape tokens are resources in `src/Neuro.AA.App/Themes/Tokens.axaml`, and the restyled controls are in `src/Neuro.AA.App/Themes/Controls.axaml`, layered over Avalonia's FluentTheme, whose accent palette is pinned to the same cobalt. Views reference token keys only (`{DynamicResource Ink.Primary}`, `{StaticResource Radius}`), never raw colours. Every later workspace (Events, Fleet, Sources, Chat, Console, Topology, Identities) reuses these tokens and control styles and sits inside the shell recorded here. Hex values and px sizes in this file mirror the XAML. The XAML resource is the source of truth and this file records it.
+**What it is like to use:**
+- Five places in the rail, in the order of a working day: Inbox, Neurons, Events, Chat, Console. Accounts and Settings sit at the bottom.
+- One Neuron can be picked at the top, and every screen then shows only that Neuron. A Neuron also has a page of its own with tabs.
+- Everything that can be done to a row is on its right-click menu, with its shortcut beside it. Several rows can be selected and acted on at once.
+- Nothing blocks. There are no dialog windows. Questions are asked in place, and what was just done can be taken back.
+- It works in a window 760 px wide, on a laptop, and on a very wide monitor. Text size can be changed and the whole window follows.
 
-The world is the category-standard operator console, chosen deliberately: the calm, dense layout the audience already knows, built to the standard of the category's best tools. Hierarchy comes from type weight, spacing and 1 px hairlines. Colour carries meaning only: connection state, selection and primary action, and which account something belongs to. Light mode is a cool near-white ground with white panels. Dark mode is graphite with panels one step lighter. Both are designed palettes; neither is an inversion of the other. The theme follows the OS by default (`RequestedThemeVariant="Default"`) and a rail button toggles it.
+**Key characteristics:**
+- Flat surfaces with 1 px lines. One shadow, only under things that float over the window.
+- One cobalt accent for selection, the main action and keyboard focus.
+- Eight account hues that only say which account something belongs to.
+- Inter for everything a person reads. A monospace font for what a machine produced.
+- Line icons on a 24-unit grid that take the colour of the text beside them.
+- Light and dark are both designed. Neither is the other one inverted.
 
-Density is high but never cramped. Body text is 13 px, controls are 30 to 32 px tall, list rows are tight, and the sniffer stream is a full-height monospace log. Operators keep this tool open for hours, so the resting state is quiet. The dashboard-of-cards layout and the neon-on-black "ops" costume are both rejected.
+## Words
 
-**Key Characteristics:**
-- Flat, hairline-structured surfaces; no shadows anywhere.
-- One cobalt accent, reserved for selection, primary action and keyboard focus.
-- Eight account hues, used only to say which account something belongs to.
-- Inter for all UI text; a system monospace only for JIDs, XML, endpoints and timestamps.
-- One corner radius (6 px) on every rectangle; pills only for lens chips and status dots.
-- Line icons drawn on a 24-unit grid with round caps, taking the surrounding text colour.
-- Designed light and dark palettes, switched per theme through Avalonia ThemeDictionaries.
+The app uses the words its users use. These replaced older ones, and the old ones must not come back in anything a person reads (class and property names in code may keep them).
+
+| Say | Not |
+|---|---|
+| Inbox | Attention |
+| Neurons | Fleet |
+| Map | Topology |
+| Problems | Issues |
+| Mark fixed, Fixed | Resolve, Resolved |
+| Listening | Live |
+| No access | Not admin |
+| Waiting for you | Needs you |
+| N reporting | N live |
+| Earlier events | Past events, history |
+| Traffic | Sniffer |
+| Software | Updates |
+| Storage | Publish/subscribe, as the name of the tab |
+
+Rules for new words: say what the thing does for the person, in a full short phrase. A button says what happens ("Mark fixed", "Put the layout back"). A count says what it counts ("3 problems", "4 of 5 Neurons reporting"). An empty screen says what is missing and how to get it. An error says what went wrong and, beside it, what fixes it. `FinishTests.EveryScreenUsesThePlansWordsAtEverySize` fails when an old word shows on a screen.
 
 ## Colors
 
-The palette is cool neutrals plus one cobalt accent, with a separate state set, severity ramp and account-hue set, each with a single job. Every token has a light value and a `-dark` value. They are listed together below; use the one for the active theme variant.
+Cool neutrals, one cobalt accent, a state set, a severity ramp and the account hues. Each set has one job. Every token has a light and a dark value (frontmatter); views use the token, never a hex.
 
-### Primary
-- **Signal Cobalt** (`Accent`, light/dark in frontmatter): the selected list row (as `Accent.Subtle`), the current rail item, the checked toggle, primary buttons, text-selection highlight, the focused input border and the 2 px keyboard focus ring. `Accent.Hover` is the hover fill for primary buttons. `Accent.Ink` is cobalt text on an `Accent.Subtle` tint (current rail item, checked toggle).
+- **Accent** (`Accent`, `Accent.Hover`, `Accent.Pressed`, `Accent.Subtle`, `Accent.Ink`): the selected row and the checked choice (`Accent.Subtle` with `Accent.Ink`), the current rail item, primary buttons, text selection, the focused input's border and the 2 px focus ring. On the map it also marks links between federated servers.
+- **Account hues** (`Account.Hue0` to `Account.Hue7`): the small square with the account's initial, wherever an account is named. Chosen by the account's index through `AccountHueConverter`.
+- **State** (`State.Ok`, `State.Busy`, `State.Bad`, `State.Idle`, and `.Subtle` tints of the first three): status dots, counts that need attention, error text, the destructive button, and the tinted bands behind a failure, a warning or a success. `ToneBrushConverter` maps the tones `ok`, `busy`, `bad` and `idle` to them.
+- **Severity** (`Severity.Debug` to `Severity.Emergency`): the level tag on an event and on a problem. Warning and Error share the state colours on purpose.
+- **Surfaces** (`Surface.Ground`, `.Panel`, `.Rail`, `.Header`, `.Code`, `.Raised`, `.Hover`, `.Pressed`): the window, panels and inputs, the rail, table headers, streams of machine text, things that float, and the two interaction fills.
+- **Lines** (`Line`, `Line.Strong`): `Line` for panel borders, dividers and loading placeholders; `Line.Strong` for the borders of buttons and inputs and for scrollbars.
+- **Ink** (`Ink.Primary`, `.Secondary`, `.Tertiary`, `.OnAccent`): content, supporting text, and times and placeholders.
 
-### Secondary
-- **Account Hues** (`Account.Hue0` to `Account.Hue7`): blue, teal, violet, ochre, rose, green, sky, orange. An account's index picks its hue (wrapping modulo 8) through `AccountHueConverter`. The hue shows as the initial's text colour on a 16% tint of the same hue behind it (the converter's `subtle` parameter). This applies to list avatars (30 px), the detail header avatar (36 px) and the 20 px avatar inside each lens chip.
+**The One Accent Rule.** Cobalt means selected, primary or focused. It is never decoration.
 
-### Tertiary
-- **Connection State** (`State.Ok` green, `State.Busy` amber, `State.Bad` red, `State.Idle` grey): status dots, error text and the destructive button. `State.Bad.Subtle` is the pale red behind the failure banner, the danger-hover fill and the armed Remove button.
-- **Severity Ramp** (`Severity.Debug` through `Severity.Emergency`, eight steps): defined for the event workspaces from Phase 1. Nothing renders it yet. It runs from grey (debug) through ink, cobalt, amber and red into crimson, magenta and violet for the most severe levels. Notice shares the accent hex, and Warning and Error share the state hexes on purpose.
+**The Hue Belongs To The Account Rule.** Account hues never mark state or severity. State is always also said in words.
 
-### Neutral
-- **Ground** (`Surface.Ground`): the window background and the lens chip fill.
-- **Panel** (`Surface.Panel`): the top bar, the detail header, bordered panels, buttons and inputs.
-- **Rail** (`Surface.Rail`): the workspace rail. A step darker than ground in light mode and the darkest surface in dark mode.
-- **Code** (`Surface.Code`): the inside of the sniffer stream panel.
-- **Hover / Pressed** (`Surface.Hover`, `Surface.Pressed`): interaction fills for rows, buttons and rail items. `Surface.Pressed` is also the disabled primary fill.
-- **Hairline / Strong Hairline** (`Line`, `Line.Strong`): `Line` for panel borders and dividers; `Line.Strong` for button and input borders and the scrollbar thumb.
-- **Ink** (`Ink.Primary`, `Ink.Secondary`, `Ink.Tertiary`, `Ink.OnAccent`): primary for content, secondary for meta, labels and ghost buttons, tertiary for timestamps, endpoints, placeholders and disabled text. `Ink.OnAccent` is the text on primary buttons and selections; it is dark in dark mode because the dark accent is light.
-
-### Named Rules
-**The One Accent Rule.** Cobalt means "selected, primary or focused" and nothing else. Never use it for decoration, headings or links that are not the primary action.
-
-**The Hue Belongs To The Account Rule.** Account hues appear only on account avatars and lens chips. They never mark state, severity or workspace identity. State is said by the state set and by words, never by hue alone.
-
-**The Token-Only Rule.** Views reference token keys through `DynamicResource` (colours, so theme switches apply live) or `StaticResource` (type sizes, radius, fonts, icons). No hex appears in a view.
+**The Token-Only Rule.** `DynamicResource` for brushes, so the look changes live. `StaticResource` for sizes, radii, fonts and icons. No hex in a view.
 
 ## Typography
 
-**UI Font:** Inter (bundled through `Avalonia.Fonts.Inter`, so every OS renders the same face)
-**Mono Font:** Cascadia Mono, then Consolas, SF Mono, Menlo, JetBrains Mono, DejaVu Sans Mono, monospace (`Font.Mono`)
+**UI font:** Inter, bundled, so every system draws the same face. **Mono font:** Cascadia Mono, then Consolas, SF Mono, Menlo, JetBrains Mono, DejaVu Sans Mono.
 
-**Character:** Inter handles everything a person reads as interface. The platform monospace handles everything a machine produced: JIDs in the endpoint line, XML stanzas, timestamps and direction tags. Monospace timestamps align by construction. The contract's tabular-numerals feature is not applied anywhere yet.
+- **Title** (600, 18 px; class `title`): the name of the place in the top bar.
+- **Number** (600, 20 px; `Type.Number`): the large figure on a Neuron's overview cards.
+- **Section** (600, 15 px; class `section`): the heading of a list, a card or a pane.
+- **Body** (400, 13 px): the window default. Row names are body at 600, button text at 500.
+- **Meta** (400, 12 px; class `meta`): status lines, hints, supporting text, in `Ink.Secondary`.
+- **Label** (500, 12 px; class `label`): the label over a field.
+- **Caption** (500 to 600, 11 px; class `caption`): rail labels, table headers, small tags.
+- **Mono** (400, 12 px; class `mono`): addresses, XML, timestamps, commands and their answers.
 
-### Hierarchy
-- **Title** (600, 18 px, -0.2 letter spacing; `Type.Title`, class `title`): the workspace title in the top bar and the first-run heading.
-- **Section** (600, 15 px; `Type.Section`, class `section`): list summary ("3 accounts · 0 online"), "Traffic", form headings, the account name in the detail header.
-- **Body** (400, 13 px; `Type.Body`): window default. Row names use body at 600; button text uses body at 500.
-- **Meta** (400, 12 px; `Type.Meta`, class `meta`): status lines, hints, explanatory notes, in `Ink.Secondary`.
-- **Label** (500, 12 px, class `label`): field labels above inputs, in `Ink.Secondary`, with 4 px space below.
-- **Caption** (500 to 600, 11 px; `Type.Caption`): rail labels and the sniffer direction tags (mono, 700).
-- **Mono** (400, 12 px, class `mono`): stanzas, endpoints, timestamps.
+**The Machine Text Is Mono Rule.** Text that came from a protocol is mono. Everything else is Inter.
 
-### Named Rules
-**The Machine Text Is Mono Rule.** If the text came from a protocol (JID, XML, host:port, timestamp), it is set in `Font.Mono`. Otherwise it is set in Inter. Never mix the two within a single phrase.
+**The Sizes Rule.** 11, 12, 13, 15, 18, and 20 for the one large figure. Hierarchy comes from weight and ink before a new size.
 
-**The Five Sizes Rule.** The ramp is 11 / 12 / 13 / 15 / 18. Hierarchy within it comes from weight (400, 500, 600) and ink step, not from new sizes.
+**Text size is the person's choice.** Settings offers Small, Normal, Large and Larger (90, 100, 115, 130 percent); Ctrl+plus, Ctrl+minus and Ctrl+0 change it from anywhere. The whole window scales through one `LayoutTransformControl` (`Zoom` in `MainWindow`), so nothing is cut off, and the width steps below count the scaled width. Never set a size that fights this (no fixed pixel windows inside the window).
 
 ## Layout
 
-The shell is a fixed grid: a full-height **rail** on the left, a 48 px **top bar** across the rest, and the **workspace** below it. The Accounts workspace is master and detail: a fixed-width **list column** separated by a hairline, beside a flexible **detail column** (header strip on a panel surface, an optional failure banner, a section header, then a full-height bordered stream panel).
+**The shell** (`Views/MainWindow.axaml`): the rail on the left; a 48 px top bar with back and forward, the name of the place, its tabs, the Neuron picker, a button for a new window, and the search box (Ctrl+K); the screen; and a status bar with how many Neurons are reporting, the last event, the accounts and your status. The note that confirms an action shows in the status bar.
 
-- **Rail:** 76 px wide, `Surface.Rail`, hairline on its right. 60 px items with icon over label, 2 px apart. The theme toggle is pinned to the bottom. Workspaces that have not shipped yet are visible but disabled, with a tooltip naming the phase they arrive in.
-- **Top bar:** `Surface.Panel` with a bottom hairline, 20 px left inset. Workspace title, then the account lens, which scrolls horizontally without a visible scrollbar. The contract's search/command field is deferred until there is something to search.
-- **List column:** 340 px, inset 12 px, header row 10 px above the list.
-- **Detail column:** 20 px gutters, 14 to 16 px between blocks.
-- **Spacing rhythm:** steps of 2 / 4 / 6 / 8 / 10 / 12 / 14 / 16 / 20 px (frontmatter `spacing`): 6 between icon and label, 8 between sibling controls, 10 within a form stack, 14 panel padding, 20 page gutter. Destructive actions sit 20 px away from their siblings.
+**The places:**
+- **Inbox**: everything that waits for you in one list (messages, requests, notifications from Neurons), with the thing open beside it so it can be answered there.
+- **Neurons**: List, Map and Wall. A Neuron opens as a page with Overview, Events, Sources, Console, Software and Identity.
+- **Events**: problems on the left (events grouped by what went wrong), all events on the right.
+- **Chat**: people and rooms, the conversation, and the person's details as a third column when there is room.
+- **Console**: tick one or several Neurons, run a command, read the answers side by side.
+- **Accounts**: each account with Connection (and its traffic), Devices, Identities and Storage.
+- **Settings**: your status, pop-ups and sounds, look, text size, the tray, and every keyboard shortcut.
 
-**Responsive behaviour** uses Avalonia `ContainerQuery` on the root grid (window minimum 720 x 480):
-- **≤ 1180 px:** list column 300 px.
-- **≤ 960 px:** rail collapses to 56 px with 44 px icon-only items; lens chips drop to avatar plus dot (a failed account still shows its short status in red); list column 260 px; the Add button loses its label; the endpoint is hidden.
-- **≤ 780 px:** all button labels hide except the armed Remove, which keeps its words so the confirmation stays readable. List column 220 px; the traffic hint is hidden; timestamps shorten to `HH:mm:ss`; the list summary switches to its short form ("0/3 online").
+**List and detail.** Most screens are a list pane beside what is open. The list pane has a width of its own per screen, the line between the panes can be dragged (`c:Pane.Key`; double-click puts it back) and the width is remembered. "Put the layout back" in Settings clears all of them.
 
-Icon-only states always keep a tooltip and an automation name.
+**Sizes.** `MainWindow.axaml.cs` puts a class on the root for each width step the window is at or below: `maxw1280`, `maxw1180`, `maxw1100`, `maxw1000`, `maxw960`, `maxw900`, `maxw860`, `maxw780`. From 1800 px it adds `wide`. Views style themselves with `.maxwN Selector`. (Container queries did the same but cost every list row a subscription and made scrolling slow. Do not bring them back.)
+- **Wide (1800 px and up):** list panes get some of the room, tables show every column, Chat keeps the person's details open as a third column.
+- **Normal (about 1440):** the reference size. Everything shows with its words.
+- **Narrow (1280 down to 960):** list panes get slimmer, secondary columns and long labels drop, filter boxes shrink.
+- **Small (860 and below, to the 720 px minimum):** the rail is icons only, the Neuron picker scrolls, tables keep the columns that answer "is it well", toolbars keep what is used most and leave the rest on the right-click menu.
 
-## Elevation & Depth
+**A width set in a view beats a style.** A local `Width="260"` on a control wins over any `.maxwN` style, and the control then overflows in a small window. Give such widths in a style, with the narrower steps after it. Things in a bar are either whole or not there; nothing is shown half cut. `FinishTests.TheBarOverTheEventsGivesWayInsteadOfBeingCutOff` checks this for the busiest bar.
 
-The system is flat. No element in the build has a shadow. Depth comes from tonal surface steps (rail, ground, panel, code) and 1 px hairlines (`Line` on structure, `Line.Strong` on interactive edges). State is shown with fills (`Surface.Hover`, `Surface.Pressed`, `Accent.Subtle`, `State.Bad.Subtle`), never with lift. The only overlay is the platform tooltip.
+**More than one window.** Ctrl+Shift+N opens the screen in front in a window of its own; a Neuron and a conversation have "Open in a new window" on their menus. Windows come back where they were, on a screen that still exists, showing what they showed. The app itself opens on the screen it was closed on.
 
-### Named Rules
-**The Hairline, Not Shadow Rule.** Separate regions with a 1 px `Line` border or a surface step. If something seems to need a shadow, it needs a surface step instead.
+**The Wall** (F11, `Views/WallView.axaml`): the Neurons as large tiles and the latest problems, with no controls, for a screen on the wall. It is drawn for 1280 px and scaled to the window, so it reads from across a room.
+
+**Spacing:** steps of 2, 4, 6, 8, 10, 12, 14, 16, 20 px. 6 between an icon and its label, 8 between sibling controls, 14 inside a panel, 20 at the edge of a screen. `compact` on the root (Settings, "Compact rows") makes list rows less tall.
+
+## Elevation and depth
+
+The window is flat: regions are separated by a surface step or a 1 px `Line`. One thing has a shadow: what floats over the window (class `float`: the search results and the pop-up cards; menus are styled the same way) uses `Surface.Raised`, a `Line.Strong` border, the 8 px `Radius.Float` and `Shadow.Float`. The selection bar is an `Accent.Subtle` band inside its list, and the note is a dark pill in the status bar; neither has a shadow. State is shown with fills (`Surface.Hover`, `Surface.Pressed`, `Accent.Subtle`, the state tints), never with lift.
+
+**The Line, Not Shadow Rule.** If something in the window seems to need a shadow, it needs a surface step. Shadows are for what floats.
 
 ## Shapes
 
-Every rectangle (button, input, panel, list row, avatar, failure banner, focus ring) uses one gently rounded corner (`Radius`, 6 px). The fully rounded pill (`Radius.Pill`) is used only for account lens chips, and status dots are circles: 8 px, or 10 px with a 2 px `Surface.Panel` ring when overlaid on an avatar's bottom-right corner. Icons are strokes with round caps and joins, drawn on a 24-unit grid and scaled to 15 px in buttons, 16 px inline, 20 px in the rail and 24 px in empty states. Borders are always 1 px, except the 2 px focus ring.
+`Radius` 6 px on buttons, inputs, panels, rows and avatars. `Radius.Small` 4 px on small tags and key caps. `Radius.Float` 8 px on what floats and on Settings cards. `Radius.Pill` on the Neuron picker's chips and on counts. Status dots are circles. Borders are 1 px; the focus ring is 2 px.
 
 ## Components
 
+Classes are in `Themes/Controls.axaml`. Use them before writing a local style.
+
 ### Buttons
-Restrained and legible. Every button is a 6 px rectangle, 30 px minimum height, 13 px Medium text. An optional 15 px line icon sits 6 px before the label.
-- **Default (secondary):** panel fill, `Line.Strong` border, primary ink. Hover `Surface.Hover`, pressed `Surface.Pressed`, disabled tertiary ink on a `Line` border.
-- **Primary:** cobalt fill and border, `Ink.OnAccent` text. Hover `Accent.Hover`. Disabled falls back to `Surface.Pressed`. Use at most one per region: Add account, Connect, Add and connect, Save and connect.
-- **Ghost:** transparent with no border, secondary ink, 8 px horizontal padding. Hover gets the hover fill and primary ink. Used for Cancel and for in-panel tools (Pause, Clear).
-- **Danger:** red text (ghost-styled in the header), red-tint fill on hover, set 20 px apart from the other actions. **Armed** (after the first click): red-tint fill, red border, and text that asks for confirmation. Destruction always takes two clicks.
-- **Toggle checked:** `Accent.Subtle` fill, cobalt border, `Accent.Ink` text (ghost toggles drop the border).
-- **Focus:** a 2 px cobalt ring, 6 px radius, offset 2 px outside the control, on every focusable control.
+30 px tall, 6 px corners, 13 px medium text, an optional 15 px icon 6 px before the label.
+- **Default:** panel fill, `Line.Strong` border.
+- **`primary`:** cobalt. At most one per region.
+- **`ghost`:** no border; for tools in a bar. **`small`** for buttons inside rows. **`link`** looks like text until the pointer is on it, and opens what it names.
+- **`danger`:** red text, set apart from its siblings. Anything that restarts, stops, deletes or upgrades asks once more in place, and says which Neuron it will hit.
+- **`tab`** (the tabs of a place), **`seg`** with `first` and `last` (a choice of a few in a row), **`chip`** (the Neuron picker), **`choice`** (a large choice with an icon in Settings).
+- Hover, pressed, disabled and keyboard-focus states exist for every one of them. Focus is a 2 px cobalt ring; inputs show it on their own border.
 
-### Chips (account lens)
-- **Style:** pill, `Surface.Ground` fill, 1 px `Line` border, padding 4 px on three sides and 10 px on the right. Contents are a 20 px hue avatar with a ringed status dot, the account label (12 px Medium) and, only when failed, a short status in `State.Bad`.
-- **State:** the tooltip gives the label and full status. Below 960 px the chip collapses to the avatar alone. Click-to-scope filtering is the planned signature behaviour from Phase 1 and is not built yet.
-
-### Cards / Containers
-- **Corner Style:** 6 px.
-- **Background:** `Surface.Panel`, or `Surface.Code` for streams.
-- **Shadow Strategy:** none (see Elevation & Depth).
-- **Border:** 1 px `Line`.
-- **Internal Padding:** 14 px for forms; streams run edge to edge with 6 px vertical inset.
-
-### Inputs / Fields
-- **Style:** panel fill, 1 px `Line.Strong` border, 6 px radius, 32 px minimum height, padding 6 px vertical by 10 px horizontal, 13 px text. Placeholder in tertiary ink. Label above in the `label` style.
-- **Hover / Focus:** hover darkens the border to `Ink.Tertiary`. Focus turns the border cobalt; inputs show focus through their own border and suppress the outer ring. Text selection is cobalt with `Ink.OnAccent`.
-- **Error:** form errors are 12 px `State.Bad` text, wrapped, directly above the form's actions.
+### Fields
+32 px tall, `Line.Strong` border that turns cobalt with focus, placeholder in `Ink.Tertiary`, label above in `label`. **`find`** is a filter box: every list has one, and Ctrl+F puts the keyboard in the one on the screen in front. A list never shows without a way to narrow it.
 
 ### Lists
-- **Rows (`rows`):** 6 px radius, padding 8 px vertical by 10 px horizontal, 1 px vertical gap. Hover `Surface.Hover`; selected `Accent.Subtle` (no border, no accent bar). Account rows show a hue avatar with a ringed status dot, the name at 13 px SemiBold and the status line in meta.
-- **Stream (`stream`):** for high-volume logs. Virtualised, padding 3 px vertical by 14 px horizontal, no minimum height. Columns are a mono tertiary timestamp, a 36 px mono direction tag and wrapped selectable mono text. Tags are TX, RX, INF, WRN, ERR, EXC: RX in primary ink, WRN in `State.Busy`, ERR/EXC in `State.Bad`, INF in secondary ink (TX: see Do's and Don'ts).
+- **`rows`:** 6 px corners, hover and selected fills, no accent bar. A row shows who or what, one line of state, and at most one or two buttons for what is done most.
+- **`stream`:** virtualised rows of machine text for events and traffic. Column names sit in a `thead` of `th` texts that share the rows' widths.
+- **Tables** (the Neurons list): click a column name to sort; the choice is remembered.
+- Lists stay fast with very many rows: rows are virtualised, and a row takes no subscription of its own to the window's size.
 
-### Navigation (rail)
-- **Style:** 60 px items, transparent, 20 px icon over an 11 px Medium label, secondary ink.
-- **States:** hover gets the hover fill and primary ink. The current item gets an `Accent.Subtle` fill with `Accent.Ink`. Disabled (future workspaces) uses tertiary ink at 0.7 opacity and keeps its tooltip.
-- **Narrow:** at 960 px and below, items are 44 px and icon-only.
+### Right-click menus and the selection bar
+Every list implements `IActionSource.ActionsFor(items)` and returns an `ActionList` (`ViewModels/ItemActions.cs`): Open, Copy, Save, Filter, Go to, Do, and Window, in that order of groups. `c:ActionMenu` shows it on right-click with the shortcut beside each action. When several rows are selected, `c:ActionBar` rises at the bottom of the list with the count, the main actions, the rest under "More", and a way out (Escape). The same list of actions feeds the menu, the bar and the keyboard, so they cannot disagree. An action never depends on a selection the person cannot see.
 
-### Status and Failure
-- **Status dot:** an 8 px circle; idle grey, ok green, busy amber, bad red. Always paired with a status word nearby (meta text or tooltip).
-- **Failure banner:** `State.Bad.Subtle` fill, 6 px radius, padding 10 px vertical by 12 px horizontal. A 16 px red alert icon, the selectable error text, and the action that fixes it (such as "Enter password"). That action expands an inline field in place, with Cancel (ghost) and Save and connect (primary). Recovery happens where the error is shown, without a dialog.
-- **Empty state:** centred, max 360 to 440 px wide. A 24 px tertiary line icon, a SemiBold line saying what is missing, and one meta sentence saying how to get it, adapted to the current error.
+Copy is always there: Ctrl+C copies what is selected as text, Ctrl+Shift+C the other way (with times, or as Markdown), Ctrl+S saves it to a file. In traffic, dragging over lines selects them.
 
-### Line Icon (signature primitive)
-`LineIcon` draws a `StreamGeometry` from the `Icon.*` tokens on a 24-unit grid with a 1.7-unit stroke, round caps and joins, no fill. The stroke inherits the text foreground, so hover, selected and disabled states colour icons without extra styles. New icons are added as `Icon.*` geometry tokens in the same grid and stroke style. Never use font glyphs or bitmaps.
+### The note, and Undo
+`Ui.Say("Copied 3 events")` shows a short note in the status bar for 2.4 seconds (class `flash`), in the window in front. `Ui.Say(note, undo)` adds an Undo button and keeps the note for 7 seconds; Ctrl+Z does the same while it shows. Use the second form for anything that takes one click and is easy to do to the wrong row: acknowledge, mute, mark fixed, reopen. What cannot be taken back asks first instead.
 
-## Do's and Don'ts
+### Pop-ups
+A message or an alert shows as a card in the bottom right corner of the window, or of the screen when the window is behind others or in the tray (`Views/NoticeCard.axaml`). It can be answered or dismissed from the card. Settings start with four plain choices (What needs me, Everything, Nothing, My own choice); the table of switches for each kind only shows for "My own choice". Settings never open on a wall of tick boxes.
 
-### Do:
-- **Do** reference only token keys from `Tokens.axaml`, through `DynamicResource` for brushes so light and dark switch live.
-- **Do** reuse the `Controls.axaml` classes (`primary`, `ghost`, `danger`, `armed`, `rows`, `stream`, `panel`, `dot`, `meta`, `label`, `section`, `title`, `mono`) in every new workspace before writing a local style.
-- **Do** set protocol text (JIDs, XML, host:port, timestamps) in `Font.Mono` at 12 px.
-- **Do** pair every status dot and hue with words: a status line, a tooltip, or an automation name.
-- **Do** set destructive actions 20 px apart from their siblings and require a second, armed click whose label stays visible at every width.
-- **Do** put the fix for a failure next to the failure, inline, in a `State.Bad.Subtle` banner.
-- **Do** add responsive rules as `ContainerQuery` steps at the existing 1180 / 960 / 780 px breakpoints, and keep a tooltip on anything that becomes icon-only.
-- **Do** design both theme variants for every new token. Never derive dark by inverting light.
+### Empty and loading
+- **Empty:** a 24 px icon in `Ink.Tertiary`, one semi-bold line saying what is missing, one `meta` sentence saying how to get it. Centred, at most about 380 px wide, with a side margin so it wraps in a narrow pane.
+- **Loading:** `c:Placeholder` draws grey bars where the rows will be (`Rows`, `RowHeight`), under one line saying what is being read. The screen does not jump when the rows arrive.
+- **Failure:** a `State.Bad.Subtle` band with what went wrong and the action that fixes it, in place.
 
-### Don't:
-- **Don't** use cobalt for anything except selection, primary action and focus.
-- **Don't** use account hues for state, severity or decoration.
-- **Don't** add shadows or glows; use a surface step or a 1 px hairline.
-- **Don't** introduce a corner radius other than 6 px or the pill.
-- **Don't** add type sizes outside 11 / 12 / 13 / 15 / 18.
-- **Don't** build dashboards out of cards, or style the console as neon on black.
-- **Don't** treat the sniffer's TX tag colour (currently the accent) as precedent for accent-coloured content; it is an open exception to the One Accent Rule.
+### The map
+`Controls/TopologyMap.cs`, laid out by `Engine/Topology/TopologyLayout.cs`. A part of the network where something has a parent is a tree: the parent on top, what connects to it in a row under it, lines that leave the parent downwards and turn with rounded corners. Seven or more children with none of their own hang in columns under their parent, each entered from its left. Points that are only linked some other way go in rows under the tree, as near as they can be to what they link to. A part with no parents is spread by a force layout. A Neuron's card shows its health dot, its name and address, and CPU, memory and disk. Grey line: up to the parent. Blue line: the parent, and federated with it. Blue dashes: federated with each other. The panel beside the map explains this until something is selected.
+
+## Motion
+
+Short, and only where it says what changed. All of it is in `Themes/Motion.axaml`, which is part of the app's styles only while motion is on (`Controls/Motion.cs`), so with it off nothing can move.
+- A screen that comes to the front fades in (140 ms).
+- The note, the search results and the selection bar rise 6 px into place (160 ms).
+- A pop-up comes in from the right (200 ms). Menus fade in (90 ms).
+- A row that arrives while you watch fades in (`c:Motion.NewRows` on its list). Rows that were there when the list was filled do not.
+- A status dot changes colour softly. The loading bars breathe slowly.
+
+Motion is off when the system asks for it (on Windows: "Animation effects"), when Settings says "Less motion", and in tests. Nothing loops except the loading bars, nothing moves more than a few pixels, and nothing waits for an animation to finish before it can be used.
+
+## Never again
+
+These are the habits of the tools this app replaces. Check every new screen against them.
+1. **No blocking windows.** No dialogs. Ask in place, or let it be undone.
+2. **No action that depends on a hidden selection.** What an action will hit is visible and named.
+3. **No piles of tabs.** A place has a few tabs at most, and a thing opens in place, not in a tab of its own.
+4. **No flat lists.** Every list can be filtered, and Ctrl+K searches everything.
+5. **No page per thing** when a pane beside the list will do.
+6. **No wall of tick boxes.** A few plain choices first, the detail behind one of them.
+
+## Do and don't
+
+**Do**
+- Use the tokens, and the classes in `Controls.axaml`, before anything local.
+- Give every row a right-click menu through `IActionSource`, and every list a `find` box.
+- Say which Neuron and which account an action is for.
+- Pair every dot and every hue with words.
+- Confirm with `Ui.Say`, and pass an undo where one click could go wrong.
+- Add width rules as `.maxwN` styles, and check the screen at 760, 1440 and 2400 px in both looks. `FinishTests` renders all of them to `.impeccable/review/`.
+- Put motion in `Motion.axaml` only.
+- Design both looks for a new token.
+
+**Don't**
+- Don't use cobalt for anything but selection, the main action, focus and federation links on the map.
+- Don't use account hues for state.
+- Don't add a shadow to anything that does not float.
+- Don't add a corner radius or a type size outside the ones above.
+- Don't set a width on a control that a small window needs to shrink.
+- Don't open a dialog window.
+- Don't use a word from the "Not" column.
+- Don't build dashboards out of cards, or dress the app as neon on black.

@@ -84,4 +84,65 @@ public class TopologyTests
 
 		Assert.True(a.Values.Min(p => p.X) >= -0.001 && a.Values.Min(p => p.Y) >= -0.001);
 	}
+
+	private static void AssertNoOverlap(IReadOnlyDictionary<string, (double X, double Y)> pos, double w, double h)
+	{
+		foreach (string n in pos.Keys)
+		{
+			foreach (string m in pos.Keys.Where(m => string.CompareOrdinal(m, n) > 0))
+				Assert.True(Math.Abs(pos[n].X - pos[m].X) >= w || Math.Abs(pos[n].Y - pos[m].Y) >= h, $"{n} and {m} overlap");
+		}
+	}
+
+	[Fact]
+	public void WhatHasAParentIsDrawnAsATreeWithTheParentOnTop()
+	{
+		List<string> nodes = ["root", "a", "b", "a1", "a2", "peer"];
+		List<(string, string)> parents = [("a", "root"), ("b", "root"), ("a1", "a"), ("a2", "a")];
+		List<(string, string)> edges = [.. parents, ("peer", "b"), ("a", "root")];
+
+		var pos = TopologyLayout.Compute(nodes, edges, 150, _ => (200, 70), 26, parents);
+		var again = TopologyLayout.Compute(nodes, edges, 150, _ => (200, 70), 26, parents);
+		Assert.Equal(nodes.Count, pos.Count);
+		foreach (string n in nodes)
+			Assert.Equal(pos[n], again[n]);
+
+		// Rows: the parent, what connects to it, and what connects to those.
+		Assert.Equal(pos["a"].Y, pos["b"].Y);
+		Assert.Equal(pos["a1"].Y, pos["a2"].Y);
+		Assert.True(pos["root"].Y + 70 < pos["a"].Y);
+		Assert.True(pos["a"].Y + 70 < pos["a1"].Y);
+
+		// A parent stands over the middle of its children.
+		Assert.Equal((pos["a1"].X + pos["a2"].X) / 2, pos["a"].X, 3);
+		Assert.True(pos["root"].X > pos["a"].X && pos["root"].X < pos["b"].X);
+
+		// What is only linked some other way goes under the tree.
+		Assert.True(pos["peer"].Y > pos["a1"].Y + 70);
+
+		AssertNoOverlap(pos, 200, 70);
+		Assert.True(pos.Values.Min(p => p.X) >= 99.999 && pos.Values.Min(p => p.Y) >= 34.999);
+	}
+
+	[Fact]
+	public void ManyChildrenHangInColumnsUnderTheirParent()
+	{
+		List<string> leaves = [.. Enumerable.Range(1, 12).Select(i => "leaf" + i.ToString("00"))];
+		List<string> nodes = ["hub", .. leaves];
+		List<(string, string)> parents = [.. leaves.Select(l => (l, "hub"))];
+
+		var pos = TopologyLayout.Compute(nodes, parents, 150, _ => (200, 70), 26, parents);
+
+		// Twelve in a row would be far too wide: three columns of four, each column left-aligned.
+		Assert.Equal(3, leaves.Select(l => pos[l].X).Distinct().Count());
+		Assert.Equal(4, leaves.Select(l => pos[l].Y).Distinct().Count());
+		Assert.All(leaves, l => Assert.True(pos[l].Y > pos["hub"].Y + 70));
+		Assert.True(pos["hub"].X > leaves.Min(l => pos[l].X) && pos["hub"].X < leaves.Max(l => pos[l].X));
+		AssertNoOverlap(pos, 200, 70);
+
+		// A circle of parents is not followed around: the layout still ends, and places everything.
+		var circle = TopologyLayout.Compute(["x", "y", "z"], [("x", "y"), ("y", "z"), ("z", "x")], 150, _ => (200, 70), 26, [("x", "y"), ("y", "z"), ("z", "x")]);
+		Assert.Equal(3, circle.Count);
+		AssertNoOverlap(circle, 200, 70);
+	}
 }

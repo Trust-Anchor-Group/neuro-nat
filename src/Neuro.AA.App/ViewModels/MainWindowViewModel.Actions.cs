@@ -24,6 +24,7 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 	private void StartActions()
 	{
 		Ui.Said += this.Ui_Said;
+		Ui.Offered += this.Ui_Offered;
 		this.Events.Shell = this;
 		this.Fleet.Shell = this;
 		this.Console.Shell = this;
@@ -49,14 +50,64 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 
 	private void ShowFlash(string note)
 	{
+		this.flashUndo = null;
+		this.HasFlashUndo = false;
 		this.Flash = note;
-		this.flashTimer ??= new DispatcherTimer(TimeSpan.FromSeconds(2.4), DispatcherPriority.Background, (_, _) =>
-		{
-			this.flashTimer!.Stop();
-			this.Flash = null;
-		});
+		this.flashTimer ??= new DispatcherTimer(DispatcherPriority.Background);
+		this.flashTimer.Tick -= this.FlashTimer_Tick;
+		this.flashTimer.Tick += this.FlashTimer_Tick;
 		this.flashTimer.Stop();
+		this.flashTimer.Interval = TimeSpan.FromSeconds(2.4);
 		this.flashTimer.Start();
+	}
+
+	private void FlashTimer_Tick(object? sender, EventArgs e)
+	{
+		this.flashTimer!.Stop();
+		this.Flash = null;
+		this.flashUndo = null;
+		this.HasFlashUndo = false;
+	}
+
+	// ----- Undo: the note keeps an Undo button for a few seconds after something that is easy to do by mistake -----
+
+	private Action? flashUndo;
+
+	/// <summary>True while the note at the bottom offers to take back what it says.</summary>
+	[ObservableProperty] private bool hasFlashUndo;
+
+	private void Ui_Offered(string note, Action undo)
+	{
+		if (this.IsExtra ? !this.IsWindowActive : this.IsAnotherWindowInFront?.Invoke() == true)
+			return;
+
+		void Show()
+		{
+			this.ShowFlash(note);
+			this.flashUndo = undo;
+			this.HasFlashUndo = true;
+			this.flashTimer!.Stop();
+			this.flashTimer.Interval = TimeSpan.FromSeconds(7);
+			this.flashTimer.Start();
+		}
+
+		if (Dispatcher.UIThread.CheckAccess())
+			Show();
+		else
+			Dispatcher.UIThread.Post(Show);
+	}
+
+	/// <summary>Takes back what the note says. Ctrl+Z does the same while the note shows.</summary>
+	[RelayCommand]
+	private void UndoFlash()
+	{
+		if (this.flashUndo is not Action undo)
+			return;
+
+		this.flashUndo = null;
+		this.HasFlashUndo = false;
+		undo();
+		this.ShowFlash("Taken back");
 	}
 
 	// ----- Neurons, wherever they appear -----

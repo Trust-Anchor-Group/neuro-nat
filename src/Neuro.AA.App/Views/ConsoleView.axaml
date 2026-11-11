@@ -49,12 +49,14 @@
         <StackPanel DockPanel.Dock="Top" Margin="6,0,0,10" Spacing="4">
           <TextBlock Classes="section" Text="Neurons" />
           <TextBlock Classes="meta" TextWrapping="Wrap" Text="Tick several to send a command to all of them and see the answers side by side." />
+          <TextBox x:Name="TargetFilterBox" Classes="find" Text="{Binding TargetFilter}" PlaceholderText="Filter Neurons…" MinHeight="28" Padding="10,4" Margin="-4,6,2,0"
+                   ToolTip.Tip="Filter by name, address or account (Ctrl+F). Ticked Neurons always stay in view." />
         </StackPanel>
         <Panel>
           <ItemsControl ItemsSource="{Binding Targets}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:ConsoleTargetViewModel">
-                <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsOnline}" Margin="2,0,0,6"
+                <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsOnline}" IsVisible="{Binding IsShown}" Margin="2,0,0,6"
                           ToolTip.Tip="{Binding AccountLabel}"
                           c:ActionMenu.Source="{Binding $parent[UserControl].((vm:ConsoleViewModel)DataContext)}">
                   <StackPanel Spacing="1">

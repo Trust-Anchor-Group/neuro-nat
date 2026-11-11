@@ -413,6 +413,49 @@ public class SizesAndWindowsTests
 	}
 
 	[AvaloniaFact]
+	public async Task TheAppOpensWhereYouLeftIt()
+	{
+		string dir = Folder();
+		using Sample s = await GettingAroundTests.SampleAsync(dir);
+		using AlertService alerts = new(s.Monitors, new AlertSettings());
+		JsonAlertSettingsStore alertStore = new(Path.Combine(dir, "alerts.json"));
+		JsonUiSettingsStore store = new(Path.Combine(dir, "ui.json"));
+
+		async Task<MainWindowViewModel> StartAsync()
+		{
+			MainWindowViewModel vm = new(s.Manager, s.Fleet, s.Chat, null, null, s.PubSub, s.Software);
+			vm.Settings.Attach(alerts, alertStore, store);
+			await vm.StartAsync();
+			Dispatcher.UIThread.RunJobs();
+			return vm;
+		}
+
+		// The first time there is nothing to go back to: the Neurons list, not the Accounts screen.
+		MainWindowViewModel first = await StartAsync();
+		Assert.True(first.IsFleet);
+
+		// Left on Events: that is where it opens.
+		store.Save(store.Load() with { Window = new WindowPlace { Width = 1200, Height = 800, Showing = "Events|||" } });
+		MainWindowViewModel second = await StartAsync();
+		Assert.True(second.IsEvents);
+
+		// Left on a Neuron's Events tab. Nothing has connected yet at start, so the list shows in the meantime and the tab as soon as the Neuron is there.
+		store.Save(store.Load() with { Window = new WindowPlace { Width = 1200, Height = 800, Showing = string.Join('|', WorkspaceKind.NeuronEvents, s.Ops.ToString("N"), Gbg, string.Empty) } });
+		MainWindowViewModel third = await StartAsync();
+		third.Fleet.Refresh();
+		Dispatcher.UIThread.RunJobs();
+		Assert.True(third.IsNeuronEvents);
+		Assert.Equal(Gbg, third.Page!.BareJid);
+
+		// Going somewhere by hand in the meantime: it stays there.
+		MainWindowViewModel fourth = await StartAsync();
+		fourth.ShowChatCommand.Execute(null);
+		fourth.Fleet.Refresh();
+		Dispatcher.UIThread.RunJobs();
+		Assert.True(fourth.IsChat);
+	}
+
+	[AvaloniaFact]
 	public async Task AWindowComesBackWhereItWasOnlyIfThatIsOnAScreen()
 	{
 		using Sample s = await GettingAroundTests.SampleAsync();

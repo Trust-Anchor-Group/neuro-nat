@@ -545,13 +545,24 @@ public class ActionTests
 		List<object> picked = [events.Issues[0], events.Issues[1]];
 		IReadOnlyList<ItemAction> actions = events.ActionsFor(picked);
 		Assert.Contains(actions, a => a.Text == "Acknowledge" && a.InBar);
-		Assert.Contains(actions, a => a.Text == "Resolve" && a.InBar);
-		await actions.First(a => a.Text == "Resolve").RunAsync();
+		Assert.Contains(actions, a => a.Text == "Mark fixed" && a.InBar);
+		await actions.First(a => a.Text == "Mark fixed").RunAsync();
 		events.Flush();
 		await Task.Delay(1100);
 		events.Flush();
 		Assert.Single(events.Issues);
-		Assert.Equal("2 issues resolved", s.Vm.Flash);
+		Assert.Equal("2 problems marked fixed", s.Vm.Flash);
+
+		// One click, and easy to do to the wrong rows: the note offers to take it back.
+		Assert.True(s.Vm.HasFlashUndo);
+		Capture(window, "problems-undo-light-1440");
+		s.Vm.UndoFlashCommand.Execute(null);
+		events.Flush();
+		await Task.Delay(1100);
+		events.Flush();
+		Assert.Equal(3, events.Issues.Count);
+		Assert.Equal("Taken back", s.Vm.Flash);
+		Assert.False(s.Vm.HasFlashUndo);
 		window.Close();
 	}
 

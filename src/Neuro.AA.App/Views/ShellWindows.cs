@@ -214,7 +214,12 @@ public static class ShellWindows
 		if (main is null || mainVm is null || quitting)
 			return;
 
-		mainVm.Settings.RememberWindows(PlaceOf(main, null), [.. extras.Select(w => PlaceOf(w, (w.DataContext as MainWindowViewModel)?.Address))]);
+		// A main window that was never shown, as when started in the tray, keeps the place it had.
+		WindowPlace? mainPlace = PlaceOf(main, mainVm.Address);
+		if (mainPlace is { X: int.MinValue } && mainVm.Settings.MainWindow is WindowPlace was)
+			mainPlace = was with { Showing = mainPlace.Showing };
+
+		mainVm.Settings.RememberWindows(mainPlace, [.. extras.Select(w => PlaceOf(w, (w.DataContext as MainWindowViewModel)?.Address)).OfType<WindowPlace>()]);
 	}
 
 	// ----- Where a window is -----

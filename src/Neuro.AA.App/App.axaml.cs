@@ -54,6 +54,11 @@ public partial class App : Application
 				alerts.Watch(services.Identities);
 				vm.Settings.Attach(alerts, alertStore, new JsonUiSettingsStore(Path.Combine(services.DataFolder, "ui.json")), services.Autostart);
 
+				// Short motion where something changes, unless the system or Settings says less.
+				bool systemAllowsMotion = Controls.Motion.SystemAllows();
+				Controls.Motion.Set(systemAllowsMotion && !vm.Settings.LessMotion);
+				vm.Settings.Changed += (_, _) => Controls.Motion.Set(systemAllowsMotion && !vm.Settings.LessMotion);
+
 				// Windows of their own, where they were, and the Wall view.
 				ShellWindows.Attach(window, vm, () => new MainWindowViewModel(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub, primary: vm));
 

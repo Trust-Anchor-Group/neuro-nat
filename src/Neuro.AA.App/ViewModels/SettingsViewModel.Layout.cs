@@ -95,6 +95,25 @@ public sealed partial class SettingsViewModel : ILayoutStore
 		}
 	}
 
+	// ----- Motion -----
+
+	/// <summary>
+	/// Nothing fades or slides. Motion is also off when the system asks for it, whatever this says.
+	/// </summary>
+	public bool LessMotion
+	{
+		get => this.ui.LessMotion;
+		set
+		{
+			if (this.ui.LessMotion == value)
+				return;
+
+			this.ui = this.ui with { LessMotion = value };
+			this.SaveUi("the motion setting");
+			this.RaiseAll();
+		}
+	}
+
 	// ----- Panes -----
 
 	public double? Width(string key) => this.ui.Widths.TryGetValue(key, out double w) ? w : null;
@@ -146,7 +165,10 @@ public sealed partial class SettingsViewModel : ILayoutStore
 
 	// ----- Windows -----
 
-	/// <summary>Where the main window was when it was last closed.</summary>
+	/// <summary>True when Settings reads from and writes to a file, as in the app. Not in a preview.</summary>
+	public bool HasStore => this.uiStore is not null;
+
+	/// <summary>Where the main window was when it was last closed, and what it showed.</summary>
 	public WindowPlace? MainWindow => this.ui.Window;
 
 	/// <summary>The other windows that were open, and what each showed.</summary>

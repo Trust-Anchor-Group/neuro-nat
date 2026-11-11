@@ -53,13 +53,13 @@ public sealed class WatchStateTextConverter : IValueConverter
 
 	public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value switch
 	{
-		WatchState.Live => "Live",
-		WatchState.Waiting => "Waiting for presence",
+		WatchState.Live => "Listening",
+		WatchState.Waiting => "Waiting for it to come online",
 		WatchState.Discovering => "Checking",
-		WatchState.Subscribing => "Starting stream",
-		WatchState.Forbidden => "Not admin",
+		WatchState.Subscribing => "Starting to listen",
+		WatchState.Forbidden => "No access",
 		WatchState.Offline => "Offline",
-		WatchState.Failed => "Failed",
+		WatchState.Failed => "Could not listen",
 		_ => string.Empty,
 	};
 
@@ -80,7 +80,7 @@ public static class EventConverters
 	{
 		IssueState.Acknowledged => "Acknowledged",
 		IssueState.Muted => "Muted",
-		IssueState.Resolved => "Resolved",
+		IssueState.Resolved => "Fixed",
 		_ => string.Empty,
 	});
 	public static readonly IValueConverter Time = new FuncValueConverter<DateTime, string>(t => t.Date == DateTime.Today ? t.ToString("HH:mm:ss") : t.ToString("yyyy-MM-dd HH:mm:ss"));

@@ -1,0 +1,93 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Neuro.AA.App.Controls"
+        xmlns:views="using:Neuro.AA.App.Views">
+
+  <!-- Motion. These styles are only in the app while motion is on: Controls/Motion.cs adds
+       and removes them. Each is short (90 to 200 ms), runs once, and says what changed:
+       a screen came to the front, a note or a pop-up arrived, a row came in. Nothing loops
+       here and nothing moves more than a few pixels. -->
+
+  <!-- A screen that comes to the front -->
+  <Style Selector="Grid#Root > :is(UserControl)[IsVisible=True]">
+    <Style.Animations>
+      <Animation Duration="0:0:0.14" Easing="CubicEaseOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- The note in the status bar, the search results and the bar for several selected rows rise into place -->
+  <Style Selector="Border.flash[IsVisible=True], Border.searchFloat[IsVisible=True], c|ActionBar[IsVisible=True]">
+    <Style.Animations>
+      <Animation Duration="0:0:0.16" Easing="CubicEaseOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+          <Setter Property="TranslateTransform.Y" Value="6" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+          <Setter Property="TranslateTransform.Y" Value="0" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- A pop-up in the corner comes in from the side it will leave by -->
+  <Style Selector="views|NoticeCard">
+    <Style.Animations>
+      <Animation Duration="0:0:0.2" Easing="CubicEaseOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+          <Setter Property="TranslateTransform.X" Value="18" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+          <Setter Property="TranslateTransform.X" Value="0" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- Menus and the small panels that open from a button -->
+  <Style Selector="ContextMenu[IsOpen=True], MenuFlyoutPresenter, FlyoutPresenter">
+    <Style.Animations>
+      <Animation Duration="0:0:0.09">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- A row that arrived while you were looking (c:Motion.NewRows on its list) -->
+  <Style Selector="ListBoxItem.fresh">
+    <Style.Animations>
+      <Animation Duration="0:0:0.45" Easing="CubicEaseOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- A count that changes, and a dot that changes colour, do it softly -->
+  <Style Selector="Ellipse.dot">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Fill" Duration="0:0:0.2" />
+      </Transitions>
+    </Setter>
+  </Style>
+</Styles>

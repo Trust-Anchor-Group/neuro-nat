@@ -82,7 +82,7 @@
             </Button>
           </StackPanel>
           <TextBlock Classes="meta" Text="{Binding Summary}" VerticalAlignment="Center" FontWeight="Medium" Foreground="{DynamicResource Ink.Primary}"
-                     TextTrimming="CharacterEllipsis" />
+                     TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
         </DockPanel>
 
         <!-- The four parts of the list -->
@@ -154,7 +154,7 @@
         </Border>
 
         <Panel>
-          <ListBox x:Name="List" Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" SelectionMode="Multiple"
+          <ListBox x:Name="List" Classes="rows" c:Motion.NewRows="True" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" SelectionMode="Multiple"
                    c:ActionMenu.Source="{Binding}" c:ActionMenu.KeepSelection="True">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:InboxRowViewModel">

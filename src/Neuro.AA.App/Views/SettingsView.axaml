@@ -85,7 +85,39 @@
           <TextBlock Classes="hint"
                      Text="A pop-up shows in the corner of the window, or in the corner of the screen when the window is behind others or closed to the tray. Whatever you turn off here still counts in the Inbox." />
 
-          <Grid Classes="matrix" ColumnDefinitions="*,84,84" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,4,0,0">
+          <WrapPanel Orientation="Horizontal">
+            <ToggleButton x:Name="AlertsNeedsMe" Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsAlertsNeedsMe, Mode=OneWay}"
+                          Command="{Binding SetAlertsCommand}" CommandParameter="needsMe">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <c:LineIcon Data="{StaticResource Icon.Bell}" VerticalAlignment="Center" />
+                <TextBlock Text="What needs me" />
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton x:Name="AlertsEverything" Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsAlertsEverything, Mode=OneWay}"
+                          Command="{Binding SetAlertsCommand}" CommandParameter="everything">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <c:LineIcon Data="{StaticResource Icon.Inbox}" VerticalAlignment="Center" />
+                <TextBlock Text="Everything" />
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton x:Name="AlertsNothing" Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsAlertsNothing, Mode=OneWay}"
+                          Command="{Binding SetAlertsCommand}" CommandParameter="nothing">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <c:LineIcon Data="{StaticResource Icon.BellOff}" VerticalAlignment="Center" />
+                <TextBlock Text="Nothing" />
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton x:Name="AlertsOwn" Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsAlertsOwn, Mode=OneWay}"
+                          Command="{Binding SetAlertsCommand}" CommandParameter="own">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <c:LineIcon Data="{StaticResource Icon.Settings}" VerticalAlignment="Center" />
+                <TextBlock Text="My own choice" />
+              </StackPanel>
+            </ToggleButton>
+          </WrapPanel>
+          <TextBlock Classes="hint" Text="{Binding AlertsHint}" />
+
+          <Grid x:Name="AlertKinds" Classes="matrix" ColumnDefinitions="*,84,84" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,4,0,0" IsVisible="{Binding IsAlertsOwn}">
             <TextBlock Grid.Column="1" Classes="caption" Text="POP-UP" HorizontalAlignment="Center" Margin="0,0,0,6" />
             <TextBlock Grid.Column="2" Classes="caption" Text="SOUND" HorizontalAlignment="Center" Margin="0,0,0,6" />
 
@@ -169,6 +201,8 @@
               </StackPanel>
             </ToggleButton>
           </WrapPanel>
+          <CheckBox x:Name="LessMotionBox" IsChecked="{Binding LessMotion}" Content="Less motion" />
+          <TextBlock Classes="hint" Margin="28,-6,0,0" Text="Nothing fades or slides in. Motion is also off when Windows is set to show no animations." />
         </StackPanel>
       </Border>
 

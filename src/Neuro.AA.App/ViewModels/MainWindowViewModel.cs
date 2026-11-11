@@ -67,8 +67,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			// People and problems are found as they are now, not as they were when their screens were last open.
 			Opening = () =>
 			{
-				this.Chat.Refresh();
-				this.Events.Flush();
+				this.Chat?.Refresh();
+				this.Events?.Flush();
 			},
 		};
 		this.Events = new EventsViewModel(fleet.Monitors);
@@ -488,7 +488,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 		yield return new SearchItem("Inbox", "What needs you", Icon("Attention"), this.ShowAttention);
 		yield return new SearchItem("Neurons", "The list of all Neurons", Icon("Fleet"), this.ShowFleet);
-		yield return new SearchItem("Events", "Problems and the live stream", Icon("Events"), this.ShowEvents);
+		yield return new SearchItem("Events", "Problems, and events as they come", Icon("Events"), this.ShowEvents);
 		yield return new SearchItem("Chat", "People and rooms", Icon("Chat"), this.ShowChat);
 		yield return new SearchItem("Console", "Send commands to Neurons", Icon("Console"), this.ShowConsole);
 		yield return new SearchItem("Map", "How the Neurons connect", Icon("Topology"), this.ShowTopology);
@@ -882,6 +882,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		await accounts.LoadAsync();
 		this.Sync();
 		this.IsAddFormOpen = this.Accounts.Count == 0;
+		this.OpenWhereLeft();
 		await accounts.ConnectStartupAccountsAsync();
 	}
 

@@ -314,7 +314,8 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 
 		IReadOnlyDictionary<string, (double X, double Y)> pos = TopologyLayout.Compute(
 			[.. nodes.Select(n => n.Id)], [.. edges.Select(e => (e.From, e.To))], 150,
-			id => TopologyMap.EstimateSize(byId[id].Label, subs[id], byId[id].Kind, this.Load(byId[id]).Count > 0), 26);
+			id => TopologyMap.EstimateSize(byId[id].Label, subs[id], byId[id].Kind, this.Load(byId[id]).Count > 0), 26,
+			[.. edges.Where(e => e.Kind == TopologyLink.Parent).Select(e => (e.From, e.To))]);
 
 		IReadOnlyDictionary<string, EventHub.NeuronSummary> events = this.fleet.Monitors.Hub.SummarizeByNeuron(DateTime.Now);
 		Dictionary<(Guid, string), WatchedNeuron> watched = this.fleet.Monitors.Neurons
@@ -325,7 +326,9 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 		{
 			(double x, double y) = pos.TryGetValue(n.Id, out var p) ? p : (0, 0);
 			string sub = subs[n.Id];
-			map.Add(new MapNode(n.Id, n.Label, sub, n.Kind, x, y, this.Tone(n, events, watched)) { Load = this.Load(n) });
+			IReadOnlyList<MapLoad> load = this.Load(n);
+			(double w, double h) = TopologyMap.EstimateSize(n.Label, sub, n.Kind, load.Count > 0);
+			map.Add(new MapNode(n.Id, n.Label, sub, n.Kind, x, y, this.Tone(n, events, watched)) { Load = load, Width = w, Height = h });
 		}
 
 		this.Graph = new MapGraph(map, [.. edges.Select(e => new MapEdge(e.From, e.To, e.Kind, e.Label))]);
@@ -405,7 +408,7 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 			TopologyNodeKind.Neuron => this.SelectedTone switch
 			{
 				"bad" => "Neuron · errors in the last hour",
-				"busy" => "Neuron · warnings or open issues",
+				"busy" => "Neuron · warnings or open problems",
 				"ok" => "Neuron · healthy",
 				_ => "Neuron · not monitored right now",
 			},
@@ -429,7 +432,7 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 
 			IReadOnlyDictionary<string, EventHub.NeuronSummary> events = this.fleet.Monitors.Hub.SummarizeByNeuron(DateTime.Now);
 			if (events.TryGetValue(jid, out EventHub.NeuronSummary? s))
-				this.Facts.Add(new TopologyFact("Last hour", $"{Count(s.ErrorsLastHour, "error")}, {Count(s.WarningsLastHour, "warning")}, {Count(s.OpenIssues, "open issue")}"));
+				this.Facts.Add(new TopologyFact("Last hour", $"{Count(s.ErrorsLastHour, "error")}, {Count(s.WarningsLastHour, "warning")}, {Count(s.OpenIssues, "open problem")}"));
 		}
 
 		// One line per connected point, with every way it is connected.

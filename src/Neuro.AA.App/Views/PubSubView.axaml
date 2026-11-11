@@ -92,7 +92,7 @@
         </StackPanel>
         <TextBlock DockPanel.Dock="Top" Classes="meta" Text="{Binding ServiceText}" TextTrimming="CharacterEllipsis" Margin="6,0,0,8" ToolTip.Tip="{Binding ServiceText}" />
 
-        <TextBox x:Name="NodeFilterBox" DockPanel.Dock="Top" Text="{Binding NodeFilter}" PlaceholderText="Find a node" Margin="6,0,0,8" MinHeight="30" Padding="10,4" />
+        <TextBox x:Name="NodeFilterBox" Classes="find" DockPanel.Dock="Top" Text="{Binding NodeFilter}" PlaceholderText="Find a node" Margin="6,0,0,8" MinHeight="30" Padding="10,4" />
 
         <ToggleButton DockPanel.Dock="Top" Classes="chip" IsChecked="{Binding WatchingOnly}" IsVisible="{Binding HasWatched}" HorizontalAlignment="Left" Margin="6,0,0,8"
                       ToolTip.Tip="Only the nodes you watch: the ones whose items show up as they are published">
@@ -319,7 +319,10 @@
           <!-- Settings -->
           <ScrollViewer IsVisible="{Binding IsSettings}">
             <StackPanel Margin="24,16,24,24" MaxWidth="560" HorizontalAlignment="Left" Spacing="14">
-              <TextBlock Classes="meta" Text="Reading the settings…" IsVisible="{Binding IsSettingsLoading}" />
+              <StackPanel IsVisible="{Binding IsSettingsLoading}" Spacing="6">
+                <TextBlock Classes="meta" Text="Reading the settings…" />
+                <c:Placeholder Rows="5" RowHeight="40" />
+              </StackPanel>
 
               <StackPanel Spacing="8" IsVisible="{Binding SettingsError, Converter={x:Static conv:EventConverters.HasText}}">
                 <TextBlock Classes="error" Text="{Binding SettingsError}" TextWrapping="Wrap" />
@@ -354,7 +357,10 @@
           <!-- People -->
           <ScrollViewer IsVisible="{Binding IsPeople}">
             <StackPanel Margin="24,16,24,24" MaxWidth="640" HorizontalAlignment="Left" Spacing="14">
-              <TextBlock Classes="meta" Text="Reading who is on the node…" IsVisible="{Binding IsPeopleLoading}" />
+              <StackPanel IsVisible="{Binding IsPeopleLoading}" Spacing="6">
+                <TextBlock Classes="meta" Text="Reading who is on the node…" />
+                <c:Placeholder Rows="4" RowHeight="34" />
+              </StackPanel>
 
               <StackPanel Spacing="8" IsVisible="{Binding PeopleError, Converter={x:Static conv:EventConverters.HasText}}">
                 <TextBlock Classes="error" Text="{Binding PeopleError}" TextWrapping="Wrap" />
@@ -487,7 +493,7 @@
       </ScrollViewer>
 
       <!-- Nothing open -->
-      <StackPanel IsVisible="{Binding ShowsPicker}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
+      <StackPanel IsVisible="{Binding ShowsPicker}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6" Margin="16,0">
         <c:LineIcon Data="{StaticResource Icon.PubSub}" Width="28" Height="28" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
         <TextBlock Text="Pick a node" FontWeight="SemiBold" HorizontalAlignment="Center" />
         <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"

@@ -178,8 +178,8 @@
         </ScrollViewer>
       </DockPanel>
 
-      <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
-        <TextBlock Text="Pick a device or a question" FontWeight="SemiBold" HorizontalAlignment="Center" />
+      <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6" Margin="16,0">
+        <TextBlock Text="Pick a device or a question" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
         <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
                    Text="Devices you own answer to you: when someone wants to read, control or befriend them, the question waits here." />
       </StackPanel>

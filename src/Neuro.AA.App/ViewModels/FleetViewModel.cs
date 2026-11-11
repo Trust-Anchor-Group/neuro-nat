@@ -326,7 +326,7 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 		this.SelectedRow = row;
 	}
 
-	private static readonly string[] columns = ["Neuron", "Account", "Stream", "Version", "CPU", "Memory", "Disk", "Errors 1 h", "Open issues", "Last event"];
+	private static readonly string[] columns = ["Neuron", "Account", "Stream", "Version", "CPU", "Memory", "Disk", "Errors 1 h", "Open problems", "Last event"];
 
 	private static string?[] Cells(FleetRowViewModel r)
 		=> [r.BareJid, r.AccountLabel, r.StateText, r.Software, r.CpuText, r.MemoryText, r.DiskText, r.ErrorsLastHour.ToString(), r.OpenIssues.ToString(), r.LastEventText];
@@ -338,7 +338,7 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 		sb.Append(r.BareJid).Append(": ").AppendLine(r.StateText);
 		sb.Append("Version: ").AppendLine(r.Software);
 		sb.Append("CPU: ").Append(r.CpuText).Append(", memory: ").Append(r.MemoryText).Append(", disk: ").AppendLine(r.DiskText);
-		sb.Append("Errors in the last hour: ").Append(r.ErrorsLastHour).Append(", open issues: ").Append(r.OpenIssues).Append(", last event: ").Append(r.LastEventText);
+		sb.Append("Errors in the last hour: ").Append(r.ErrorsLastHour).Append(", open problems: ").Append(r.OpenIssues).Append(", last event: ").Append(r.LastEventText);
 		if (!string.IsNullOrEmpty(r.Note))
 			sb.AppendLine().Append(r.Note);
 
@@ -459,7 +459,7 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 		this.HasRows = keep.Count > 0;
 		this.Summary = keep.Count == 0
 			? "No Neurons yet"
-			: $"{keep.Count} Neuron{(keep.Count == 1 ? "" : "s")} · {live} live" + (failing > 0 ? $" · {failing} with errors in the last hour" : string.Empty);
+			: $"{keep.Count} Neuron{(keep.Count == 1 ? "" : "s")} · {live} reporting" + (failing > 0 ? $" · {failing} with errors in the last hour" : string.Empty);
 		this.Refreshed?.Invoke(this, EventArgs.Empty);
 	}
 

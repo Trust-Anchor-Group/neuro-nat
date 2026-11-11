@@ -446,7 +446,7 @@ public sealed class NeuronMonitor : IAsyncDisposable
 		{
 			// A renewal that times out leaves the current registration running until it expires.
 			if (!renewal)
-				w.Update(i => i with { State = WatchState.Failed, Error = "The Neuron did not answer the sniffer request." });
+				w.Update(i => i with { State = WatchState.Failed, Error = "The Neuron did not answer when asked for its events." });
 		}
 		else
 		{

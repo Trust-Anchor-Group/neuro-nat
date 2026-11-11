@@ -277,7 +277,7 @@
             </StackPanel>
           </Button>
           <Button Classes="rail" Classes.current="{Binding IsEvents}" Command="{Binding ShowEventsCommand}"
-                  ToolTip.Tip="Problems and the live stream from all your Neurons" AutomationProperties.Name="Events">
+                  ToolTip.Tip="Problems, and events as they come, from all your Neurons" AutomationProperties.Name="Events">
             <StackPanel Spacing="4">
               <c:LineIcon Data="{StaticResource Icon.Events}" />
               <TextBlock Classes="railLabel" Text="Events" HorizontalAlignment="Center" />
@@ -420,7 +420,7 @@
             <TextBlock Text="Overview" VerticalAlignment="Center" />
           </Button>
           <Button Classes="tab pageTab" Classes.current="{Binding IsNeuronEvents}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronEvents}"
-                  ToolTip.Tip="This Neuron's problems and its live stream">
+                  ToolTip.Tip="This Neuron's problems, and its events as they come">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <TextBlock Text="Events" VerticalAlignment="Center" />
               <Border Classes="count alert" IsVisible="{Binding Page.HasErrors}" ToolTip.Tip="Errors in the last hour">
@@ -521,8 +521,12 @@
     <!-- The short note that confirms what just happened: "Copied 3 events". It sits in the
          status bar, where no list and no selection bar is in its way. -->
     <Border Grid.Row="3" Grid.Column="1" ZIndex="40" Classes="flash" IsVisible="{Binding HasFlash}" HorizontalAlignment="Center" VerticalAlignment="Center"
-            IsHitTestVisible="False">
-      <TextBlock Text="{Binding Flash}" />
+            IsHitTestVisible="{Binding HasFlashUndo}">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <TextBlock x:Name="FlashText" Text="{Binding Flash}" VerticalAlignment="Center" />
+        <Button x:Name="FlashUndoButton" Classes="flashUndo" Content="Undo" Command="{Binding UndoFlashCommand}" IsVisible="{Binding HasFlashUndo}"
+                ToolTip.Tip="Take it back (Ctrl+Z)" />
+      </StackPanel>
     </Border>
 
     <!-- Pop-ups: bottom right, above everything else in the window -->

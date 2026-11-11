@@ -41,6 +41,9 @@ public sealed record UiSettings
 
 	public bool CompactRows { get; init; }
 
+	/// <summary>Nothing fades or slides: things change at once.</summary>
+	public bool LessMotion { get; init; }
+
 	/// <summary>How wide each pane was dragged, by the pane's name.</summary>
 	public Dictionary<string, double> Widths { get; init; } = [];
 
@@ -104,6 +107,7 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 			new ShortcutRow("Ctrl+,", "Settings"),
 			new ShortcutRow("Ctrl+F", "Filter or find on the screen in front"),
 			new ShortcutRow("F5", "Read the screen again"),
+			new ShortcutRow("Ctrl+Z", "Take back what you just did, while the note at the bottom offers Undo"),
 		]),
 		new ShortcutGroup("Sizes and windows",
 		[
@@ -302,7 +306,60 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 		}
 	}
 
-	// ----- Pop-ups -----
+	// ----- Pop-ups and sounds: a few plain choices first -----
+
+	private bool ownAlertsOpen;
+
+	private static AlertSettings With(AlertSettings s, bool needsMe, bool information) => s with
+	{
+		Messages = needsMe,
+		ContactRequests = needsMe,
+		Notifications = needsMe,
+		Errors = needsMe,
+		NeuronDown = needsMe,
+		InformationalNotifications = information,
+		SoundForMessages = needsMe,
+		SoundForContactRequests = needsMe,
+		SoundForNotifications = needsMe,
+		SoundForErrors = needsMe,
+		SoundForInformation = information,
+	};
+
+	private bool AlertsAre(bool needsMe, bool information) => With(this.Alerts, needsMe, information) == this.Alerts;
+
+	/// <summary>A pop-up and a sound for everything, information too.</summary>
+	public bool IsAlertsEverything => !this.ownAlertsOpen && this.AlertsAre(true, true);
+
+	/// <summary>A pop-up and a sound for what needs someone. This is how the app comes.</summary>
+	public bool IsAlertsNeedsMe => !this.ownAlertsOpen && this.AlertsAre(true, false);
+
+	/// <summary>No pop-ups and no sounds. The counts keep running.</summary>
+	public bool IsAlertsNothing => !this.ownAlertsOpen && this.AlertsAre(false, false);
+
+	/// <summary>Chosen kind by kind: the table of switches shows.</summary>
+	public bool IsAlertsOwn => !this.IsAlertsEverything && !this.IsAlertsNeedsMe && !this.IsAlertsNothing;
+
+	public string AlertsHint
+		=> this.IsAlertsEverything ? "A pop-up and a sound for everything, also for what is only information: updates, restarts, backups."
+		: this.IsAlertsNeedsMe ? "A pop-up and a sound for chat messages, requests, notifications that need someone, errors, and a Neuron that stops answering. What is only information just counts in the Inbox."
+		: this.IsAlertsNothing ? "No pop-ups and no sounds. Everything still counts in the Inbox and on the tray icon."
+		: "Choose for each kind below.";
+
+	/// <summary>One of the plain choices: "everything", "needsMe", "nothing", or "own" for the table.</summary>
+	[RelayCommand]
+	public void SetAlerts(string choice)
+	{
+		this.ownAlertsOpen = choice == "own";
+		switch (choice)
+		{
+			case "everything": this.Change(s => With(s, true, true)); break;
+			case "needsMe": this.Change(s => With(s, true, false)); break;
+			case "nothing": this.Change(s => With(s, false, false)); break;
+			default: this.RaiseAll(); break;
+		}
+	}
+
+	// ----- Pop-ups, kind by kind -----
 
 	public bool PopMessages { get => this.Alerts.Messages; set => this.Change(s => s with { Messages = value }); }
 	public bool PopRequests { get => this.Alerts.ContactRequests; set => this.Change(s => s with { ContactRequests = value }); }
