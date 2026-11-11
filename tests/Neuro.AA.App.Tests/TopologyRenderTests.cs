@@ -45,8 +45,9 @@ public class TopologyRenderTests
 				AccountId = s.Profile.Id,
 				NeuronJid = jid,
 				Software = "Waher.IoTGateway 3.11.1.0",
-				Cpu = new SampleSeries(14, [12, 14], "%"),
-				FreeMemory = new SampleSeries(5210, [5210], "MB"),
+				Cpu = jid.StartsWith("gbg", StringComparison.Ordinal) ? new SampleSeries(91, [70, 91], "%") : new SampleSeries(14, [12, 14], "%"),
+				FreeMemory = new SampleSeries(jid.StartsWith("prod", StringComparison.Ordinal) ? 1500 : 5210, [5210], "MB"),
+				FreeDisk = new SampleSeries(jid.StartsWith("backup", StringComparison.Ordinal) ? 6.5 : 182, [182], "GB"),
 				ReadAt = now,
 			});
 			return n;
@@ -97,8 +98,18 @@ public class TopologyRenderTests
 		Dispatcher.UIThread.RunJobs();
 		await Task.Delay(300);
 		Capture(window, $"topology-{theme.ToLowerInvariant()}-{width}");
+		if (!select)
+		{
+			vm.Topology.ShowOtherServers = true;
+			Assert.Equal(9, vm.Topology.Graph.Nodes.Count);
+			vm.Topology.ShowOtherServers = false;
+		}
 
-		Assert.Equal(9, vm.Topology.Graph.Nodes.Count);
+		// Federation is the parent tree; brokers reached only by other server-to-server links stay hidden.
+		Assert.Equal(7, vm.Topology.Graph.Nodes.Count);
+		Assert.DoesNotContain(vm.Topology.Graph.Edges, e => e.To == "partner.org" || (e.From, e.To) is ("lab.tagroot.io", "prod.example.com"));
+		Assert.Equal(3, vm.Topology.Graph.Nodes.Single(n => n.Id == "gbg.lab.tagroot.io").Load.Count);
+		Assert.Equal("bad", vm.Topology.Graph.Nodes.Single(n => n.Id == "gbg.lab.tagroot.io").Load[0].Tone);
 		Assert.Equal("bad", vm.Topology.Graph.Nodes.Single(n => n.Id == "gbg.lab.tagroot.io").Tone);
 		Assert.Equal("busy", vm.Topology.Graph.Nodes.Single(n => n.Id == "prod.example.com").Tone);
 		Assert.Equal("ok", vm.Topology.Graph.Nodes.Single(n => n.Id == "mmx.lab.tagroot.io").Tone);

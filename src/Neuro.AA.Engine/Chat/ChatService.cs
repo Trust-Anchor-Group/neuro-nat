@@ -226,7 +226,11 @@ public sealed partial class ChatService : IAsyncDisposable
 		lock (this.requests)
 		{
 			this.requests.RemoveAll(r => r.AccountId == e.AccountId && string.Equals(r.BareJid, e.Presence.FromBareJID, StringComparison.OrdinalIgnoreCase));
-			this.requests.Add(new SubscriptionRequest(e.AccountId, e.Presence.FromBareJID, DateTime.Now) { Presence = e.Presence });
+			this.requests.Add(new SubscriptionRequest(e.AccountId, e.Presence.FromBareJID, DateTime.Now)
+			{
+				Presence = e.Presence,
+				AccountLabel = this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == e.AccountId)?.Profile.Label,
+			});
 		}
 
 		this.RequestsChanged?.Invoke(this, EventArgs.Empty);

@@ -8,7 +8,14 @@ using Neuro.AA.Engine.Topology;
 namespace Neuro.AA.App.Controls;
 
 /// <summary>A point on the map, placed by the layout.</summary>
-public sealed record MapNode(string Id, string Label, string Sub, TopologyNodeKind Kind, double X, double Y, string Tone);
+public sealed record MapNode(string Id, string Label, string Sub, TopologyNodeKind Kind, double X, double Y, string Tone)
+{
+	/// <summary>Load figures shown under the name: CPU, free memory, free disk.</summary>
+	public IReadOnlyList<MapLoad> Load { get; init; } = [];
+}
+
+/// <summary>One load figure on a card: a short name, its value, a tone, and for CPU how full the bar is.</summary>
+public sealed record MapLoad(string Name, string Value, string Tone, double? Fraction);
 
 /// <summary>A connection on the map.</summary>
 public sealed record MapEdge(string From, string To, TopologyLink Kind, string? Label);
@@ -48,11 +55,19 @@ public sealed class TopologyMap : Control
 	private const double SubSize = 11.5;
 
 	/// <summary>About how big a card is drawn, for the layout to keep cards apart before they are measured.</summary>
-	public static (double W, double H) EstimateSize(string label, string sub, TopologyNodeKind kind)
+	public static (double W, double H) EstimateSize(string label, string sub, TopologyNodeKind kind, bool hasLoad = false)
 	{
 		double text = Math.Max(label.Length * (kind == TopologyNodeKind.Contact ? 6.6 : 7.6), sub.Length * 6.3);
-		return (Math.Clamp(text + 34, MinCardWidth, MaxCardWidth), kind == TopologyNodeKind.Contact ? ContactHeight : CardHeight);
+		double w = Math.Clamp(text + 34, MinCardWidth, MaxCardWidth);
+		double h = kind == TopologyNodeKind.Contact ? ContactHeight : CardHeight;
+		return hasLoad ? (Math.Max(w, LoadCardWidth), h + LoadHeight) : (w, h);
 	}
+
+	/// <summary>Height of the load row under a Neuron's name.</summary>
+	private const double LoadHeight = 26;
+
+	/// <summary>Cards with a load row are at least this wide, so three figures fit.</summary>
+	private const double LoadCardWidth = 214;
 
 	private readonly Dictionary<string, (Rect Box, FormattedText Title, FormattedText? Sub)> cards = [];
 	private double zoom = 1;
@@ -179,6 +194,11 @@ public sealed class TopologyMap : Control
 
 			double w = Math.Clamp(Math.Max(title.Width, sub?.Width ?? 0) + 34, MinCardWidth, MaxCardWidth);
 			double h = n.Kind == TopologyNodeKind.Contact ? ContactHeight : CardHeight;
+			if (n.Load.Count > 0)
+			{
+				w = Math.Max(w, LoadCardWidth);
+				h += LoadHeight;
+			}
 			this.cards[n.Id] = (new Rect(n.X - w / 2, n.Y - h / 2, w, h), title, sub);
 		}
 	}
@@ -338,8 +358,13 @@ public sealed class TopologyMap : Control
 							break;
 					}
 
+					// The name part is the card without its load row.
+					Rect head = n.Load.Count > 0 ? new Rect(box.X, box.Y, box.Width, box.Height - LoadHeight) : box;
+					if (n.Load.Count > 0)
+						this.DrawLoad(context, n.Load, new Rect(box.X, head.Bottom, box.Width, LoadHeight), line);
+
 					// Health dot for the Neurons you administer; a hollow ring for the rest.
-					Point dotAt = new(box.X + 15, box.Center.Y);
+					Point dotAt = new(box.X + 15, head.Center.Y);
 					if (n.Kind == TopologyNodeKind.Neuron)
 						context.DrawEllipse(this.Brush(ToneKey(n.Tone), Brushes.Gray), null, dotAt, 4.5, 4.5);
 					else
@@ -347,14 +372,43 @@ public sealed class TopologyMap : Control
 
 					double textX = box.X + 26;
 					if (sub is null)
-						context.DrawText(title, new Point(textX, box.Center.Y - title.Height / 2));
+						context.DrawText(title, new Point(textX, head.Center.Y - title.Height / 2));
 					else
 					{
-						double top = box.Center.Y - (title.Height + sub.Height) / 2;
+						double top = head.Center.Y - (title.Height + sub.Height) / 2;
 						context.DrawText(title, new Point(textX, top));
 						context.DrawText(sub, new Point(textX, top + title.Height));
 					}
 				}
+			}
+		}
+	}
+
+	/// <summary>The load row: a hairline, then each figure with its value in its tone; CPU gets a small bar.</summary>
+	private void DrawLoad(DrawingContext context, IReadOnlyList<MapLoad> load, Rect row, IBrush line)
+	{
+		context.DrawLine(new Pen(line, 1), new Point(row.X + 8, row.Y + 0.5), new Point(row.Right - 8, row.Y + 0.5));
+		Typeface regular = this.Face(FontWeight.Normal);
+		Typeface bold = this.Face(FontWeight.SemiBold);
+		IBrush ink3 = this.Brush("Ink.Tertiary", Brushes.Gray);
+		double cell = (row.Width - 16) / load.Count;
+
+		for (int i = 0; i < load.Count; i++)
+		{
+			MapLoad l = load[i];
+			IBrush tone = l.Tone == "idle" ? this.Brush("Ink.Secondary", Brushes.Gray) : this.Brush(ToneKey(l.Tone), Brushes.Gray);
+			FormattedText name = new(l.Name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, regular, 10, ink3);
+			FormattedText value = new(l.Value, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, bold, 11, tone);
+			double x = row.X + 8 + i * cell;
+			double y = row.Y + (row.Height - value.Height) / 2;
+			context.DrawText(name, new Point(x, y + (value.Height - name.Height) / 2));
+			context.DrawText(value, new Point(x + name.Width + 4, y));
+
+			if (l.Fraction is double f)
+			{
+				double bx = x + name.Width + 4, bw = Math.Max(16, value.Width), by = y + value.Height + 1;
+				context.FillRectangle(this.Brush("Surface.Pressed", Brushes.LightGray), new Rect(bx, by, bw, 2));
+				context.FillRectangle(tone, new Rect(bx, by, bw * f, 2));
 			}
 		}
 	}

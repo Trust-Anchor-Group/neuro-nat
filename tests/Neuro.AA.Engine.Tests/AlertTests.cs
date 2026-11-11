@@ -113,4 +113,30 @@ public class AlertTests
 		Event(m, now, "Database corrupt\n\nModule: F");
 		Assert.Single(got);
 	}
+
+	[Fact]
+	public async Task ContactRequestsAlertAndSoundsFollowSettings()
+	{
+		var (m, account) = await SetupAsync();
+		DateTime now = DateTime.Now;
+		using AlertService alerts = new(m, new AlertSettings(), () => now, startTimer: false) { AccountLabel = _ => "ops@lab.local" };
+		List<Alert> got = [];
+		alerts.Raised += (_, a) => got.Add(a);
+
+		alerts.ContactRequested(account, "kim@example.com");
+		Alert a = Assert.Single(got);
+		Assert.Equal(AlertKind.ContactRequest, a.Kind);
+		Assert.Contains("kim@example.com", a.Title);
+		Assert.Equal("Asks ops@lab.local", a.Detail);
+
+		AlertSettings s = new();
+		Assert.True(s.WantsSound(a));
+		Assert.True(s.WantsSound(new Alert { Id = "e", Kind = AlertKind.Error, Title = "x", Severity = EventSeverity.Error }));
+		Assert.False(s.WantsSound(new Alert { Id = "b", Kind = AlertKind.NeuronBack, Title = "x" }));
+		Assert.False((s with { SoundForErrors = false }).WantsSound(new Alert { Id = "d", Kind = AlertKind.NeuronDown, Title = "x" }));
+
+		alerts.Settings = s with { ContactRequests = false };
+		alerts.ContactRequested(account, "other@example.com");
+		Assert.Single(got);
+	}
 }

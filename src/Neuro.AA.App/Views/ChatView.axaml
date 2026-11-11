@@ -138,6 +138,31 @@
           </StackPanel>
         </Border>
 
+        <!-- Contact requests: first, so they are hard to miss -->
+        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Requests}" IsVisible="{Binding HasRequests}" Margin="0,0,0,10">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="ch:SubscriptionRequest">
+              <Border Padding="12,10" Margin="0,0,0,8" CornerRadius="8" Background="{DynamicResource Accent.Subtle}"
+                      BorderBrush="{DynamicResource Accent}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <c:LineIcon Data="{StaticResource Icon.Accounts}" Width="14" Height="14" Foreground="{DynamicResource Accent.Ink}" />
+                    <TextBlock Text="CONTACT REQUEST" FontSize="{StaticResource Type.Caption}" FontWeight="SemiBold" Foreground="{DynamicResource Accent.Ink}" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <TextBlock TextWrapping="Wrap">
+                    <Run Text="{Binding BareJid}" FontWeight="SemiBold" /><Run Text=" wants to be a contact of " /><Run Text="{Binding AccountLabel}" FontWeight="SemiBold" /><Run Text="." />
+                  </TextBlock>
+                  <TextBlock Classes="meta" TextWrapping="Wrap" Text="Accepting lets them see when you are online, and asks to see theirs." />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Classes="primary" Content="Accept" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).AcceptCommand}" CommandParameter="{Binding}" />
+                    <Button Content="Decline" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).DeclineCommand}" CommandParameter="{Binding}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
         <!-- Room invitations -->
         <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Invitations}" IsVisible="{Binding HasInvitations}" Margin="0,0,0,10">
           <ItemsControl.ItemTemplate>
@@ -179,25 +204,6 @@
             </StackPanel>
           </StackPanel>
         </Border>
-
-        <!-- Subscription requests -->
-        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Requests}" IsVisible="{Binding HasRequests}" Margin="0,0,0,10">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="ch:SubscriptionRequest">
-              <Border Classes="panel" Padding="12,10" Margin="0,0,0,6" Background="{DynamicResource Accent.Subtle}" BorderThickness="0">
-                <StackPanel Spacing="8">
-                  <TextBlock TextWrapping="Wrap">
-                    <Run Text="{Binding BareJid}" FontWeight="SemiBold" /><Run Text=" wants to see when you are online." />
-                  </TextBlock>
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Classes="primary" Content="Accept" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).AcceptCommand}" CommandParameter="{Binding}" />
-                    <Button Content="Decline" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).DeclineCommand}" CommandParameter="{Binding}" />
-                  </StackPanel>
-                </StackPanel>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
 
         <TextBox DockPanel.Dock="Top" Text="{Binding FilterText}" PlaceholderText="Filter people…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
 

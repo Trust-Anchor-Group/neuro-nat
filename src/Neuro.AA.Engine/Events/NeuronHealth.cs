@@ -109,7 +109,10 @@ public static partial class HealthReader
 	private static async Task<SampleSeries> ReadSamplesAsync(ConcentratorClient cc, string fullJid, string nodeId, CancellationToken cancel)
 	{
 		List<(DateTime Start, double Mean, string Unit)> samples = [];
-		DateTime now = DateTime.Now;
+
+		// The Neuron stamps its samples in UTC and filters on those stamps as they are, so the
+		// window has to be given in UTC too. (A local window missed every sample east of UTC.)
+		DateTime now = DateTime.UtcNow;
 
 		await ReportQuery.RunAsync(cc, fullJid, nodeId, PerformanceSourceId, "Execute",
 			async form =>

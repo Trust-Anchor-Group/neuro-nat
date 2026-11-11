@@ -139,8 +139,16 @@ public sealed class WatchAgent : IDisposable
 		which.Menu.Add(this.Toggle("Notifications that need someone", s => s.Notifications, (s, v) => s with { Notifications = v }));
 		which.Menu.Add(this.Toggle("New and returning errors", s => s.Errors, (s, v) => s with { Errors = v }));
 		which.Menu.Add(this.Toggle("Neurons going down", s => s.NeuronDown, (s, v) => s with { NeuronDown = v }));
+		which.Menu.Add(this.Toggle("Contact requests", s => s.ContactRequests, (s, v) => s with { ContactRequests = v }));
 		which.Menu.Add(this.Toggle("Information too (updates, restarts)", s => s.InformationalNotifications, (s, v) => s with { InformationalNotifications = v }));
 		menu.Add(which);
+
+		NativeMenuItem sounds = new("Play a sound for") { Menu = [] };
+		sounds.Menu.Add(this.Toggle("Errors and Neurons going down", s => s.SoundForErrors, (s, v) => s with { SoundForErrors = v }));
+		sounds.Menu.Add(this.Toggle("Notifications that need someone", s => s.SoundForNotifications, (s, v) => s with { SoundForNotifications = v }));
+		sounds.Menu.Add(this.Toggle("Contact requests", s => s.SoundForContactRequests, (s, v) => s with { SoundForContactRequests = v }));
+		sounds.Menu.Add(this.Toggle("Information too", s => s.SoundForInformation, (s, v) => s with { SoundForInformation = v }));
+		menu.Add(sounds);
 		menu.Add(this.Toggle("Keep watching when the window closes", s => s.KeepRunningInTray, (s, v) => s with { KeepRunningInTray = v }));
 		if (this.autostart is not null)
 			menu.Add(this.AutostartToggle(this.autostart));
@@ -228,7 +236,7 @@ public sealed class WatchAgent : IDisposable
 	private void UpdateTray()
 	{
 		int open = this.vm.Attention.OpenCount;
-		int questions = this.vm.Devices.QuestionCount + this.vm.Identities.PetitionCount;
+		int questions = this.vm.Devices.QuestionCount + this.vm.Identities.PetitionCount + this.vm.Chat.Requests.Count;
 		int down = this.vm.Fleet.Rows.Count(r => r.State is Engine.Events.WatchState.Offline or Engine.Events.WatchState.Failed);
 		bool attention = open + questions + down > 0;
 		bool snoozed = this.alerts.IsSnoozed;
@@ -254,8 +262,11 @@ public sealed class WatchAgent : IDisposable
 
 	private void Show(Alert a)
 	{
-		// While the window is in front, the app itself shows what changed; only errors and
-		// Neurons going down interrupt then.
+		if (this.alerts.Settings.WantsSound(a))
+			AlertSound.Play(a);
+
+		// While the window is in front, the app itself shows what changed; errors, Neurons going
+		// down and contact requests still interrupt then.
 		if (this.window.IsActive && a.Kind is AlertKind.Notification or AlertKind.NeuronBack)
 			return;
 

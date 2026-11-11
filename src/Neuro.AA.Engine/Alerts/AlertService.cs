@@ -18,6 +18,9 @@ public enum AlertKind
 
 	/// <summary>A Neuron that was down answers again.</summary>
 	NeuronBack,
+
+	/// <summary>Someone asks to become one of the account's contacts (a presence subscription).</summary>
+	ContactRequest,
 }
 
 /// <summary>Something worth interrupting someone for.</summary>
@@ -34,6 +37,9 @@ public sealed record Alert
 
 	/// <summary>The notification id, issue fingerprint, or Neuron address the alert points at.</summary>
 	public string? Target { get; init; }
+
+	/// <summary>True when someone has to do something about it.</summary>
+	public bool NeedsYou { get; init; }
 }
 
 /// <summary>Which alerts to show.</summary>
@@ -48,6 +54,30 @@ public sealed record AlertSettings
 
 	/// <summary>Also alert for notifications that are only information (updates, restarts).</summary>
 	public bool InformationalNotifications { get; init; }
+
+	public bool ContactRequests { get; init; } = true;
+
+	/// <summary>Play a sound for errors and Neurons going down.</summary>
+	public bool SoundForErrors { get; init; } = true;
+
+	/// <summary>Play a sound for notifications that need someone.</summary>
+	public bool SoundForNotifications { get; init; } = true;
+
+	/// <summary>Play a sound for contact requests.</summary>
+	public bool SoundForContactRequests { get; init; } = true;
+
+	/// <summary>Play a sound for information too (Neurons back, informational notifications).</summary>
+	public bool SoundForInformation { get; init; }
+
+	/// <summary>Whether an alert should make a sound with these settings.</summary>
+	public bool WantsSound(Alert a) => a.Kind switch
+	{
+		AlertKind.Error or AlertKind.NeuronDown => this.SoundForErrors,
+		AlertKind.ContactRequest => this.SoundForContactRequests,
+		AlertKind.NeuronBack => this.SoundForInformation,
+		_ when a.Severity >= Events.EventSeverity.Warning || a.NeedsYou => this.SoundForNotifications,
+		_ => this.SoundForInformation,
+	};
 }
 
 /// <summary>Keeps alert settings between runs.</summary>
@@ -112,6 +142,7 @@ public sealed class AlertService : IDisposable
 		monitors.Attention.Changed += this.Attention_Changed;
 		monitors.Hub.IssueChanged += this.Hub_IssueChanged;
 		monitors.NeuronsChanged += this.Monitors_NeuronsChanged;
+		monitors.SubscriptionRequested += this.Monitors_SubscriptionRequested;
 
 		if (startTimer)
 			this.timer = new Timer(_ => this.CheckNeurons(), null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
@@ -191,6 +222,7 @@ public sealed class AlertService : IDisposable
 			Kind = AlertKind.Notification,
 			Title = n.Title,
 			Detail = this.NeuronLabel(n.AccountId, n.NeuronJid) + (n.IsOpen ? " · needs you" : string.Empty),
+			NeedsYou = n.IsOpen,
 			Severity = n.Severity,
 			At = this.clock(),
 			AccountId = n.AccountId,
@@ -235,6 +267,34 @@ public sealed class AlertService : IDisposable
 			Target = i.Fingerprint,
 		});
 	}
+
+	// ---- Contact requests ------------------------------------------------------------------
+
+	private void Monitors_SubscriptionRequested(object? sender, (Guid AccountId, Waher.Networking.XMPP.Events.PresenceEventArgs Presence) e)
+		=> this.ContactRequested(e.AccountId, e.Presence.FromBareJID);
+
+	/// <summary>Someone asks to become a contact of an account. Also used by tests.</summary>
+	internal void ContactRequested(Guid accountId, string from)
+	{
+		if (!this.Settings.ContactRequests)
+			return;
+
+		this.Raise(new Alert
+		{
+			Id = "c:" + accountId + ":" + from + ":" + this.clock().Ticks,
+			Kind = AlertKind.ContactRequest,
+			Title = $"{from} wants to be a contact",
+			Detail = this.AccountLabel?.Invoke(accountId) is string a ? "Asks " + a : null,
+			Severity = Events.EventSeverity.Warning,
+			At = this.clock(),
+			AccountId = accountId,
+			Target = from,
+			NeedsYou = true,
+		});
+	}
+
+	/// <summary>Names an account in alerts. Set by the host.</summary>
+	public Func<Guid, string?>? AccountLabel { get; set; }
 
 	// ---- Neurons ---------------------------------------------------------------------------
 
@@ -307,5 +367,6 @@ public sealed class AlertService : IDisposable
 		this.monitors.Attention.Changed -= this.Attention_Changed;
 		this.monitors.Hub.IssueChanged -= this.Hub_IssueChanged;
 		this.monitors.NeuronsChanged -= this.Monitors_NeuronsChanged;
+		this.monitors.SubscriptionRequested -= this.Monitors_SubscriptionRequested;
 	}
 }

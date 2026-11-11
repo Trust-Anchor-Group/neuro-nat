@@ -127,6 +127,9 @@ public sealed class Conversation
 /// <summary>Someone asks to see an account's presence (to be added as a contact).</summary>
 public sealed record SubscriptionRequest(Guid AccountId, string BareJid, DateTime Received)
 {
+	/// <summary>The account that is asked, by its name in Neuro.AA.</summary>
+	public string? AccountLabel { get; init; }
+
 	internal Waher.Networking.XMPP.Events.PresenceEventArgs? Presence { get; init; }
 }
 

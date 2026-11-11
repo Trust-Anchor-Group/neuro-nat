@@ -98,6 +98,7 @@ public sealed partial class ChatViewModel : ObservableObject
 
 	[ObservableProperty] private string filterText = string.Empty;
 	[ObservableProperty] private bool hasRequests;
+	[ObservableProperty] private int requestCount;
 	[ObservableProperty] private bool hasInvitations;
 	[ObservableProperty] private bool canSendFiles;
 	[ObservableProperty] private string? fileStatus;
@@ -366,6 +367,7 @@ public sealed partial class ChatViewModel : ObservableObject
 		foreach (SubscriptionRequest r in this.chat.Requests)
 			this.Requests.Add(r);
 		this.HasRequests = this.Requests.Count > 0;
+		this.RequestCount = this.Requests.Count;
 
 		this.Invitations.Clear();
 		foreach (RoomInvitation i in this.chat.Invitations)

@@ -43,7 +43,10 @@ public partial class App : Application
 
 				// Watching from the tray: alerts while the window is closed.
 				Engine.Alerts.JsonAlertSettingsStore alertStore = new(Path.Combine(services.DataFolder, "alerts.json"));
-				Engine.Alerts.AlertService alerts = new(services.Monitors, alertStore.Load());
+				Engine.Alerts.AlertService alerts = new(services.Monitors, alertStore.Load())
+				{
+					AccountLabel = id => services.Accounts.Sessions.FirstOrDefault(s => s.Profile.Id == id)?.Profile.Label,
+				};
 				Watch.WatchAgent watch = new(desktop, window, vm, alerts, alertStore, services.Autostart, services.Updates);
 				showMainWindow = watch.ShowWindow;
 				desktop.ShutdownRequested += async (_, _) =>

@@ -67,8 +67,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 		this.Chat.PropertyChanged += (_, e) =>
 		{
-			if (e.PropertyName == nameof(ChatViewModel.UnreadTotal))
+			if (e.PropertyName is nameof(ChatViewModel.UnreadTotal) or nameof(ChatViewModel.HasRequests) or nameof(ChatViewModel.RequestCount))
+			{
 				this.OnPropertyChanged(nameof(this.HasUnreadChat));
+				this.OnPropertyChanged(nameof(this.ChatBadge));
+			}
 		};
 	}
 
@@ -96,6 +99,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 				this.Workspace = WorkspaceKind.Attention;
 				break;
 
+			case Engine.Alerts.AlertKind.ContactRequest:
+				this.ShowChat();
+				break;
+
 			case Engine.Alerts.AlertKind.Error:
 				this.Events.Flush();
 				this.Events.SelectedIssue = this.Events.Issues.FirstOrDefault(i => i.Fingerprint == alert.Target) ?? this.Events.SelectedIssue;
@@ -119,7 +126,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	/// <summary>The chat admin console.</summary>
 	public ConsoleViewModel Console { get; }
 
-	public bool HasUnreadChat => this.Chat.UnreadTotal > 0;
+	/// <summary>Unread messages and contact requests, for the Chat badge on the rail.</summary>
+	public int ChatBadge => this.Chat.UnreadTotal + this.Chat.Requests.Count;
+
+	public bool HasUnreadChat => this.ChatBadge > 0;
 
 	/// <summary>Opens Chat to pick who gets a shared event, issue, notification or node.</summary>
 	private void Share(string title, string markdown)

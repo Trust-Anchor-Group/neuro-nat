@@ -35,6 +35,7 @@ public sealed class ToastWindow : Window
 		string tone = alert.Kind switch
 		{
 			AlertKind.NeuronBack => "State.Ok",
+			AlertKind.ContactRequest => "Accent",
 			_ when alert.Severity >= EventSeverity.Error => "State.Bad",
 			_ when alert.Severity >= EventSeverity.Warning || alert.Kind == AlertKind.Notification => "State.Busy",
 			_ => "Accent",
@@ -45,6 +46,7 @@ public sealed class ToastWindow : Window
 			AlertKind.Notification => "Notification",
 			AlertKind.Error => "Error",
 			AlertKind.NeuronDown => "Neuron down",
+			AlertKind.ContactRequest => "Contact request",
 			_ => "Neuron back",
 		};
 

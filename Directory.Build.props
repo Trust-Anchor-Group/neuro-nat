@@ -7,7 +7,7 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Company>Neuro.AA</Company>
     <Product>Neuro.AA</Product>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
       <!-- Waher.Content.Markdown is held at 6.3.3 below what the contracts client asks for; see Neuro.AA.Engine.csproj. -->
     <NoWarn>$(NoWarn);NU1605</NoWarn>
   </PropertyGroup>

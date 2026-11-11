@@ -227,8 +227,8 @@
             <StackPanel Spacing="4">
               <Panel HorizontalAlignment="Center">
                 <c:LineIcon Data="{StaticResource Icon.Chat}" />
-                <Border Classes="badge" Background="{DynamicResource Accent}" IsVisible="{Binding HasUnreadChat}" ToolTip.Tip="Unread messages">
-                  <TextBlock Text="{Binding Chat.UnreadTotal}" />
+                <Border Classes="badge" Background="{DynamicResource Accent}" IsVisible="{Binding HasUnreadChat}" ToolTip.Tip="Unread messages and contact requests">
+                  <TextBlock Text="{Binding ChatBadge}" />
                 </Border>
               </Panel>
               <TextBlock Classes="railLabel" Text="Chat" HorizontalAlignment="Center" />

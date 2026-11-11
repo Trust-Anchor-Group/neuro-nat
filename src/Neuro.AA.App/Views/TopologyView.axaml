@@ -74,10 +74,16 @@
               <TextBlock Text="Parents" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowFederation}" ToolTip.Tip="Server-to-server connections between federated brokers">
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowFederation}" ToolTip.Tip="Server-to-server links between brokers in the same parent tree">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Line Classes="legend" Stroke="{DynamicResource Accent}" StrokeDashArray="3.5,2" />
               <TextBlock Text="Federation" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowOtherServers}" ToolTip.Tip="Server-to-server links to brokers outside the parent tree, and those brokers">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Line Classes="legend" Stroke="{DynamicResource Ink.Tertiary}" StrokeDashArray="3.5,2" />
+              <TextBlock Text="Other servers" />
             </StackPanel>
           </ToggleButton>
           <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowGroups}" ToolTip.Tip="Contacts in the Neurons' roster groups. Asks the Neurons once more.">

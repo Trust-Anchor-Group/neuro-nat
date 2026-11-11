@@ -50,6 +50,9 @@ public sealed partial class TopologyViewModel : ObservableObject
 	[ObservableProperty] private bool hasProblems;
 	[ObservableProperty] private bool showParents = true;
 	[ObservableProperty] private bool showFederation = true;
+
+	/// <summary>Server-to-server links outside the parent tree (to brokers elsewhere). Off by default: they crowd the map.</summary>
+	[ObservableProperty] private bool showOtherServers;
 	[ObservableProperty] private bool showGroups;
 
 	[ObservableProperty]
@@ -71,6 +74,7 @@ public sealed partial class TopologyViewModel : ObservableObject
 
 	partial void OnShowParentsChanged(bool value) => this.Rebuild();
 	partial void OnShowFederationChanged(bool value) => this.Rebuild();
+	partial void OnShowOtherServersChanged(bool value) => this.Rebuild();
 
 	partial void OnShowGroupsChanged(bool value)
 	{
@@ -172,21 +176,59 @@ public sealed partial class TopologyViewModel : ObservableObject
 
 	private TopologyNode? Node(string? id) => id is null ? null : this.snapshot.Nodes.FirstOrDefault(n => n.Id == id);
 
-	private IEnumerable<TopologyEdge> VisibleEdges => this.snapshot.Edges.Where(e => e.Kind switch
+	/// <summary>
+	/// Each point's parent tree: points joined by parent links share a root. Federation means
+	/// server-to-server links inside one tree; links to brokers outside it are "other servers".
+	/// </summary>
+	private Dictionary<string, string> Trees()
 	{
-		TopologyLink.Parent => this.ShowParents,
-		TopologyLink.Federation => this.ShowFederation,
-		_ => this.ShowGroups,
-	});
+		Dictionary<string, string> up = [];
+		string Find(string x)
+		{
+			while (up.TryGetValue(x, out string? p) && p != x)
+				x = p;
+			return x;
+		}
+
+		foreach (TopologyNode n in this.snapshot.Nodes)
+			up[n.Id] = n.Id;
+		foreach (TopologyEdge e in this.snapshot.Edges.Where(e => e.Kind == TopologyLink.Parent))
+		{
+			string a = Find(e.From), b = Find(e.To);
+			if (a != b)
+				up[a] = b;
+		}
+
+		return this.snapshot.Nodes.ToDictionary(n => n.Id, n => Find(n.Id));
+	}
+
+	/// <summary>True for a server-to-server link inside one parent tree.</summary>
+	private bool InTree(TopologyEdge e, Dictionary<string, string> trees)
+		=> trees.TryGetValue(e.From, out string? a) && trees.TryGetValue(e.To, out string? b) && a == b;
+
+	private IEnumerable<TopologyEdge> VisibleEdges
+	{
+		get
+		{
+			Dictionary<string, string> trees = this.Trees();
+			return this.snapshot.Edges.Where(e => e.Kind switch
+			{
+				TopologyLink.Parent => this.ShowParents,
+				TopologyLink.Federation => this.InTree(e, trees) ? this.ShowFederation : this.ShowOtherServers,
+				_ => this.ShowGroups,
+			});
+		}
+	}
 
 	/// <summary>Lays out what is shown and colours the Neurons by health. UI thread.</summary>
 	private void Rebuild()
 	{
 		List<TopologyEdge> edges = [.. this.VisibleEdges];
 
-		// Contacts only belong on the map with their group links; everything else stays.
+		// Neurons always show. Brokers and contacts only with a link that is shown, so hiding
+		// the other servers also clears the brokers they lead to.
 		HashSet<string> linked = [.. edges.SelectMany(e => new[] { e.From, e.To })];
-		List<TopologyNode> nodes = [.. this.snapshot.Nodes.Where(n => n.Kind != TopologyNodeKind.Contact || linked.Contains(n.Id))];
+		List<TopologyNode> nodes = [.. this.snapshot.Nodes.Where(n => n.Kind == TopologyNodeKind.Neuron || linked.Contains(n.Id))];
 
 		Dictionary<Guid, AccountProfile> profiles = this.accounts.Sessions.ToDictionary(s => s.Profile.Id, s => s.Profile);
 		Dictionary<string, string> subs = nodes.ToDictionary(n => n.Id, n => n.Kind switch
@@ -199,7 +241,7 @@ public sealed partial class TopologyViewModel : ObservableObject
 
 		IReadOnlyDictionary<string, (double X, double Y)> pos = TopologyLayout.Compute(
 			[.. nodes.Select(n => n.Id)], [.. edges.Select(e => (e.From, e.To))], 150,
-			id => TopologyMap.EstimateSize(byId[id].Label, subs[id], byId[id].Kind), 26);
+			id => TopologyMap.EstimateSize(byId[id].Label, subs[id], byId[id].Kind, this.Load(byId[id]).Count > 0), 26);
 
 		IReadOnlyDictionary<string, EventHub.NeuronSummary> events = this.fleet.Monitors.Hub.SummarizeByNeuron(DateTime.Now);
 		Dictionary<(Guid, string), WatchedNeuron> watched = this.fleet.Monitors.Neurons
@@ -210,7 +252,7 @@ public sealed partial class TopologyViewModel : ObservableObject
 		{
 			(double x, double y) = pos.TryGetValue(n.Id, out var p) ? p : (0, 0);
 			string sub = subs[n.Id];
-			map.Add(new MapNode(n.Id, n.Label, sub, n.Kind, x, y, this.Tone(n, events, watched)));
+			map.Add(new MapNode(n.Id, n.Label, sub, n.Kind, x, y, this.Tone(n, events, watched)) { Load = this.Load(n) });
 		}
 
 		this.Graph = new MapGraph(map, [.. edges.Select(e => new MapEdge(e.From, e.To, e.Kind, e.Label))]);
@@ -232,6 +274,24 @@ public sealed partial class TopologyViewModel : ObservableObject
 			this.SelectedId = null;
 		else
 			this.ShowSelection();
+	}
+
+	/// <summary>CPU, free memory and free disk from Fleet, each with its own tone, for the card.</summary>
+	private IReadOnlyList<MapLoad> Load(TopologyNode n)
+	{
+		if (n.Kind != TopologyNodeKind.Neuron || n.AccountId is not Guid a || n.NeuronJid is not string jid || this.fleet.Get(a, jid) is not NeuronHealth h)
+			return [];
+
+		List<MapLoad> load = [];
+		if (h.Cpu.Latest is double cpu)
+			load.Add(new MapLoad("CPU", $"{cpu:0}%", cpu >= 80 ? "bad" : cpu >= 60 ? "busy" : "ok", Math.Clamp(cpu / 100, 0, 1)));
+		if (h.FreeMemory.Latest is double mem)
+			load.Add(new MapLoad("RAM", mem >= 1024 ? $"{mem / 1024:0.0} GB" : $"{mem:0} MB", mem < 1024 ? "bad" : mem < 2048 ? "busy" : "ok", null));
+		else if (h.AllocatedMemory.Latest is double alloc)
+			load.Add(new MapLoad("Heap", alloc >= 1024 ? $"{alloc / 1024:0.0} GB" : $"{alloc:0} MB", "idle", null));
+		if (h.FreeDisk.Latest is double disk)
+			load.Add(new MapLoad("Disk", $"{disk:0} GB", disk < 2 ? "bad" : disk < 10 ? "busy" : "ok", null));
+		return load;
 	}
 
 	private string Tone(TopologyNode n, IReadOnlyDictionary<string, EventHub.NeuronSummary> events, Dictionary<(Guid, string), WatchedNeuron> watched)
