@@ -224,6 +224,45 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 			_ = this.LoadNodesAsync();
 	}
 
+	/// <summary>Set by the shell: the moves to other screens.</summary>
+	public IShell? Shell { get; set; }
+
+	private string? wantedNode;
+	private PubSubTab wantedTab;
+
+	/// <summary>Opens a node by its name, as soon as the nodes are read. From the Inbox and from search.</summary>
+	public void Go(string node, PubSubTab tab = PubSubTab.Items)
+	{
+		this.wantedNode = node;
+		this.wantedTab = tab;
+		this.TryGo();
+	}
+
+	private void TryGo()
+	{
+		if (this.wantedNode is not string node || this.IsBusy || this.roots.Count == 0)
+			return;
+
+		this.wantedNode = null;
+		if (this.Loaded().FirstOrDefault(r => r.Node == node) is not PubSubNodeRow row)
+		{
+			Ui.Say(node + " is not among the nodes that show here. It may be inside a collection that is closed.");
+			return;
+		}
+
+		this.WatchingOnly = false;
+		this.NodeFilter = string.Empty;
+		this.SelectedNode = row;
+		this.Tab = this.wantedTab;
+	}
+
+	/// <summary>"Chat with them", for an address on a node: who published, who has a role, who subscribes.</summary>
+	private void ChatWith(ActionList list, string jid)
+	{
+		if (this.Shell is IShell shell && this.Account is { } a && !string.Equals(jid, this.Me, StringComparison.OrdinalIgnoreCase) && jid.Contains('@'))
+			list.GoTo("Chat with them", () => shell.ShowChat(a.Id, jid), "Chat");
+	}
+
 	/// <summary>The account's own address, to tell "you" apart on a node's lists.</summary>
 	private string? Me => this.Account is { } a && this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == a.Id) is AccountSession s
 		? s.BareJid ?? s.Profile.UserName + "@" + s.Profile.EffectiveDomain
@@ -312,6 +351,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 			{
 				this.IsBusy = false;
 				this.OnPropertyChanged(nameof(this.NodesEmptyText));
+				this.TryGo();
 			}
 		}
 	}

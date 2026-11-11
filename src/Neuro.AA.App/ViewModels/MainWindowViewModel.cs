@@ -56,11 +56,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	private WorkspaceKind lastAccountsScreen = WorkspaceKind.Accounts;
 
 	public MainWindowViewModel(AccountManager accounts, FleetService fleet, Engine.Chat.ChatService? chat = null, Engine.Identity.IdentityService? identities = null,
-		Engine.Devices.DevicesService? devices = null, Engine.PubSub.PubSubService? pubsub = null)
+		Engine.Devices.DevicesService? devices = null, Engine.PubSub.PubSubService? pubsub = null, Engine.Software.SoftwareService? software = null)
 	{
 		this.accounts = accounts;
 		this.fleet = fleet;
-		this.Search = new SearchViewModel(this.SearchItems);
+		this.Search = new SearchViewModel(this.SearchItems)
+		{
+			// People and problems are found as they are now, not as they were when their screens were last open.
+			Opening = () =>
+			{
+				this.Chat.Refresh();
+				this.Events.Flush();
+			},
+		};
 		this.Events = new EventsViewModel(fleet.Monitors);
 		this.NeuronEvents = new EventsViewModel(fleet.Monitors);
 		this.Fleet = new FleetViewModel(fleet, accounts) { ShowEventsFor = this.ShowEventsOf };
@@ -71,6 +79,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.devicesService = devices ?? new Engine.Devices.DevicesService(accounts);
 		this.identityService = identities ?? new Engine.Identity.IdentityService(accounts, chatService);
 		this.Settings = new SettingsViewModel(chatService);
+		this.Settings.Loaded += (_, _) =>
+		{
+			// The Neuron picked last time is picked again as soon as it is among the Neurons.
+			if (this.LensJid is null && this.Settings.Neuron is string kept)
+			{
+				this.wantedLens = kept;
+				this.SyncNeurons();
+			}
+		};
 		this.Console = new ConsoleViewModel(chatService, fleet.Monitors, accounts);
 		this.Chat = new ChatViewModel(chatService, accounts)
 		{
@@ -83,7 +100,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			OpenNeuronFor = (account, jid) => this.OpenNeuron(jid, account),
 			OpenConsoleFor = (account, jid) => this.OpenNeuron(jid, account, WorkspaceKind.NeuronConsole),
 		};
-		this.Updates = new UpdatesViewModel(new Engine.Software.SoftwareService(fleet.Monitors, chatService), fleet.Monitors, accounts);
+		this.Updates = new UpdatesViewModel(software ?? new Engine.Software.SoftwareService(fleet.Monitors, chatService), fleet.Monitors, accounts);
 		this.Devices = new DevicesViewModel(this.devicesService, accounts);
 		Engine.PubSub.PubSubService pubsubService = pubsub ?? new Engine.PubSub.PubSubService(accounts);
 		this.Inbox = new InboxViewModel(this.Attention, this.Chat, chatService, this.devicesService, this.identityService, accounts, pubsubService)
@@ -127,6 +144,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.RefreshLastEvent();
 		this.StartActions();
 		this.StartPages();
+		this.StartHistory();
 	}
 
 	// ----- Places: the rail has five, plus Accounts. Each holds one or more screens. -----
@@ -162,6 +180,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			this.lastAccountsScreen = value;
 
 		this.SyncWatched();
+		this.ApplyLens();
+		this.NoteStop();
 	}
 
 	/// <summary>The window is in front. Set by the window; a conversation only counts as read while it is.</summary>
@@ -244,8 +264,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	[ObservableProperty]
 	private bool hasNeuronChips;
 
-	/// <summary>The chips show where they filter something: the Events screen, for now.</summary>
-	public bool IsLensVisible => this.Workspace == WorkspaceKind.Events;
+	/// <summary>
+	/// The chips show on the screens that are about all Neurons at once: the Inbox, the list
+	/// and the map, Events and the Console. A Neuron's own page, Chat, Accounts and Settings
+	/// have nothing for them to narrow.
+	/// </summary>
+	public bool IsLensVisible => this.Workspace is WorkspaceKind.Attention or WorkspaceKind.Fleet or WorkspaceKind.Topology or WorkspaceKind.Events or WorkspaceKind.Console;
+
+	// The Neuron picked last time, until its chip is there to pick again.
+	private string? wantedLens;
+	private bool lensByItself;
+	private string? consoleLens;
 
 	partial void OnLensJidChanged(string? value)
 	{
@@ -253,6 +282,43 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			chip.IsSelected = string.Equals(chip.BareJid, value, StringComparison.OrdinalIgnoreCase);
 
 		this.Events.NeuronFilter = value;
+		this.Inbox.NeuronFilterName = this.NeuronChips.FirstOrDefault(c => c.IsSelected)?.Label;
+		this.Inbox.NeuronFilter = value;
+		this.Fleet.NeuronFilter = value;
+		this.ApplyLens();
+
+		// Picked by hand, it is kept for the next run. Dropped because the Neuron went away, it is not.
+		if (!this.lensByItself)
+		{
+			this.wantedLens = null;
+			this.Settings.RememberNeuron(value);
+		}
+	}
+
+	/// <summary>What the picked Neuron means on the screen in front, where that is more than a filter.</summary>
+	private void ApplyLens()
+	{
+		if (this.LensJid is not string jid)
+		{
+			this.consoleLens = null;
+			return;
+		}
+
+		switch (this.Workspace)
+		{
+			// On the map nothing is hidden: the Neuron is pointed out.
+			case WorkspaceKind.Topology:
+				this.Topology.SelectNeuron(jid);
+				break;
+
+			// In the Console it is the Neuron the next command goes to. Ticking others by hand afterwards stands.
+			case WorkspaceKind.Console when !string.Equals(this.consoleLens, jid, StringComparison.OrdinalIgnoreCase):
+				this.consoleLens = jid;
+				List<(Guid, string)> targets = [.. this.Fleet.Rows.Where(r => string.Equals(r.BareJid, jid, StringComparison.OrdinalIgnoreCase)).Select(r => (r.AccountId, r.BareJid))];
+				if (targets.Count > 0)
+					this.Console.Focus(targets);
+				break;
+		}
 	}
 
 	[RelayCommand]
@@ -285,9 +351,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			chip.IsSelected = string.Equals(chip.BareJid, this.LensJid, StringComparison.OrdinalIgnoreCase);
 		}
 
-		// A Neuron that is gone cannot stay the filter.
-		if (this.LensJid is not null && !this.NeuronChips.Any(c => c.IsSelected))
+		// A Neuron that is gone cannot stay the filter. It is picked again when it comes back.
+		if (this.LensJid is string gone && !this.NeuronChips.Any(c => c.IsSelected))
+		{
+			this.lensByItself = true;
 			this.LensJid = null;
+			this.wantedLens = gone;
+			this.lensByItself = false;
+		}
+		else if (this.LensJid is null && this.wantedLens is string wanted && this.NeuronChips.Any(c => string.Equals(c.BareJid, wanted, StringComparison.OrdinalIgnoreCase)))
+		{
+			this.lensByItself = true;
+			this.LensJid = wanted;
+			this.wantedLens = null;
+			this.lensByItself = false;
+		}
 
 		this.HasNeuronChips = this.NeuronChips.Count > 0;
 
@@ -348,8 +426,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 	private IEnumerable<SearchItem> SearchItems()
 	{
-		static Geometry? Icon(string key)
-			=> Avalonia.Application.Current is Avalonia.Application app && Avalonia.Controls.ResourceNodeExtensions.TryFindResource(app, "Icon." + key, out object? g) ? g as Geometry : null;
+		static Geometry? Icon(string? key)
+			=> key is not null && Avalonia.Application.Current is Avalonia.Application app && Avalonia.Controls.ResourceNodeExtensions.TryFindResource(app, "Icon." + key, out object? g) ? g as Geometry : null;
+
+		// What a right-click menu offers is offered here too, from the same list, so the two cannot disagree.
+		static IEnumerable<SearchItem> From(IEnumerable<ItemAction> actions, string about, string? words, string fallbackIcon)
+		{
+			foreach (ItemAction action in actions)
+			{
+				if (!action.IsEnabled)
+					continue;
+
+				if (action.Children is { } inside)
+				{
+					foreach (SearchItem i in From(inside, about, words, fallbackIcon))
+						yield return i;
+					continue;
+				}
+
+				ItemAction a = action;
+				yield return new SearchItem(a.Text, about, Icon(a.Icon ?? (a.Group == ActionGroup.Copy ? "Copy" : fallbackIcon)), () => _ = a.RunAsync())
+				{
+					Kind = a.Group == ActionGroup.GoTo ? "Go to" : "Do",
+					IsDanger = a.IsDanger,
+					Words = words,
+				};
+			}
+		}
 
 		yield return new SearchItem("Inbox", "What needs you", Icon("Attention"), this.ShowAttention);
 		yield return new SearchItem("Neurons", "The list of all Neurons", Icon("Fleet"), this.ShowFleet);
@@ -362,30 +465,70 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		yield return new SearchItem("Identities", "Your legal identities", Icon("Identities"), this.ShowIdentities);
 		yield return new SearchItem("Storage", "Your account's personal storage", Icon("PubSub"), this.ShowPubSub);
 		yield return new SearchItem("Settings", "Status, look, pop-ups and sounds", Icon("Settings"), this.ShowSettings);
-		yield return new SearchItem(this.Settings.IsDoNotDisturb ? "Available" : "Do not disturb", this.Settings.IsDoNotDisturb ? "Let pop-ups and sounds through again" : "Hold back pop-ups and sounds",
-			Icon(this.Settings.IsDoNotDisturb ? "Bell" : "BellOff"), () => this.Settings.SetStatus(this.Settings.IsDoNotDisturb ? OwnStatus.Available : OwnStatus.DoNotDisturb));
 
 		foreach (NeuronChipViewModel chip in this.NeuronChips)
 		{
 			string jid = chip.BareJid;
-			yield return new SearchItem(chip.Label, "Neuron: open its page", Icon("Fleet"), () => this.OpenNeuron(jid));
-			yield return new SearchItem(chip.Label + " sources", "Neuron: its data sources and nodes", Icon("Sources"), () => this.OpenNeuron(jid, null, WorkspaceKind.Sources));
-			yield return new SearchItem(chip.Label + " console", "Neuron: send it commands", Icon("Console"), () => this.OpenNeuron(jid, null, WorkspaceKind.NeuronConsole));
-			yield return new SearchItem(chip.Label + " software", "Neuron: versions and updates", Icon("Updates"), () => this.OpenNeuron(jid, null, WorkspaceKind.Updates));
-			yield return new SearchItem(chip.Label + " events", "Neuron: its problems and live stream", Icon("Events"), () => this.OpenNeuron(jid, null, WorkspaceKind.NeuronEvents));
+			yield return new SearchItem(chip.Label, "Open its page", Icon("Fleet"), () => this.OpenNeuron(jid)) { Kind = "Neuron", Words = jid };
+		}
+
+		// People and rooms. A Neuron is found as a Neuron, above.
+		foreach (PersonViewModel person in this.Chat.Everyone)
+		{
+			if (person.IsNeuron)
+				continue;
+
+			PersonViewModel p = person;
+			yield return new SearchItem(p.Label, p.IsRoom ? "Open the room" : p.IsPrivate ? "Open the conversation in the room" : "Open the conversation", Icon(p.IsRoom ? "Room" : "Person"),
+				() => this.ShowChat(p.AccountId, p.BareJid))
+			{
+				Kind = p.IsRoom ? "Room" : "Person",
+				Words = p.BareJid + " " + p.Name,
+			};
+		}
+
+		foreach (IssueItemViewModel issue in this.Events.Issues)
+		{
+			string fingerprint = issue.Fingerprint;
+			yield return new SearchItem(issue.Title, issue.Meta, Icon("Alert"), () => this.ShowIssue(fingerprint)) { Kind = "Problem" };
+		}
+
+		// The publish/subscribe nodes that have been read: the ones on the service or in the storage looked at last.
+		if (this.PubSub.Account is { } nodesOf)
+		{
+			foreach (PubSubNodeRow node in this.PubSub.Nodes)
+			{
+				PubSubNodeRow n = node;
+				yield return new SearchItem(n.Label, string.IsNullOrEmpty(n.Name) ? n.Info.Service : n.Name + ", on " + n.Info.Service, Icon("PubSub"), () => this.ShowNode(nodesOf.Id, n.Info.Service, n.Node)) { Kind = "Node", Words = n.Node + " " + n.Name };
+			}
 		}
 
 		foreach (AccountItemViewModel account in this.Accounts)
 		{
 			AccountItemViewModel a = account;
-			yield return new SearchItem(a.Label, "Account: " + a.StatusText, Icon("Accounts"), () =>
-			{
-				this.SelectedAccount = a;
-				this.ShowAccounts();
-			});
+			yield return new SearchItem(a.Label, a.StatusText, Icon("Accounts"), () => this.ShowAccount(a.Session.Profile.Id)) { Kind = "Account" };
 		}
 
-		yield return new SearchItem(this.IsDark ? "Light look" : "Dark look", "Switch between light and dark", Icon(this.IsDark ? "Sun" : "Moon"), this.ToggleTheme);
+		// Things to do: with a Neuron, with an account, and with the app itself.
+		foreach (NeuronChipViewModel chip in this.NeuronChips)
+		{
+			foreach (SearchItem i in From(this.NeuronActions(chip.BareJid, null, WorkspaceKind.Fleet), chip.Label, chip.BareJid, "Fleet"))
+				yield return i;
+		}
+
+		foreach (AccountItemViewModel account in this.Accounts)
+		{
+			foreach (SearchItem i in From(this.ActionsFor([account]), account.Label, null, "Accounts"))
+				yield return i;
+		}
+
+		yield return new SearchItem(this.Settings.IsDoNotDisturb ? "Available" : "Do not disturb", this.Settings.IsDoNotDisturb ? "Let pop-ups and sounds through again" : "Hold back pop-ups and sounds",
+			Icon(this.Settings.IsDoNotDisturb ? "Bell" : "BellOff"), () => this.Settings.SetStatus(this.Settings.IsDoNotDisturb ? OwnStatus.Available : OwnStatus.DoNotDisturb)) { Kind = "Do" };
+		yield return new SearchItem(this.IsDark ? "Light look" : "Dark look", "Switch between light and dark", Icon(this.IsDark ? "Sun" : "Moon"), this.ToggleTheme) { Kind = "Do" };
+		if (this.CanGoBack)
+			yield return new SearchItem("Back", this.BackTip, Icon("Back"), () => this.GoBackCommand.Execute(null)) { Kind = "Do" };
+		if (this.LensJid is string lens)
+			yield return new SearchItem("Show all Neurons", "The screens show only " + lens + " now", Icon("Filter"), () => this.LensJid = null) { Kind = "Do" };
 	}
 
 	/// <summary>The Chat workspace.</summary>

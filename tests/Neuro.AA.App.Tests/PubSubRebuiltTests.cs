@@ -335,7 +335,7 @@ public class PubSubRebuiltTests
 		// One item: copy what it says, its XML or its id; publish it again; remove it.
 		PubSubItemRow row = p.Items[0];
 		IReadOnlyList<ItemAction> one = p.ActionsFor([row]);
-		Assert.Equal(["Copy what it says", "Copy XML", "Copy id", "Copy who published", "Publish a copy…", "Edit and publish again…", "Remove"], Texts(one));
+		Assert.Equal(["Copy what it says", "Copy XML", "Copy id", "Copy who published", "Chat with them", "Publish a copy…", "Edit and publish again…", "Remove"], Texts(one));
 		await Action(one, "Copy what it says").RunAsync();
 		Assert.Contains("Temperature: 21.9 °C", s.Copied[^1]);
 		await Action(one, "Copy XML").RunAsync();
@@ -607,7 +607,7 @@ public class PubSubRebuiltTests
 		Assert.Equal("Asked to subscribe", p.Subscribers[0].StateText);
 		Capture(window, $"pubsub-people-{theme.ToLowerInvariant()}-1440");
 
-		Assert.Equal(["Copy address", "Allow", "Deny"], Texts(p.ActionsFor([p.Subscribers[0]])));
+		Assert.Equal(["Copy address", "Chat with them", "Allow", "Deny"], Texts(p.ActionsFor([p.Subscribers[0]])));
 		await p.AllowSubscriberCommand.ExecuteAsync(p.Subscribers[0]);
 		Assert.Equal("Subscribes", p.Subscribers.Single(x => x.Jid == "sam@partner.example").StateText);
 		Assert.Equal("Let sam@partner.example subscribe", s.Said[^1]);
@@ -629,7 +629,7 @@ public class PubSubRebuiltTests
 		// Changing and taking away, from the row.
 		NodePersonRow robin = p.People.Single(x => x.Jid == "robin@lab.tagroot.io");
 		IReadOnlyList<ItemAction> change = p.ActionsFor([robin]);
-		Assert.Equal(["Copy address", "May publish, but not read", "May read and subscribe", "Owner: may do everything", "Blocked: kept out", "Take off the list"], Texts(change));
+		Assert.Equal(["Copy address", "Chat with them", "May publish, but not read", "May read and subscribe", "Owner: may do everything", "Blocked: kept out", "Take off the list"], Texts(change));
 		await Action(change, "Blocked: kept out").RunAsync();
 		Assert.True(p.People.Single(x => x.Jid == "robin@lab.tagroot.io").IsBlocked);
 		await Action(p.ActionsFor([p.People.Single(x => x.Jid == "lee@lab.tagroot.io")]), "Take off the list").RunAsync();

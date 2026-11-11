@@ -526,7 +526,10 @@ public sealed partial class PubSubViewModel
 				list.Copy("Copy XML", () => row.PrettyXml, "the XML");
 			list.Copy("Copy id", () => row.Item.ItemId, "the id");
 			if (row.Item.Publisher is string who)
+			{
 				list.Copy("Copy who published", () => who, "the address");
+				this.ChatWith(list, who);
+			}
 
 			list.Do("Publish a copy…", () => this.OpenEditor("Publish a copy on " + this.NodeTitle, string.Empty, row.PrettyXml), icon: "Copy");
 			list.Do("Edit and publish again…", () => this.OpenEditor("Publish " + row.Item.ItemId + " again", row.Item.ItemId, row.PrettyXml), icon: "Edit");

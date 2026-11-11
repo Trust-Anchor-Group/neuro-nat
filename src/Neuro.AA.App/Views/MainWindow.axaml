@@ -84,7 +84,7 @@
     <!-- Search box in the top bar -->
     <Style Selector="TextBox.search">
       <Setter Property="Width" Value="280" />
-      <Setter Property="PlaceholderText" Value="Go to a screen or Neuron" />
+      <Setter Property="PlaceholderText" Value="Search, or go to…" />
       <Setter Property="Background" Value="{DynamicResource Surface.Ground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
     </Style>
@@ -114,6 +114,27 @@
     </Style>
     <Style Selector="TextBlock.pageTitle">
       <Setter Property="MaxWidth" Value="420" />
+    </Style>
+    <Style Selector="Border.searchFloat">
+      <Setter Property="Width" Value="520" />
+    </Style>
+    <Style Selector=".maxw780 Border.searchFloat">
+      <Setter Property="Width" Value="420" />
+    </Style>
+    <Style Selector="TextBlock.searchTitle.danger">
+      <Setter Property="Foreground" Value="{DynamicResource State.Bad}" />
+    </Style>
+    <Style Selector="TextBlock.searchKind">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Tertiary}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+    </Style>
+    <Style Selector="Button.nav">
+      <Setter Property="Padding" Value="6" />
+      <Setter Property="MinWidth" Value="0" />
+    </Style>
+    <Style Selector="StackPanel.crumb Button.link">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Body}" />
     </Style>
     <Style Selector="Border.accountList">
       <Setter Property="Width" Value="340" />
@@ -152,11 +173,11 @@
     </Style>
     <Style Selector=".maxw1100 TextBox.search">
       <Setter Property="Width" Value="200" />
-      <Setter Property="PlaceholderText" Value="Go to…" />
+      <Setter Property="PlaceholderText" Value="Search…" />
     </Style>
     <Style Selector=".maxw960 TextBox.search">
       <Setter Property="Width" Value="150" />
-      <Setter Property="PlaceholderText" Value="Go to…" />
+      <Setter Property="PlaceholderText" Value="Search…" />
       <Setter Property="Padding" Value="32,5,10,5" />
     </Style>
     <Style Selector=".maxw960 Border.searchKey">
@@ -283,11 +304,24 @@
     <!-- Top bar: the place, its screens, the Neuron chips and the search box -->
     <Border Grid.Column="1" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
       <DockPanel Margin="20,0,16,0">
-        <!-- On a Neuron's page: the way back to all Neurons, and how the Neuron is doing -->
-        <Button DockPanel.Dock="Left" Classes="ghost" Padding="6" Margin="-8,0,6,0" VerticalAlignment="Center" IsVisible="{Binding IsNeuronPage}"
-                Command="{Binding BackToNeuronsCommand}" ToolTip.Tip="Back to all Neurons" AutomationProperties.Name="Back to all Neurons">
-          <c:LineIcon Data="{StaticResource Icon.Back}" Width="16" Height="16" />
-        </Button>
+        <!-- Back and forward through where you have been. Right-click for the list. -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="-10,0,10,0">
+          <Button x:Name="BackButton" Classes="ghost nav" Command="{Binding GoBackCommand}" ToolTip.Tip="{Binding BackTip}" AutomationProperties.Name="Back"
+                  c:ActionMenu.Source="{Binding}" c:ActionMenu.Item="{x:Static vm:HistoryMenu.Back}">
+            <c:LineIcon Data="{StaticResource Icon.Back}" Width="16" Height="16" />
+          </Button>
+          <Button x:Name="ForwardButton" Classes="ghost nav" Command="{Binding GoForwardCommand}" ToolTip.Tip="{Binding ForwardTip}" AutomationProperties.Name="Forward"
+                  c:ActionMenu.Source="{Binding}" c:ActionMenu.Item="{x:Static vm:HistoryMenu.Forward}">
+            <c:LineIcon Data="{StaticResource Icon.Forward}" Width="16" Height="16" />
+          </Button>
+        </StackPanel>
+
+        <!-- On a Neuron's page: the way up to all Neurons, and how the Neuron is doing -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding IsNeuronPage}" Classes="crumb">
+          <Button Classes="link" Command="{Binding BackToNeuronsCommand}" Content="Neurons" VerticalAlignment="Center"
+                  ToolTip.Tip="Up to all Neurons" AutomationProperties.Name="Up to all Neurons" />
+          <c:LineIcon Data="{StaticResource Icon.ChevronRight}" Width="12" Height="12" Margin="6,1,8,0" Foreground="{DynamicResource Ink.Tertiary}" VerticalAlignment="Center" />
+        </StackPanel>
         <Ellipse DockPanel.Dock="Left" Classes="dot" VerticalAlignment="Center" Margin="0,0,9,0" IsVisible="{Binding IsNeuronPage}"
                  Classes.ok="{Binding Page.IsOk}" Classes.busy="{Binding Page.IsBusy}" Classes.bad="{Binding Page.IsBad}" ToolTip.Tip="{Binding Page.StateText}" />
         <TextBlock DockPanel.Dock="Left" Classes="title" Classes.pageTitle="{Binding IsNeuronPage}" Text="{Binding WorkspaceTitle}" VerticalAlignment="Center" Margin="0,0,16,0"
@@ -296,7 +330,7 @@
         <!-- Search: Ctrl+K from anywhere -->
         <Panel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0">
           <TextBox x:Name="SearchBox" Classes="search" Text="{Binding Search.Query}"
-                   MinHeight="30" Padding="32,5,58,5" AutomationProperties.Name="Go to a screen or Neuron" />
+                   MinHeight="30" Padding="32,5,58,5" AutomationProperties.Name="Search for a screen, a Neuron, a person, a problem or something to do" />
           <c:LineIcon Data="{StaticResource Icon.Search}" Width="15" Height="15" Foreground="{DynamicResource Ink.Tertiary}"
                       HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False" />
           <Border Classes="kbd searchKey" HorizontalAlignment="Right" Margin="0,0,7,0" IsHitTestVisible="False">
@@ -446,23 +480,29 @@
     </Border>
 
     <!-- Search results: floats under the search box -->
-    <Border Grid.Row="2" Grid.Column="1" Classes="float" ZIndex="20" Width="380" HorizontalAlignment="Right" VerticalAlignment="Top"
+    <Border x:Name="SearchFloat" Grid.Row="2" Grid.Column="1" Classes="float searchFloat" ZIndex="20" HorizontalAlignment="Right" VerticalAlignment="Top"
             Margin="0,6,16,0" Padding="4" IsVisible="{Binding Search.IsOpen}">
-      <Panel>
-        <ListBox x:Name="SearchResults" Classes="rows search" ItemsSource="{Binding Search.Results}" SelectedItem="{Binding Search.Selected}"
-                 Focusable="False" IsVisible="{Binding Search.HasResults}">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:SearchItem">
-              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                <c:LineIcon Data="{Binding Icon}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
-                <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="Medium" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="210" />
-              </Grid>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-        <TextBlock Classes="meta" Text="Nothing matches. Try the name of a screen or a Neuron." Margin="10,8" IsVisible="{Binding !Search.HasResults}" />
-      </Panel>
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Bottom" Classes="meta" Text="{Binding Search.MoreText}" Margin="10,6,10,6" IsVisible="{Binding Search.HasMore}" />
+        <Panel>
+          <ListBox x:Name="SearchResults" Classes="rows search" ItemsSource="{Binding Search.Results}" SelectedItem="{Binding Search.Selected}"
+                   Focusable="False" IsVisible="{Binding Search.HasResults}" MaxHeight="430">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SearchItem">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="10">
+                  <c:LineIcon Data="{Binding Icon}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
+                  <TextBlock Grid.Column="1" Classes="searchTitle" Classes.danger="{Binding IsDanger}" Text="{Binding Title}" FontWeight="Medium" VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis" MaxWidth="250" />
+                  <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="3" Classes="meta searchKind" Text="{Binding Kind}" VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock Classes="meta" Text="Nothing matches. Try a Neuron, a person, a problem, or something to do, like reboot." Margin="10,8" TextWrapping="Wrap"
+                     IsVisible="{Binding !Search.HasResults}" />
+        </Panel>
+      </DockPanel>
     </Border>
 
     <!-- The short note that confirms what just happened: "Copied 3 events". It sits in the

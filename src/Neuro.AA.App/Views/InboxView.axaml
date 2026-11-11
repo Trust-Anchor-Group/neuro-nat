@@ -112,6 +112,15 @@
 
         <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding SearchText}" PlaceholderText="Filter by text, person, Neuron or kind…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
 
+        <!-- One Neuron is picked at the top: say what that keeps out of the list -->
+        <DockPanel DockPanel.Dock="Bottom" Margin="2,8,0,0" IsVisible="{Binding HasElsewhere}">
+          <Button x:Name="ElsewhereButton" DockPanel.Dock="Right" Classes="link" Command="{Binding ShowElsewhereCommand}" VerticalAlignment="Center"
+                  ToolTip.Tip="Show what waits from every Neuron">
+            <TextBlock Classes="meta" Text="Show all" Foreground="{DynamicResource Accent.Ink}" />
+          </Button>
+          <TextBlock Classes="meta" Text="{Binding ElsewhereText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+
         <!-- The last answer, and a moment to take it back -->
         <Border DockPanel.Dock="Bottom" Classes="panel" Padding="12,6,6,6" Margin="0,8,0,0" Background="{DynamicResource Surface.Raised}" IsVisible="{Binding HasUndo}">
           <DockPanel>

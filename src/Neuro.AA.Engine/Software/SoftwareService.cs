@@ -46,9 +46,17 @@ public sealed partial class SoftwareService(MonitorService monitors, ChatService
 
 	private ConsoleSession Console(Guid accountId, string neuronJid) => chat.Console(accountId, neuronJid);
 
+	/// <summary>Answers in place of the Neurons, for tests and previews: what a Neuron's software is, and what a check says.</summary>
+	internal Func<Guid, string, NeuronSoftware>? ReadStandIn { get; set; }
+
+	internal Func<Guid, string, IReadOnlyList<string>>? CheckStandIn { get; set; }
+
 	/// <summary>Reads everything about one Neuron's software.</summary>
 	public async Task<NeuronSoftware> ReadAsync(Guid accountId, string neuronJid)
 	{
+		if (this.ReadStandIn is not null)
+			return this.ReadStandIn(accountId, neuronJid);
+
 		ConsoleSession c = this.Console(accountId, neuronJid);
 		try
 		{
@@ -82,7 +90,7 @@ public sealed partial class SoftwareService(MonitorService monitors, ChatService
 
 	/// <summary>Asks the Neuron's update service for new packages. Returns the Neuron's progress messages.</summary>
 	public async Task<IReadOnlyList<string>> CheckAsync(Guid accountId, string neuronJid)
-		=> Plain(await this.Console(accountId, neuronJid).AskUntilQuietAsync("check", TimeSpan.FromSeconds(4), TimeSpan.FromMinutes(3)));
+		=> this.CheckStandIn is not null ? this.CheckStandIn(accountId, neuronJid) : Plain(await this.Console(accountId, neuronJid).AskUntilQuietAsync("check", TimeSpan.FromSeconds(4), TimeSpan.FromMinutes(3)));
 
 	/// <summary>Sets the automatic update delay in minutes; 0 turns automatic updates off.</summary>
 	public async Task<string> SetAutoDelayAsync(Guid accountId, string neuronJid, int minutes)

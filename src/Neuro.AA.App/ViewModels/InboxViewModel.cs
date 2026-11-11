@@ -165,6 +165,57 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 
 	public ObservableCollection<InboxRowViewModel> Rows { get; } = [];
 
+	/// <summary>Everything that is in the Inbox, whatever the tab and the filters show of it.</summary>
+	public IReadOnlyList<InboxRowViewModel> Everything { get; private set; } = [];
+
+	/// <summary>
+	/// Bare JID of the one Neuron to show; null for all. Set by the shell from the Neuron chips.
+	/// What a Neuron told you, and what comes from people and things on it, is "from" it.
+	/// </summary>
+	public string? NeuronFilter
+	{
+		get => this.neuronFilter;
+		set
+		{
+			if (string.Equals(this.neuronFilter, value, StringComparison.OrdinalIgnoreCase))
+				return;
+
+			this.neuronFilter = value;
+			this.Refresh();
+		}
+	}
+
+	private string? neuronFilter;
+
+	/// <summary>What the Neuron of the filter is called, for the empty list. Set by the shell before the filter.</summary>
+	public string? NeuronFilterName { get; set; }
+
+	/// <summary>"3 more from other Neurons": what the Neuron filter keeps out of the list. Empty when nothing.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasElsewhere))]
+	private string elsewhereText = string.Empty;
+
+	public bool HasElsewhere => this.ElsewhereText.Length > 0;
+
+	/// <summary>Set by the shell: takes the Neuron filter away.</summary>
+	public Action? ShowAllNeurons { get; set; }
+
+	[RelayCommand]
+	private void ShowElsewhere() => this.ShowAllNeurons?.Invoke();
+
+	private static bool IsFrom(InboxRowViewModel r, string neuron)
+	{
+		if (r.NodeAsk is NodeRequest q && (string.Equals(q.Service, neuron, StringComparison.OrdinalIgnoreCase) || q.Service.EndsWith("." + neuron, StringComparison.OrdinalIgnoreCase)))
+			return true;
+
+		if (r.Jid is not string jid)
+			return false;
+
+		// A room lives on a part of the Neuron: "muc.lab.tagroot.io" is on "lab.tagroot.io".
+		string domain = jid[(jid.IndexOf('@') + 1)..];
+		return string.Equals(domain, neuron, StringComparison.OrdinalIgnoreCase) || domain.EndsWith("." + neuron, StringComparison.OrdinalIgnoreCase);
+	}
+
 	/// <summary>Set by the shell: opens Identities, where a request for an identity is reviewed.</summary>
 	public Action? OpenIdentities { get; set; }
 
@@ -244,7 +295,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 
 	[ObservableProperty] private bool hasRows;
 
-	public string EmptyTitle => this.Tab switch
+	public string EmptyTitle => this.HasElsewhere ? "Nothing from " + (this.NeuronFilterName ?? this.neuronFilter) + " here" : this.Tab switch
 	{
 		InboxTab.Messages => "No unread messages",
 		InboxTab.Requests => "No requests",
@@ -252,7 +303,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 		_ => "Nothing waits for you",
 	};
 
-	public string EmptyText => this.Tab switch
+	public string EmptyText => this.HasElsewhere ? "The list shows one Neuron only. " + this.ElsewhereText + "." : this.Tab switch
 	{
 		InboxTab.Messages => "Messages you have not read show up here, from people and from rooms.",
 		InboxTab.Requests => "Contact requests, room invitations, questions from your devices, requests for your identity and requests to subscribe to your nodes show up here, with their answers on the row.",
@@ -376,6 +427,13 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 				list.Sub("Go to " + n.NeuronLabel, ActionGroup.GoTo, shell.NeuronPlaces(n.NeuronJid));
 			else if (row.IsMessage && row.Jid is string who)
 				list.GoTo("Chat", () => shell.ShowChat(row.AccountId, who), "Chat");
+			else if (row.NodeAsk is NodeRequest ask)
+			{
+				list.GoTo("The node, and who subscribes", () => shell.ShowNode(ask.AccountId, ask.Service, ask.Node, people: true), "PubSub");
+				list.GoTo("Chat with them", () => shell.ShowChat(ask.AccountId, ask.Jid), "Chat");
+			}
+			else if (row.Request is not null && row.Jid is string asker)
+				list.GoTo("Chat with them", () => shell.ShowChat(row.AccountId, asker), "Chat");
 		}
 
 		if (!row.IsDone)
@@ -545,8 +603,9 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 		this.NeuronCount = this.Notifications.OpenCount;
 		this.WaitingCount = messages + requests + this.Notifications.OpenCount;
 
+		this.Everything = list;
 		string search = this.SearchText.Trim();
-		List<InboxRowViewModel> shown = [.. list
+		List<InboxRowViewModel> inTab = [.. list
 			.Where(r => !this.hidden.Contains(r.Key))
 			.Where(r => this.Tab switch
 			{
@@ -554,7 +613,21 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 				InboxTab.Requests => r.IsRequest,
 				InboxTab.Neurons => r.IsNotification,
 				_ => true,
-			})
+			})];
+
+		// The Neuron chips: only what is from that Neuron, and a word about what is left out.
+		int elsewhere = 0;
+		if (this.neuronFilter is string only)
+		{
+			elsewhere = inTab.Count(r => !r.IsDone && !IsFrom(r, only));
+			inTab.RemoveAll(r => !IsFrom(r, only));
+		}
+
+		this.ElsewhereText = elsewhere == 0 ? string.Empty : elsewhere == 1 ? "1 more waits from elsewhere" : $"{elsewhere} more wait from elsewhere";
+		this.OnPropertyChanged(nameof(this.EmptyTitle));
+		this.OnPropertyChanged(nameof(this.EmptyText));
+
+		List<InboxRowViewModel> shown = [.. inTab
 			.Where(r => search.Length == 0 || r.IsNotification ||
 				r.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
 				(r.Detail?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||

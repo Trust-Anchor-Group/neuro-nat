@@ -87,15 +87,20 @@
                               ToolTip.Tip="Open this Neuron's page">
                         <TextBlock Classes="mono" Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                       </Button>
-                      <StackPanel Orientation="Horizontal" Spacing="5">
-                        <Border Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center"
+                      <DockPanel>
+                        <Border DockPanel.Dock="Left" Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center" Margin="0,0,5,0"
                                 Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
                           <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="9" FontWeight="SemiBold"
                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                      Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
                         </Border>
-                        <TextBlock Classes="meta" Text="{Binding AccountLabel}" TextTrimming="CharacterEllipsis" />
-                      </StackPanel>
+                        <!-- What the last check for updates came to. It keeps its place; the account's name gives way. -->
+                        <Border DockPanel.Dock="Right" Classes="pill" Margin="8,0,0,0" IsVisible="{Binding HasUpdateNote}" ToolTip.Tip="What the last check for updates came to"
+                                Background="{Binding UpdateTone, Converter={x:Static conv:ToneBrushConverter.Instance}, ConverterParameter=subtle}">
+                          <TextBlock Text="{Binding UpdateNote}" Foreground="{Binding UpdateTone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                        </Border>
+                        <TextBlock Classes="meta" Text="{Binding AccountLabel}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </DockPanel>
                     </StackPanel>
                   </Grid>
                   <TextBlock Grid.Column="1" Classes="meta" Text="{Binding StateText}" VerticalAlignment="Center" TextWrapping="Wrap" />

@@ -537,6 +537,7 @@ public sealed partial class PubSubViewModel
 	private void PersonActions(ActionList list, NodePersonRow row)
 	{
 		list.Copy("Copy address", () => row.Jid, "the address", "Ctrl+C");
+		this.ChatWith(list, row.Jid);
 		foreach (Choice<NodeRole> c in RoleChoices.Where(c => c.Value != row.Person.Role))
 			list.Do(c.Text, () => this.SetRole(row, c.Value), danger: c.Value == NodeRole.Blocked);
 		list.Do("Take off the list", () => this.SetRole(row, NodeRole.None), danger: true, icon: "Trash");
@@ -545,6 +546,7 @@ public sealed partial class PubSubViewModel
 	private void SubscriberActions(ActionList list, NodeSubscriberRow row)
 	{
 		list.Copy("Copy address", () => row.Jid, "the address", "Ctrl+C");
+		this.ChatWith(list, row.Jid);
 		if (row.IsPending)
 		{
 			list.Do("Allow", () => this.AllowSubscriberCommand.ExecuteAsync(row), icon: "Check");

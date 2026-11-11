@@ -22,6 +22,7 @@ public partial class MainWindow : Window
 
 		// Search box: Ctrl+K from anywhere; Up, Down and Enter choose; Escape or clicking away closes.
 		this.AddHandler(KeyDownEvent, this.Window_KeyDown, RoutingStrategies.Tunnel);
+		this.AddHandler(PointerPressedEvent, this.Window_PointerPressed, RoutingStrategies.Tunnel);
 		this.SearchBox.GotFocus += (_, _) => this.Search?.Open();
 		this.SearchBox.LostFocus += (_, _) => this.Search?.Close();
 		this.SearchBox.KeyDown += this.SearchBox_KeyDown;
@@ -43,8 +44,20 @@ public partial class MainWindow : Window
 		if (this.DataContext is not MainWindowViewModel vm)
 			return;
 
+		// Alt+Left and Alt+Right, and the keys some keyboards have for it: back and forward.
+		if ((e.KeyModifiers == KeyModifiers.Alt && e.Key == Key.Left) || e.Key == Key.BrowserBack)
+		{
+			vm.GoBackCommand.Execute(null);
+			e.Handled = true;
+		}
+		else if ((e.KeyModifiers == KeyModifiers.Alt && e.Key == Key.Right) || e.Key == Key.BrowserForward)
+		{
+			vm.GoForwardCommand.Execute(null);
+			e.Handled = true;
+		}
+
 		// Ctrl+1 to Ctrl+5: the five places, in the order of the rail.
-		if (e.KeyModifiers == KeyModifiers.Control && e.Key is >= Key.D1 and <= Key.D9)
+		else if (e.KeyModifiers == KeyModifiers.Control && e.Key is >= Key.D1 and <= Key.D9)
 		{
 			e.Handled = vm.GoToPlace(e.Key - Key.D0);
 		}
@@ -62,6 +75,26 @@ public partial class MainWindow : Window
 		{
 			vm.RefreshCurrent();
 			e.Handled = true;
+		}
+	}
+
+	/// <summary>The back and forward buttons on the side of a mouse.</summary>
+	private void Window_PointerPressed(object? sender, PointerPressedEventArgs e)
+	{
+		if (this.DataContext is not MainWindowViewModel vm)
+			return;
+
+		switch (e.GetCurrentPoint(this).Properties.PointerUpdateKind)
+		{
+			case PointerUpdateKind.XButton1Pressed:
+				vm.GoBackCommand.Execute(null);
+				e.Handled = true;
+				break;
+
+			case PointerUpdateKind.XButton2Pressed:
+				vm.GoForwardCommand.Execute(null);
+				e.Handled = true;
+				break;
 		}
 	}
 

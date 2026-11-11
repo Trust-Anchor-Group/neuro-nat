@@ -244,7 +244,7 @@ public sealed partial class MainWindowViewModel
 			return;
 
 		DateTime now = DateTime.Now;
-		List<PageWaiting> waiting = [.. this.Inbox.Rows
+		List<PageWaiting> waiting = [.. this.Inbox.Everything
 			.Where(r => !r.IsDone && string.Equals(r.Jid, p.BareJid, StringComparison.OrdinalIgnoreCase) && (r.AccountId == p.AccountId || r.AccountId == Guid.Empty))
 			.Take(6)
 			.Select(r => new PageWaiting(r.Key, r.IconKey, r.Title, RelativeTime.Format(r.When, now)))];
@@ -279,6 +279,7 @@ public sealed partial class MainWindowViewModel
 		this.Fleet.Refreshed += (_, _) => this.RefreshPage();
 		this.Topology.Scanned += (_, _) => this.RefreshPage(everything: true);
 		this.Inbox.Rows.CollectionChanged += (_, _) => Interlocked.Exchange(ref this.pageDirty, 1);
+		this.Inbox.ShowAllNeurons = () => this.LensJid = null;
 		this.Fleet.OpenNeuron = row => this.OpenNeuron(row.BareJid, row.AccountId);
 	}
 
@@ -319,5 +320,7 @@ public sealed partial class MainWindowViewModel
 		// The tab stays; what it shows follows the account.
 		if (this.IsPlaceAccounts && this.Workspace != WorkspaceKind.Accounts)
 			this.ShowAccountTab(this.Workspace);
+
+		this.NoteStop();
 	}
 }

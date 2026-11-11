@@ -27,6 +27,13 @@ public sealed partial class UpdateRowViewModel(Guid accountId, string neuronJid)
 	public NeuronSoftware? Software { get; set; }
 }
 
+/// <summary>What asking one Neuron for newer software came to.</summary>
+public sealed record UpdateCheck(Guid AccountId, string NeuronJid, string Label, bool Answered, bool HasUpdate, string Text)
+{
+	/// <summary>False for a Neuron that is not connected: there was nobody to ask.</summary>
+	public bool WasAsked { get; init; } = true;
+}
+
 /// <summary>A line of what a check or an upgrade reported.</summary>
 public sealed record UpdateLogLine(string Time, string Text);
 
@@ -219,6 +226,44 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 		{
 			this.syncing = false;
 		}
+	}
+
+	/// <summary>
+	/// Asks several Neurons at once whether newer software is waiting. Each is asked on its own,
+	/// so one that does not answer holds nobody up. Nothing is installed.
+	/// </summary>
+	public async Task<IReadOnlyList<UpdateCheck>> CheckManyAsync(IReadOnlyList<(Guid Account, string Jid)> neurons)
+	{
+		this.Sync();
+
+		async Task<UpdateCheck> One(Guid account, string jid)
+		{
+			UpdateRowViewModel? r = this.Rows.FirstOrDefault(x => x.AccountId == account && string.Equals(x.NeuronJid, jid, StringComparison.OrdinalIgnoreCase));
+			if (r is null || !r.IsLive)
+				return new UpdateCheck(account, jid, r?.Label ?? jid, false, false, "Not connected") { WasAsked = false };
+
+			try
+			{
+				await this.software.CheckAsync(account, jid);
+				NeuronSoftware s = await this.software.ReadAsync(account, jid);
+				r.Software = s;
+				Describe(r);
+				if (r == this.Selected)
+					this.ShowDetail();
+
+				return s.Error is not null
+					? new UpdateCheck(account, jid, r.Label, false, false, "No answer")
+					: s.PendingUpdate is not null
+						? new UpdateCheck(account, jid, r.Label, true, true, r.StateLabel)
+						: new UpdateCheck(account, jid, r.Label, true, false, "Up to date");
+			}
+			catch (Exception)
+			{
+				return new UpdateCheck(account, jid, r.Label, false, false, "No answer");
+			}
+		}
+
+		return await Task.WhenAll(neurons.Select(n => One(n.Account, n.Jid)));
 	}
 
 	private static void Describe(UpdateRowViewModel r)

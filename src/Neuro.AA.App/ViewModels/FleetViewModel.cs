@@ -20,6 +20,15 @@ public sealed partial class FleetRowViewModel : ObservableObject
 	public Guid AccountId { get; }
 	public string BareJid { get; }
 
+	/// <summary>What the last check for updates came to: "Update ready", "Up to date". Empty until one was asked for.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasUpdateNote))]
+	private string updateNote = string.Empty;
+
+	[ObservableProperty] private string updateTone = "idle";
+
+	public bool HasUpdateNote => this.UpdateNote.Length > 0;
+
 	[ObservableProperty] private string label = string.Empty;
 	[ObservableProperty] private string accountLabel = string.Empty;
 	[ObservableProperty] private int accountColorIndex;
@@ -133,8 +142,27 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 
 	partial void OnFilterTextChanged(string value) => this.SyncShown();
 
+	/// <summary>Bare JID of the one Neuron to show; null for all. Set by the shell from the Neuron chips.</summary>
+	public string? NeuronFilter
+	{
+		get => this.neuronFilter;
+		set
+		{
+			if (string.Equals(this.neuronFilter, value, StringComparison.OrdinalIgnoreCase))
+				return;
+
+			this.neuronFilter = value;
+			this.SyncShown();
+		}
+	}
+
+	private string? neuronFilter;
+
 	private bool Matches(FleetRowViewModel r)
 	{
+		if (this.neuronFilter is string only && !string.Equals(r.BareJid, only, StringComparison.OrdinalIgnoreCase))
+			return false;
+
 		string q = this.FilterText.Trim();
 		return q.Length == 0
 			|| r.Label.Contains(q, StringComparison.OrdinalIgnoreCase)
@@ -244,6 +272,13 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 			IsEnabled = this.Shell is not null,
 		});
 		list.Do("Read their health now", () => this.RefreshNowCommand.Execute(null), icon: "Refresh");
+		list.Add(new ItemAction("Check for updates", ActionGroup.Do, () => this.Shell?.CheckUpdatesAsync([.. rows.Select(r => (r.AccountId, r.BareJid))]) ?? Task.CompletedTask)
+		{
+			InBar = true,
+			BarText = "Check for updates",
+			Icon = "Updates",
+			IsEnabled = this.Shell is not null,
+		});
 		return list;
 	}
 

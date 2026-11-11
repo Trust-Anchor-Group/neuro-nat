@@ -32,6 +32,9 @@ public enum LookChoice
 public sealed record UiSettings
 {
 	public LookChoice Look { get; init; } = LookChoice.System;
+
+	/// <summary>The one Neuron the screens were showing, by its address. Null for all of them.</summary>
+	public string? Neuron { get; init; }
 }
 
 /// <summary>Keeps <see cref="UiSettings"/> between runs.</summary>
@@ -78,7 +81,8 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 	[
 		new ShortcutGroup("Getting around",
 		[
-			new ShortcutRow("Ctrl+K", "Search for a screen, a Neuron or an account"),
+			new ShortcutRow("Ctrl+K", "Search for a screen, a Neuron, a person, a problem or something to do"),
+			new ShortcutRow("Alt+Left, Alt+Right", "Back and forward through where you have been. The mouse's side buttons do the same."),
 			new ShortcutRow("Ctrl+1 to Ctrl+5", "Inbox, Neurons, Events, Chat, Console"),
 			new ShortcutRow("Ctrl+,", "Settings"),
 			new ShortcutRow("Ctrl+F", "Filter or find on the screen in front"),
@@ -128,6 +132,29 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 	/// <summary>Raised after any setting changed. UI thread.</summary>
 	public event EventHandler? Changed;
 
+	/// <summary>Raised once what was kept from the last run has been read.</summary>
+	public event EventHandler? Loaded;
+
+	/// <summary>The Neuron the screens showed last time, when it was one.</summary>
+	public string? Neuron => this.ui.Neuron;
+
+	/// <summary>Keeps which Neuron the screens show, for the next run.</summary>
+	public void RememberNeuron(string? bareJid)
+	{
+		if (string.Equals(this.ui.Neuron, bareJid, StringComparison.OrdinalIgnoreCase))
+			return;
+
+		this.ui = this.ui with { Neuron = bareJid };
+		try
+		{
+			this.uiStore?.Save(this.ui);
+		}
+		catch (Exception ex)
+		{
+			AppLog.Error("Could not save which Neuron is shown.", ex);
+		}
+	}
+
 	/// <summary>Connects the settings to the running alert service and to their files. Called once by the host.</summary>
 	public void Attach(AlertService alerts, JsonAlertSettingsStore alertStore, JsonUiSettingsStore? uiStore = null, Watch.IAutostart? autostart = null)
 	{
@@ -143,6 +170,7 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 
 		this.ApplyStatus();
 		this.RaiseAll();
+		this.Loaded?.Invoke(this, EventArgs.Empty);
 	}
 
 	/// <summary>The alert settings in force.</summary>

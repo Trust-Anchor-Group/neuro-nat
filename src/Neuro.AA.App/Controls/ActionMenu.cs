@@ -354,6 +354,7 @@ public sealed class ActionBar : ContentControl
 			FontWeight = FontWeight.SemiBold,
 			VerticalAlignment = VerticalAlignment.Center,
 			TextTrimming = TextTrimming.CharacterEllipsis,
+			Margin = new Thickness(0, 0, 14, 0),
 		};
 		text.Classes.Add("barText");
 		row.Children.Add(text);

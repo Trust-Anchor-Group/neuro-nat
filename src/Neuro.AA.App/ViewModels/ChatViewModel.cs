@@ -750,6 +750,23 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		return true;
 	}
 
+	/// <summary>
+	/// Opens the conversation with someone, starting an empty one when nothing was said yet.
+	/// Used by "Chat with them" wherever an address shows.
+	/// </summary>
+	public bool Start(Guid accountId, string bareJid)
+	{
+		if (this.Open(accountId, bareJid))
+			return true;
+
+		Conversation c = this.chat.Get(accountId, bareJid);
+		this.started.Add(c.AccountId.ToString("N") + "|" + c.BareJid);
+		return this.Open(accountId, bareJid);
+	}
+
+	/// <summary>Every person and room Chat knows, whichever half the list shows.</summary>
+	public IReadOnlyList<PersonViewModel> Everyone => this.everyone;
+
 	private Conversation? SelectedConversation
 		=> this.SelectedPerson is not PersonViewModel p ? null
 			: p.IsRoom ? this.chat.GetRoom(p.AccountId, p.BareJid) : this.chat.Get(p.AccountId, p.BareJid);
