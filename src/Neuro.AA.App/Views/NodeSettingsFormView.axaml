@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.AA.App.ViewModels"
+             x:Class="Neuro.AA.App.Views.NodeSettingsFormView"
+             x:DataType="vm:NodeSettingsForm">
+
+  <!-- A node's settings in plain words: the same form for a node that exists and one being made -->
+  <StackPanel Spacing="14">
+    <StackPanel>
+      <TextBlock Classes="label" Text="Title" />
+      <TextBox Text="{Binding Title}" PlaceholderText="A name people understand, such as Alerts from the lab" />
+    </StackPanel>
+
+    <StackPanel>
+      <TextBlock Classes="label" Text="What it is for" />
+      <TextBox Text="{Binding Description}" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="90" PlaceholderText="Optional" />
+    </StackPanel>
+
+    <StackPanel>
+      <TextBlock Classes="label" Text="Who may read and subscribe" />
+      <ComboBox ItemsSource="{Binding AccessChoices}" SelectedItem="{Binding Access}" HorizontalAlignment="Stretch" />
+    </StackPanel>
+
+    <StackPanel>
+      <TextBlock Classes="label" Text="Who may publish" />
+      <ComboBox ItemsSource="{Binding PublisherChoices}" SelectedItem="{Binding Publishers}" HorizontalAlignment="Stretch" />
+    </StackPanel>
+
+    <StackPanel Spacing="6">
+      <CheckBox IsChecked="{Binding KeepItems}" Content="Keep what is published, so it can be read later" />
+      <StackPanel Orientation="Horizontal" Spacing="8" Margin="28,0,0,0" IsEnabled="{Binding KeepItems}">
+        <TextBlock Text="Keep at most" VerticalAlignment="Center" />
+        <TextBox Text="{Binding MaxItems}" Width="84" PlaceholderText="No limit" HorizontalContentAlignment="Right" />
+        <TextBlock Text="items" VerticalAlignment="Center" />
+      </StackPanel>
+      <TextBlock Classes="meta" Margin="28,0,0,0" TextWrapping="Wrap" IsVisible="{Binding !KeepItems}"
+                 Text="Without it, only whoever subscribes at the moment something is published gets it." />
+    </StackPanel>
+
+    <StackPanel>
+      <TextBlock Classes="label" Text="Does somebody new get the latest item right away" />
+      <ComboBox ItemsSource="{Binding LastChoices}" SelectedItem="{Binding SendLast}" HorizontalAlignment="Stretch" />
+    </StackPanel>
+
+    <CheckBox IsChecked="{Binding TellWhenRemoved}" Content="Tell subscribers when an item is removed" />
+  </StackPanel>
+</UserControl>

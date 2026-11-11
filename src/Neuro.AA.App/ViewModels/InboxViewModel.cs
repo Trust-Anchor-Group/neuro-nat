@@ -7,6 +7,7 @@ using Neuro.AA.Engine.Chat;
 using Neuro.AA.Engine.Devices;
 using Neuro.AA.Engine.Events;
 using Neuro.AA.Engine.Identity;
+using Neuro.AA.Engine.PubSub;
 
 namespace Neuro.AA.App.ViewModels;
 
@@ -26,6 +27,7 @@ public enum InboxRowKind
 	RoomInvitation,
 	DeviceQuestion,
 	IdentityRequest,
+	NodeRequest,
 	Notification,
 }
 
@@ -43,6 +45,7 @@ public sealed partial class InboxRowViewModel(string key, InboxRowKind kind) : O
 		InboxRowKind.RoomInvitation => "Room",
 		InboxRowKind.DeviceQuestion => "Devices",
 		InboxRowKind.IdentityRequest => "Identities",
+		InboxRowKind.NodeRequest => "PubSub",
 		_ => "Fleet",
 	};
 
@@ -96,6 +99,7 @@ public sealed partial class InboxRowViewModel(string key, InboxRowKind kind) : O
 	public RoomInvitation? Invitation { get; set; }
 	public DeviceQuestion? Question { get; set; }
 	public IdentityPetition? Petition { get; set; }
+	public NodeRequest? NodeAsk { get; set; }
 }
 
 /// <summary>
@@ -113,6 +117,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 	private readonly DevicesService devices;
 	private readonly IdentityService identities;
 	private readonly AccountManager accounts;
+	private readonly PubSubService? pubsub;
 	private readonly DispatcherTimer timer;
 	private readonly DispatcherTimer undoTimer;
 	private readonly HashSet<string> hidden = [];
@@ -122,8 +127,12 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 	private int tick;
 	private bool syncing;
 
-	public InboxViewModel(AttentionViewModel notifications, ChatViewModel chatView, ChatService chat, DevicesService devices, IdentityService identities, AccountManager accounts)
+	public InboxViewModel(AttentionViewModel notifications, ChatViewModel chatView, ChatService chat, DevicesService devices, IdentityService identities, AccountManager accounts, PubSubService? pubsub = null)
 	{
+		this.pubsub = pubsub;
+		if (pubsub is not null)
+			pubsub.RequestsChanged += this.Something_Changed;
+
 		this.Notifications = notifications;
 		this.chatView = chatView;
 		this.chat = chat;
@@ -246,7 +255,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 	public string EmptyText => this.Tab switch
 	{
 		InboxTab.Messages => "Messages you have not read show up here, from people and from rooms.",
-		InboxTab.Requests => "Contact requests, room invitations, questions from your devices and requests for your identity show up here, with their answers on the row.",
+		InboxTab.Requests => "Contact requests, room invitations, questions from your devices, requests for your identity and requests to subscribe to your nodes show up here, with their answers on the row.",
 		InboxTab.Neurons => "Your Neurons' notifications land here: identity applications, account requests, alerts, backups and updates.",
 		_ => "New messages, requests and what your Neurons need from you all land here. Answer on the row, and it leaves the list.",
 	};
@@ -500,6 +509,19 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 			(r.PrimaryText, r.SecondaryText) = ("Review", null);
 		}
 
+		foreach (NodeRequest q in this.pubsub?.Requests ?? [])
+		{
+			InboxRowViewModel r = Row("ps:" + q.AccountId.ToString("N") + "|" + q.Node + "|" + q.Jid.ToLowerInvariant(), InboxRowKind.NodeRequest, q.AccountId, q.Received);
+			r.NodeAsk = q;
+			r.Jid = q.Jid;
+			r.KindLabel = "Subscription request";
+			r.Tone = "busy";
+			r.Title = $"{q.Jid} wants to subscribe to {q.Node}";
+			r.Detail = "A node you own on " + q.Service;
+			r.Explanation = "Allowing sends them what is published on the node from now on. Denying tells them no. Who subscribes can be changed later on the node's People tab.";
+			(r.PrimaryText, r.SecondaryText) = ("Allow", "Deny");
+		}
+
 		requests = list.Count(r => r.IsRequest);
 
 		// What the Neurons told their administrators.
@@ -630,6 +652,10 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 
 			case InboxRowKind.DeviceQuestion when row.Question is DeviceQuestion d:
 				this.Later(row, (yes ? "Allowed " : "Denied ") + d.RemoteJid + ".", () => this.devices.AnswerAsync(d, yes, AnswerScope.Caller));
+				break;
+
+			case InboxRowKind.NodeRequest when row.NodeAsk is NodeRequest n && this.pubsub is PubSubService service:
+				this.Later(row, (yes ? "Allowed " : "Denied ") + n.Jid + ".", () => service.AnswerAsync(n, yes));
 				break;
 
 			case InboxRowKind.IdentityRequest:

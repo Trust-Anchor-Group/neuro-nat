@@ -139,9 +139,11 @@ public class LiveParityUiTests
 		await Until(() => !p.IsBusy && p.Items.Count == 2);
 		await Task.Delay(200);
 		Save(window, $"pubsub-{theme.ToLowerInvariant()}");
+		Assert.True(p.EditorError is null, p.EditorError);
 		p.AskDeleteCommand.Execute(null);
-		await p.DeleteNodeCommand.ExecuteAsync(null);
-		Assert.True(p.Error is null, p.Error);
+		p.Ask!.Input = name;
+		await p.ConfirmAskCommand.ExecuteAsync(null);
+		Assert.True(p.Ask is null, p.Ask?.Error);
 
 		// Updates for the test Neuron.
 		await Until(() => monitors.Neurons.Any(n => n.State == WatchState.Live), 30000);

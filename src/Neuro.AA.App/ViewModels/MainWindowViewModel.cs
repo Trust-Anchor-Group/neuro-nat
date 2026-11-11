@@ -85,7 +85,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		};
 		this.Updates = new UpdatesViewModel(new Engine.Software.SoftwareService(fleet.Monitors, chatService), fleet.Monitors, accounts);
 		this.Devices = new DevicesViewModel(this.devicesService, accounts);
-		this.Inbox = new InboxViewModel(this.Attention, this.Chat, chatService, this.devicesService, this.identityService, accounts)
+		Engine.PubSub.PubSubService pubsubService = pubsub ?? new Engine.PubSub.PubSubService(accounts);
+		this.Inbox = new InboxViewModel(this.Attention, this.Chat, chatService, this.devicesService, this.identityService, accounts, pubsubService)
 		{
 			OpenIdentities = this.ShowIdentities,
 			OpenDevices = this.ShowDevices,
@@ -96,7 +97,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			if (e.PropertyName == nameof(InboxViewModel.WaitingCount))
 				this.OnPropertyChanged(nameof(this.WindowTitle));
 		};
-		this.PubSub = new PubSubViewModel(pubsub ?? new Engine.PubSub.PubSubService(accounts), accounts);
+		this.PubSub = new PubSubViewModel(pubsubService, accounts);
 		this.Events.ShareTo = this.Share;
 		this.Attention.ShareTo = this.Share;
 		this.Sources.ShareTo = this.Share;
