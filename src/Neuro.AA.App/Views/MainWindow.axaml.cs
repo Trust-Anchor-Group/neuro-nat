@@ -37,6 +37,31 @@ public partial class MainWindow : Window
 			this.SearchBox.Focus();
 			this.SearchBox.SelectAll();
 			e.Handled = true;
+			return;
+		}
+
+		if (this.DataContext is not MainWindowViewModel vm)
+			return;
+
+		// Ctrl+1 to Ctrl+5: the five places, in the order of the rail.
+		if (e.KeyModifiers == KeyModifiers.Control && e.Key is >= Key.D1 and <= Key.D9)
+		{
+			e.Handled = vm.GoToPlace(e.Key - Key.D0);
+		}
+		else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.OemComma)
+		{
+			vm.ShowSettingsCommand.Execute(null);
+			e.Handled = true;
+		}
+		else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.F)
+		{
+			// Ctrl+F: the filter or find box of the screen in front.
+			e.Handled = UiHost.FocusFind(this);
+		}
+		else if (e.KeyModifiers == KeyModifiers.None && e.Key == Key.F5)
+		{
+			vm.RefreshCurrent();
+			e.Handled = true;
 		}
 	}
 

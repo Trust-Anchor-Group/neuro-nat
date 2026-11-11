@@ -14,7 +14,10 @@ public partial class FleetView : UserControl
 
 	private void OnDoubleTapped(object? sender, TappedEventArgs e)
 	{
-		if (this.DataContext is FleetViewModel vm && vm.SelectedRow is not null)
+		if (this.DataContext is FleetViewModel vm && vm.SelectedRow is not null && e.Source is Avalonia.Visual v &&
+			Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<ListBoxItem>(v, true) is not null)
+		{
 			vm.OpenEventsCommand.Execute(vm.SelectedRow);
+		}
 	}
 }

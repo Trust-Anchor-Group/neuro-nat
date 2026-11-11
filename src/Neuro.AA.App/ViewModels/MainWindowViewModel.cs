@@ -112,6 +112,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		});
 		this.statusTimer.Start();
 		this.RefreshLastEvent();
+		this.StartActions();
 	}
 
 	// ----- Places: the rail has five, plus Accounts. Each holds one or more screens. -----

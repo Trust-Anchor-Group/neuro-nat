@@ -27,6 +27,9 @@
     <Style Selector=".maxw1280 Border.issuesPane">
       <Setter Property="Width" Value="320" />
     </Style>
+    <Style Selector=".maxw1280 TextBlock.btnLabel.wideOnly">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
     <Style Selector=".maxw1280 TextBlock.colModule">
       <Setter Property="IsVisible" Value="False" />
     </Style>
@@ -69,8 +72,11 @@
           </Grid>
         </DockPanel>
 
+        <c:ActionBar x:Name="IssueBar" DockPanel.Dock="Bottom" Noun="issue" Margin="0,8,0,0" />
+
         <Panel>
-          <ListBox Classes="rows" ItemsSource="{Binding Issues}" SelectedItem="{Binding SelectedIssue}">
+          <ListBox x:Name="IssueList" Classes="rows" ItemsSource="{Binding Issues}" SelectedItem="{Binding SelectedIssue}" SelectionMode="Multiple"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #IssueBar}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:IssueItemViewModel">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" RowDefinitions="Auto,Auto,Auto">
@@ -134,13 +140,20 @@
               <ToggleButton Classes="seg last" Content="Errors and up" IsChecked="{Binding IsErrorsSelected, Mode=OneWay}" Margin="-1,0,0,0"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.ErrorsAndWorse}" />
             </StackPanel>
-            <TextBox Classes="streamFilter" Text="{Binding SearchText}" PlaceholderText="Filter messages, modules, Neurons…" Width="260" MinHeight="28" Padding="10,4" />
+            <TextBox Classes="streamFilter find" Text="{Binding SearchText}" PlaceholderText="Filter messages, modules, Neurons…" Width="260" MinHeight="28" Padding="10,4"
+                     ToolTip.Tip="Filter the events (Ctrl+F)" />
             <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause the stream (events are still collected)">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />
-                <TextBlock Classes="btnLabel" Text="Pause" />
+                <TextBlock Classes="btnLabel wideOnly" Text="Pause" />
               </StackPanel>
             </ToggleButton>
+            <Button Classes="ghost" Command="{Binding CopyStreamCommand}" ToolTip.Tip="Copy the selected events, or every event shown when none is selected">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+            </Button>
+            <Button Classes="ghost" Command="{Binding SaveStreamCommand}" ToolTip.Tip="Save the selected events to a file, or every event shown when none is selected">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+            </Button>
           </StackPanel>
           <TextBlock Classes="section" Text="{Binding StreamTitle}" VerticalAlignment="Center" />
         </DockPanel>
@@ -195,7 +208,8 @@
             </Grid>
           </Border>
         <Panel>
-          <ListBox x:Name="StreamList" Classes="stream" ItemsSource="{Binding Stream}" SelectedItem="{Binding SelectedEvent}" Margin="0,2,0,4">
+          <ListBox x:Name="StreamList" Classes="stream" ItemsSource="{Binding Stream}" SelectedItem="{Binding SelectedEvent}" Margin="0,2,0,4" SelectionMode="Multiple"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #StreamBar}">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
                 <VirtualizingStackPanel />
@@ -225,6 +239,15 @@
             <TextBlock Text="{Binding HeldText}" FontSize="{StaticResource Type.Meta}" />
           </Button>
 
+          <!-- Kinds of events hidden from the right-click menu -->
+          <Button Classes="small" IsVisible="{Binding HasHidden}" Command="{Binding ShowHiddenCommand}"
+                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,18,0" ToolTip.Tip="Show them again">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:LineIcon Data="{StaticResource Icon.Eye}" Width="13" Height="13" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding HiddenText}" FontSize="{StaticResource Type.Meta}" />
+            </StackPanel>
+          </Button>
+
           <!-- Empty states -->
           <StackPanel IsVisible="{Binding IsStreamEmpty}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="440" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Events}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
@@ -239,11 +262,18 @@
         </DockPanel>
       </Border>
 
+      <!-- Several events selected -->
+      <c:ActionBar x:Name="StreamBar" Grid.Row="1" Noun="event" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,24" MinWidth="420" />
+
       <!-- Detail of the selected event -->
       <Border Grid.Row="2" Classes="panel" Margin="20,0,20,20" MaxHeight="360" IsVisible="{Binding HasSelectedEvent}">
         <DockPanel DataContext="{Binding SelectedEvent}" x:DataType="ev:NeuronEvent" x:CompileBindings="True">
           <Border DockPanel.Dock="Top" Padding="14,10" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
             <DockPanel>
+              <Button DockPanel.Dock="Right" Classes="ghost" ToolTip.Tip="Everything you can do with this event. The same list as a right-click on its row."
+                      c:ActionMenu.Source="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext)}" c:ActionMenu.OnClick="True">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
+              </Button>
               <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ShareSelectedEventCommand}"
                       ToolTip.Tip="Send this event to a coworker or a room">
                 <TextBlock Text="Share" FontSize="{StaticResource Type.Meta}" />

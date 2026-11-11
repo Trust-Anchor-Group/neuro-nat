@@ -103,7 +103,7 @@ public sealed partial class FleetRowViewModel : ObservableObject
 /// The Fleet workspace: every Neuron reachable through any account, with the state of its
 /// event stream, its health, and how much is going wrong on it.
 /// </summary>
-public sealed partial class FleetViewModel : ObservableObject, IDisposable
+public sealed partial class FleetViewModel : ObservableObject, IDisposable, IActionSource
 {
 	private readonly FleetService fleet;
 	private readonly AccountManager accounts;
@@ -122,7 +122,130 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable
 		this.timer.Start();
 	}
 
+	/// <summary>Every Neuron. The shell's Neuron chips are built from this.</summary>
 	public ObservableCollection<FleetRowViewModel> Rows { get; } = [];
+
+	/// <summary>The Neurons the list shows: all of them, or those the filter box matches.</summary>
+	public ObservableCollection<FleetRowViewModel> Shown { get; } = [];
+
+	[ObservableProperty] private string filterText = string.Empty;
+	[ObservableProperty] private bool hasShown;
+
+	partial void OnFilterTextChanged(string value) => this.SyncShown();
+
+	private bool Matches(FleetRowViewModel r)
+	{
+		string q = this.FilterText.Trim();
+		return q.Length == 0
+			|| r.Label.Contains(q, StringComparison.OrdinalIgnoreCase)
+			|| r.BareJid.Contains(q, StringComparison.OrdinalIgnoreCase)
+			|| r.AccountLabel.Contains(q, StringComparison.OrdinalIgnoreCase)
+			|| r.Software.Contains(q, StringComparison.OrdinalIgnoreCase)
+			|| r.StateText.Contains(q, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private void SyncShown()
+	{
+		List<FleetRowViewModel> want = [.. this.Rows.Where(this.Matches)];
+
+		for (int i = this.Shown.Count - 1; i >= 0; i--)
+		{
+			if (!want.Contains(this.Shown[i]))
+				this.Shown.RemoveAt(i);
+		}
+
+		for (int i = 0; i < want.Count; i++)
+		{
+			int existing = this.Shown.IndexOf(want[i]);
+			if (existing < 0)
+				this.Shown.Insert(i, want[i]);
+			else if (existing != i)
+				this.Shown.Move(existing, i);
+		}
+
+		this.HasShown = this.Shown.Count > 0;
+	}
+
+	// ----- Actions -----
+
+	/// <summary>Set by the shell: the moves to other screens, and what can be done to a Neuron.</summary>
+	public IShell? Shell { get; set; }
+
+	/// <summary>Selects a Neuron in the list, clearing a filter that would hide it.</summary>
+	public void Select(string bareJid)
+	{
+		FleetRowViewModel? row = this.Rows.FirstOrDefault(r => string.Equals(r.BareJid, bareJid, StringComparison.OrdinalIgnoreCase));
+		if (row is null)
+			return;
+
+		if (!this.Shown.Contains(row))
+			this.FilterText = string.Empty;
+
+		this.SelectedRow = row;
+	}
+
+	private static readonly string[] columns = ["Neuron", "Account", "Stream", "Version", "CPU", "Memory", "Disk", "Errors 1 h", "Open issues", "Last event"];
+
+	private static string?[] Cells(FleetRowViewModel r)
+		=> [r.BareJid, r.AccountLabel, r.StateText, r.Software, r.CpuText, r.MemoryText, r.DiskText, r.ErrorsLastHour.ToString(), r.OpenIssues.ToString(), r.LastEventText];
+
+	/// <summary>One Neuron's state in a few lines, for pasting into chat or a ticket.</summary>
+	public static string Summarize(FleetRowViewModel r)
+	{
+		System.Text.StringBuilder sb = new();
+		sb.Append(r.BareJid).Append(": ").AppendLine(r.StateText);
+		sb.Append("Version: ").AppendLine(r.Software);
+		sb.Append("CPU: ").Append(r.CpuText).Append(", memory: ").Append(r.MemoryText).Append(", disk: ").AppendLine(r.DiskText);
+		sb.Append("Errors in the last hour: ").Append(r.ErrorsLastHour).Append(", open issues: ").Append(r.OpenIssues).Append(", last event: ").Append(r.LastEventText);
+		if (!string.IsNullOrEmpty(r.Note))
+			sb.AppendLine().Append(r.Note);
+
+		return sb.ToString();
+	}
+
+	private static SaveFormat[] Formats(IReadOnlyList<FleetRowViewModel> rows) =>
+	[
+		new SaveFormat("Spreadsheet (CSV)", "csv", () => Export.Csv(columns, rows.Select(Cells))),
+		new SaveFormat("Markdown", "md", () => Export.Markdown(columns, rows.Select(Cells))),
+	];
+
+	/// <summary>Toolbar Save: the whole list as the filter shows it.</summary>
+	[RelayCommand]
+	private Task Save() => Ui.Save(Ui.FileName("Neurons"), Formats([.. this.Shown]));
+
+	public IReadOnlyList<ItemAction> ActionsFor(IReadOnlyList<object> items)
+	{
+		List<FleetRowViewModel> rows = [.. items.OfType<FleetRowViewModel>()];
+		if (rows.Count == 0)
+			return [];
+
+		ActionList list = [];
+		if (rows.Count == 1)
+		{
+			FleetRowViewModel row = rows[0];
+			list.Open("Show its events", () => this.ShowEventsFor?.Invoke(row.BareJid), icon: "Events");
+			if (this.Shell is IShell shell)
+				list.AddRange(shell.NeuronActions(row.BareJid, row.AccountId, WorkspaceKind.Fleet).Where(a => a.Text != "Events"));
+			else
+				list.Copy("Copy address", () => row.BareJid, "the address", "Ctrl+C");
+
+			return list;
+		}
+
+		string what = Ui.Count(rows.Count, "Neuron");
+		list.Copy("Copy addresses", () => string.Join(Environment.NewLine, rows.Select(r => r.BareJid)), what, "Ctrl+C", inBar: true);
+		list.Copy("Copy as a table", () => Export.Tabs(columns, rows.Select(Cells)), what + " as a table", "Ctrl+Shift+C");
+		list.Save("Save " + what + "…", Ui.FileName("Neurons"), Formats(rows));
+		list.Add(new ItemAction("Run a command on these…", ActionGroup.Do, () => this.Shell?.ShowConsole([.. rows.Select(r => (r.AccountId, r.BareJid))]))
+		{
+			InBar = true,
+			BarText = "Console",
+			Icon = "Console",
+			IsEnabled = this.Shell is not null,
+		});
+		list.Do("Read their health now", () => this.RefreshNowCommand.Execute(null), icon: "Refresh");
+		return list;
+	}
 
 	[ObservableProperty] private string summary = "No Neurons yet";
 	[ObservableProperty] private bool hasRows;
@@ -181,6 +304,7 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable
 
 		int live = neurons.Count(n => n.State == WatchState.Live);
 		int failing = keep.Count(r => r.HasErrors);
+		this.SyncShown();
 		this.HasRows = keep.Count > 0;
 		this.Summary = keep.Count == 0
 			? "No Neurons yet"

@@ -104,7 +104,7 @@ public sealed partial class InboxRowViewModel(string key, InboxRowKind kind) : O
 /// your Neurons. Each row is answered where it stands; done rows leave, and an answer can be
 /// taken back for a few seconds.
 /// </summary>
-public sealed partial class InboxViewModel : ObservableObject, IDisposable
+public sealed partial class InboxViewModel : ObservableObject, IDisposable, IActionSource
 {
 	private static readonly TimeSpan undoTime = TimeSpan.FromSeconds(6);
 
@@ -332,6 +332,58 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable
 		if (undo.Count > 0)
 			this.Offer(undo.Count == 1 ? "Marked done." : $"Marked {undo.Count} done.", () => undo.ForEach(u => u()), null);
 		this.Refresh();
+	}
+
+	// ----- Actions: the right-click menu and shortcuts of a row -----
+
+	/// <summary>Set by the shell: the moves to other screens.</summary>
+	public IShell? Shell { get; set; }
+
+	public IReadOnlyList<ItemAction> ActionsFor(IReadOnlyList<object> items)
+	{
+		List<InboxRowViewModel> rows = [.. items.OfType<InboxRowViewModel>()];
+		if (rows.Count == 0)
+			return [];
+
+		ActionList list = [];
+		if (rows.Count > 1)
+		{
+			list.Copy("Copy as text", () => string.Join(Environment.NewLine, rows.Select(r => r.Title + ": " + r.Detail)), Ui.Count(rows.Count, "row"), "Ctrl+C");
+			list.Do("Mark done", () => this.DoneManyCommand.Execute(null), icon: "Check");
+			return list;
+		}
+
+		InboxRowViewModel row = rows[0];
+		if (!ReferenceEquals(this.SelectedRow, row))
+			list.Open("Open", () => this.SelectedRow = row);
+
+		list.Copy("Copy text", () => string.IsNullOrEmpty(row.Detail) ? row.Title : row.Title + Environment.NewLine + row.Detail, "the text", "Ctrl+C");
+		if (row.Jid is string jid)
+			list.Copy("Copy address", () => jid, "the address");
+
+		if (this.Shell is IShell shell)
+		{
+			if (row.Notification is AttentionItemViewModel n && !string.IsNullOrEmpty(n.NeuronJid))
+				list.Sub("Go to " + n.NeuronLabel, ActionGroup.GoTo, shell.NeuronPlaces(n.NeuronJid));
+			else if (row.IsMessage && row.Jid is string who)
+				list.GoTo("Chat", () => shell.ShowChat(row.AccountId, who), "Chat");
+		}
+
+		if (!row.IsDone)
+		{
+			if (!string.IsNullOrEmpty(row.PrimaryText))
+				list.Do(row.PrimaryText, () => this.PrimaryCommand.Execute(row), icon: "Check");
+			if (!string.IsNullOrEmpty(row.SecondaryText))
+				list.Do(row.SecondaryText, () => this.SecondaryCommand.Execute(row));
+		}
+		else if (row.Notification is AttentionItemViewModel done)
+			list.Do("Reopen", () =>
+			{
+				this.Notifications.ReopenCommand.Execute(done);
+				this.Refresh();
+			}, icon: "Undo");
+
+		return list;
 	}
 
 	// ----- Building the list -----

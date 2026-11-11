@@ -14,6 +14,11 @@ public partial class EventsView : UserControl
 	{
 		this.InitializeComponent();
 		this.StreamList.TemplateApplied += (_, _) => this.HookStreamScroll();
+		this.StreamList.SelectionChanged += (_, _) =>
+		{
+			if (this.DataContext is EventsViewModel vm)
+				vm.SelectedEvents = [.. this.StreamList.SelectedItems?.OfType<Neuro.AA.Engine.Events.NeuronEvent>() ?? []];
+		};
 	}
 
 	private void HookStreamScroll()
@@ -50,12 +55,7 @@ public partial class EventsView : UserControl
 				if (this.streamScroll is not null)
 					this.streamScroll.Offset = default;
 			};
-			vm.CopyToClipboard = async text =>
-			{
-				IClipboard? clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-				if (clipboard is not null)
-					await clipboard.SetTextAsync(text);
-			};
+			vm.CopyToClipboard = text => Ui.Copy(text, "the event as Markdown");
 		}
 	}
 }

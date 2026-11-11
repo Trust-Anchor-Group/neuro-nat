@@ -35,7 +35,7 @@ public sealed record UpdateLogLine(string Time, string Text);
 /// update setting, with checking for packages, cancelling a pending update and upgrading.
 /// Everything goes through the Neuron's chat admin, which is the only way it offers.
 /// </summary>
-public sealed partial class UpdatesViewModel : ObservableObject
+public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 {
 	private readonly SoftwareService software;
 	private readonly MonitorService monitors;
@@ -116,6 +116,46 @@ public sealed partial class UpdatesViewModel : ObservableObject
 			this.AddLog(await this.software.SetContentAutoAsync(r.AccountId, r.NeuronJid, value));
 			await this.ReadAsync(r, quiet: true);
 		});
+	}
+
+	/// <summary>Set by the shell: the moves to other screens.</summary>
+	public IShell? Shell { get; set; }
+
+	public IReadOnlyList<ItemAction> ActionsFor(IReadOnlyList<object> items)
+	{
+		if (items.Count != 1)
+			return [];
+
+		ActionList list = [];
+		switch (items[0])
+		{
+			case UpdateRowViewModel row when this.Shell is IShell shell:
+				list.AddRange(shell.NeuronActions(row.NeuronJid, row.AccountId, WorkspaceKind.Updates).Where(a => a.Text != "Check for updates"));
+				break;
+
+			case UpdateRowViewModel row:
+				list.Copy("Copy address", () => row.NeuronJid, "the address", "Ctrl+C");
+				break;
+
+			case string installed:
+				list.Copy("Copy name", () => installed, "the name", "Ctrl+C");
+				list.Copy("Copy all installed packages", () => string.Join(Environment.NewLine, this.Installed), Ui.Count(this.Installed.Count, "package"));
+				break;
+
+			case UpdateLogLine line:
+				list.Copy("Copy line", () => line.Text, "the line", "Ctrl+C");
+				list.Copy("Copy the whole log", () => string.Join(Environment.NewLine, this.Log.Select(l => l.Time + "\t" + l.Text)), "the log");
+				break;
+		}
+
+		return list;
+	}
+
+	/// <summary>Selects a Neuron in the list.</summary>
+	public void Focus(Guid accountId, string neuronJid)
+	{
+		this.Sync();
+		this.Selected = this.Rows.FirstOrDefault(r => r.AccountId == accountId && string.Equals(r.NeuronJid, neuronJid, StringComparison.OrdinalIgnoreCase)) ?? this.Selected;
 	}
 
 	/// <summary>Called when the workspace opens: reads every live Neuron not read yet.</summary>

@@ -67,7 +67,7 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBox Text="{Binding SearchText}" PlaceholderText="Find a Neuron or broker…" Width="240" MinHeight="28" Padding="10,4" />
+          <TextBox Classes="find" Text="{Binding SearchText}" PlaceholderText="Find a Neuron or broker…" Width="240" MinHeight="28" Padding="10,4" />
           <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowParents}" ToolTip.Tip="Each Neuron and the broker its own client connects to">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Line Classes="legend" Stroke="{DynamicResource Line.Strong}" />

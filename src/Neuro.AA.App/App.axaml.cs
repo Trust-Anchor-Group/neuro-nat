@@ -35,6 +35,7 @@ public partial class App : Application
 				AppServices services = Services ?? throw new InvalidOperationException("App.Services must be set by the host.");
 				MainWindowViewModel vm = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub);
 				MainWindow window = new() { DataContext = vm };
+				UiHost.Attach(window);
 
 				// Started with Windows: watch from the tray, and show the window only when asked.
 				// The lifetime shows its main window at start, so it gets one only when shown.

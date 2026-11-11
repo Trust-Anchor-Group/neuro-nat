@@ -337,6 +337,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:NeuronChipViewModel">
                   <ToggleButton Classes="chip" IsChecked="{Binding IsSelected, Mode=OneWay}" ToolTip.Tip="{Binding Tip}"
+                                c:ActionMenu.Source="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}"
                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleNeuronCommand}" CommandParameter="{Binding}">
                     <StackPanel Orientation="Horizontal" Spacing="7">
                       <Ellipse Classes="dot" VerticalAlignment="Center" Classes.ok="{Binding IsOk}" Classes.busy="{Binding IsBusy}" Classes.bad="{Binding IsBad}" />
@@ -411,6 +412,13 @@
         </ListBox>
         <TextBlock Classes="meta" Text="Nothing matches. Try the name of a screen or a Neuron." Margin="10,8" IsVisible="{Binding !Search.HasResults}" />
       </Panel>
+    </Border>
+
+    <!-- The short note that confirms what just happened: "Copied 3 events". It sits in the
+         status bar, where no list and no selection bar is in its way. -->
+    <Border Grid.Row="2" Grid.Column="1" ZIndex="40" Classes="flash" IsVisible="{Binding HasFlash}" HorizontalAlignment="Center" VerticalAlignment="Center"
+            IsHitTestVisible="False">
+      <TextBlock Text="{Binding Flash}" />
     </Border>
 
     <!-- Pop-ups: bottom right, above everything else in the window -->
@@ -519,7 +527,7 @@
             </StackPanel>
           </Border>
 
-          <ListBox Classes="rows" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}">
+          <ListBox Classes="rows" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" c:ActionMenu.Source="{Binding}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:AccountItemViewModel">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
@@ -625,18 +633,6 @@
                   <TextBlock Classes="btnLabel" Text="Send XML" />
                 </StackPanel>
               </ToggleButton>
-              <ToggleButton Classes="ghost" IsChecked="{Binding Sniffer.IsPaused}" ToolTip.Tip="Pause the live view (traffic is still captured)">
-                <StackPanel Classes="btn">
-                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />
-                  <TextBlock Classes="btnLabel" Text="Pause" />
-                </StackPanel>
-              </ToggleButton>
-              <Button Classes="ghost" Command="{Binding Sniffer.ClearCommand}" ToolTip.Tip="Clear the view">
-                <StackPanel Classes="btn">
-                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Eraser}" />
-                  <TextBlock Classes="btnLabel" Text="Clear" />
-                </StackPanel>
-              </Button>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <TextBlock Classes="section" Text="Traffic" />
@@ -664,42 +660,7 @@
             </Grid>
           </Border>
 
-          <Border Classes="panel" Margin="20,0,20,20" Background="{DynamicResource Surface.Code}">
-            <Panel>
-              <ListBox Classes="stream" ItemsSource="{Binding Sniffer.Lines}" Margin="0,6">
-                <ListBox.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <VirtualizingStackPanel />
-                  </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="sn:SnifferLine">
-                    <Grid ColumnDefinitions="Auto,36,*">
-                      <Panel>
-                        <TextBlock Classes="mono tertiary ts" Margin="0,0,14,0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss.fff}'}" />
-                        <TextBlock Classes="mono tertiary tsShort" Margin="0,0,10,0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
-                      </Panel>
-                      <TextBlock Grid.Column="1" Classes="dir"
-                                 Text="{Binding Direction, Converter={x:Static conv:SnifferDirectionGlyphConverter.Instance}}"
-                                 Foreground="{Binding Direction, Converter={x:Static conv:SnifferDirectionBrushConverter.Instance}}" />
-                      <SelectableTextBlock Grid.Column="2" Classes="mono" Text="{Binding Text}" TextWrapping="Wrap" />
-                    </Grid>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-
-              <StackPanel IsVisible="{Binding Sniffer.IsEmpty}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360" Spacing="6">
-                <c:LineIcon Data="{StaticResource Icon.Sniffer}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
-                <TextBlock Text="No traffic yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                           Text="Connect the account to see every stanza it sends and receives, live."
-                           IsVisible="{Binding LastError, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                           Text="Fix the problem above, then connect to see the traffic."
-                           IsVisible="{Binding LastError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-              </StackPanel>
-            </Panel>
-          </Border>
+          <views:TrafficView DataContext="{Binding Sniffer}" Margin="20,0,20,20" />
         </DockPanel>
       </DockPanel>
 

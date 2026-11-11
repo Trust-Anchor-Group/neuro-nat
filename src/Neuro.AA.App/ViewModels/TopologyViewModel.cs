@@ -20,7 +20,7 @@ public sealed record TopologyFact(string Name, string Value);
 /// brokers, and (on request) to the contacts in their roster groups, merged from what every
 /// Neuron you administer reports, with health from Fleet and Events on top.
 /// </summary>
-public sealed partial class TopologyViewModel : ObservableObject
+public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 {
 	private readonly TopologyService topology;
 	private readonly FleetService fleet;
@@ -172,6 +172,33 @@ public sealed partial class TopologyViewModel : ObservableObject
 		this.Rebuild();
 		if (first)
 			this.FitVersion++;
+	}
+
+	/// <summary>Set by the shell: the moves to other screens.</summary>
+	public IShell? Shell { get; set; }
+
+	/// <summary>Actions for a point on the map (given by its id), or for the map itself when nothing is under the pointer.</summary>
+	public IReadOnlyList<ItemAction> ActionsFor(IReadOnlyList<object> items)
+	{
+		ActionList list = [];
+		if (items.Count == 1 && this.Node(items[0] as string) is TopologyNode node)
+		{
+			if (node.NeuronJid is string jid && this.Shell is IShell shell)
+				list.AddRange(shell.NeuronActions(jid, node.AccountId, WorkspaceKind.Topology));
+			else
+				list.Copy("Copy name", () => node.Label, "the name", "Ctrl+C");
+		}
+
+		list.Do("Fit the map to the window", () => this.FitVersion++);
+		list.Do("Scan again", () => this.ScanCommand.Execute(null), icon: "Refresh", key: "F5");
+		return list;
+	}
+
+	/// <summary>Selects a Neuron on the map by its address. Does nothing when the map does not have it yet.</summary>
+	public void SelectNeuron(string neuronJid)
+	{
+		if (this.snapshot.Nodes.FirstOrDefault(n => string.Equals(n.NeuronJid, neuronJid, StringComparison.OrdinalIgnoreCase)) is TopologyNode node)
+			this.SelectedId = node.Id;
 	}
 
 	private TopologyNode? Node(string? id) => id is null ? null : this.snapshot.Nodes.FirstOrDefault(n => n.Id == id);

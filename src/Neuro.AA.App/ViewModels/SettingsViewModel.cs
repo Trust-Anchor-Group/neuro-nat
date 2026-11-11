@@ -65,8 +65,59 @@ public sealed class JsonUiSettingsStore(string path)
 /// backs the Settings screen, the status picker in the status strip and the tray menu, so a
 /// change in one shows in the others.
 /// </summary>
+/// <summary>One line of the keyboard list in Settings.</summary>
+public sealed record ShortcutRow(string Keys, string Does);
+
+/// <summary>A group of shortcuts that belong together.</summary>
+public sealed record ShortcutGroup(string Name, IReadOnlyList<ShortcutRow> Rows);
+
 public sealed partial class SettingsViewModel(ChatService chat) : ObservableObject
 {
+	/// <summary>Every keyboard shortcut, as Settings lists them.</summary>
+	public static IReadOnlyList<ShortcutGroup> Shortcuts { get; } =
+	[
+		new ShortcutGroup("Getting around",
+		[
+			new ShortcutRow("Ctrl+K", "Search for a screen, a Neuron or an account"),
+			new ShortcutRow("Ctrl+1 to Ctrl+5", "Inbox, Neurons, Events, Chat, Console"),
+			new ShortcutRow("Ctrl+,", "Settings"),
+			new ShortcutRow("Ctrl+F", "Filter or find on the screen in front"),
+			new ShortcutRow("F5", "Read the screen again"),
+		]),
+		new ShortcutGroup("In any list",
+		[
+			new ShortcutRow("Right-click", "Everything that can be done with the row"),
+			new ShortcutRow("Ctrl+click, Shift+click", "Select several rows"),
+			new ShortcutRow("Ctrl+A", "Select every row"),
+			new ShortcutRow("Ctrl+C", "Copy what is selected"),
+			new ShortcutRow("Ctrl+Shift+C", "Copy it the other way: with times, or as Markdown"),
+			new ShortcutRow("Ctrl+S", "Save what is selected to a file"),
+			new ShortcutRow("Enter", "Open the row"),
+			new ShortcutRow("Escape", "Clear the selection"),
+		]),
+		new ShortcutGroup("Traffic",
+		[
+			new ShortcutRow("Drag over lines", "Select them"),
+			new ShortcutRow("Enter, or double-click", "Open a line as tidy XML, or close it up"),
+			new ShortcutRow("Enter and Shift+Enter in the find box", "Next and previous match"),
+			new ShortcutRow("F3 and Shift+F3", "Next and previous match, from the list"),
+			new ShortcutRow("Ctrl+End", "Jump to the latest line and follow again"),
+		]),
+		new ShortcutGroup("Console and chat",
+		[
+			new ShortcutRow("Enter", "Run the command, or send the message"),
+			new ShortcutRow("Shift+Enter", "A new line"),
+			new ShortcutRow("Up and Down", "Earlier commands"),
+			new ShortcutRow("Tab", "Finish the command name"),
+		]),
+		new ShortcutGroup("Sources",
+		[
+			new ShortcutRow("F2", "Edit the node"),
+			new ShortcutRow("Alt+Up, Alt+Down", "Move the node among its siblings"),
+			new ShortcutRow("Delete", "Delete the node. It asks once more first."),
+		]),
+	];
+
 	private AlertService? alerts;
 	private JsonAlertSettingsStore? alertStore;
 	private JsonUiSettingsStore? uiStore;

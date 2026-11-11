@@ -168,13 +168,8 @@
                   <Border Grid.Column="2" Height="1" Background="{DynamicResource Accent}" VerticalAlignment="Center" Opacity="0.6" />
                 </Grid>
                 <TextBlock Classes="meta" Text="{Binding Sender}" FontWeight="SemiBold" IsVisible="{Binding ShowSender}" Margin="2,0,0,0" />
-                <Border Classes="bubble" Classes.mine="{Binding IsMine}" Classes.mention="{Binding IsMention}">
-                  <Border.ContextMenu>
-                    <ContextMenu>
-                      <MenuItem Header="Mark as unread from here" IsVisible="{Binding !IsMine}"
-                                Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).MarkUnreadCommand}" CommandParameter="{Binding}" />
-                    </ContextMenu>
-                  </Border.ContextMenu>
+                <Border Classes="bubble" Classes.mine="{Binding IsMine}" Classes.mention="{Binding IsMention}"
+                        c:ActionMenu.Source="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext)}">
                   <c:MarkdownView Markdown="{Binding Markdown}" />
                 </Border>
                 <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding StartsGroup}"

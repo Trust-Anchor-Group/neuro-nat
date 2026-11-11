@@ -16,7 +16,7 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 		this.Session = session;
 		this.remove = remove;
 		this.setSecret = setSecret;
-		this.Sniffer = new SnifferViewModel(session.Sniffer);
+		this.Sniffer = new SnifferViewModel(session.Sniffer, session.Profile.Label);
 		session.StatusChanged += this.Session_StatusChanged;
 		this.Refresh();
 	}
@@ -147,6 +147,9 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 		this.IsBusy = s is ConnectionStatus.Connecting or ConnectionStatus.Authenticating or ConnectionStatus.Reconnecting;
 		this.IsFailed = s == ConnectionStatus.Failed;
 		this.LastError = this.Session.LastError;
+		this.Sniffer.EmptyText = string.IsNullOrEmpty(this.LastError)
+			? "Connect the account to see everything it sends and receives, live."
+			: "Fix the problem above, then connect to see the traffic.";
 		this.StatusText = s switch
 		{
 			ConnectionStatus.Connected => this.Session.ConnectedSinceUtc is DateTime t

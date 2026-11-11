@@ -34,9 +34,19 @@
 
   <DockPanel Margin="20,16,20,20">
     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-      <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding RefreshNowCommand}" ToolTip.Tip="Read every Neuron's health now">
-        <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
-      </Button>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+        <TextBox Classes="find" Text="{Binding FilterText}" PlaceholderText="Filter Neurons…" Width="220" MinHeight="28" Padding="10,4"
+                 ToolTip.Tip="Filter by name, account, version or state (Ctrl+F)" />
+        <Button Classes="ghost" Command="{Binding RefreshNowCommand}" ToolTip.Tip="Read every Neuron's health now (F5)">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Refresh}" />
+            <TextBlock Classes="btnLabel" Text="Refresh" />
+          </StackPanel>
+        </Button>
+        <Button Classes="ghost" Command="{Binding SaveCommand}" ToolTip.Tip="Save the list to a file">
+          <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+        </Button>
+      </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
         <TextBlock Classes="section" Text="Neurons" />
         <TextBlock Classes="meta" Text="{Binding Summary}" VerticalAlignment="Center" />
@@ -61,11 +71,12 @@
         </Border>
 
         <Panel>
-          <ListBox Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" Margin="4">
+          <ListBox x:Name="List" Classes="rows" ItemsSource="{Binding Shown}" SelectedItem="{Binding SelectedRow}" Margin="4" SelectionMode="Multiple"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #Bar}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:FleetRowViewModel">
                 <Grid ColumnDefinitions="2.4*,1.3*,1.3*,132,1.6*,1*,72,84,84" ColumnSpacing="12" RowDefinitions="Auto,Auto"
-                      ToolTip.Tip="Double-click to see this Neuron's events">
+                      ToolTip.Tip="Double-click for this Neuron's events. Right-click for everything else.">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                     <Ellipse Classes="dot" VerticalAlignment="Center"
                              Classes.ok="{Binding State, Converter={x:Static conv:EventConverters.IsLive}}"
@@ -102,6 +113,19 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
+
+          <c:ActionBar x:Name="Bar" Noun="Neuron" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,14" MinWidth="440" />
+
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+            <StackPanel.IsVisible>
+              <MultiBinding Converter="{x:Static BoolConverters.And}">
+                <Binding Path="HasRows" />
+                <Binding Path="!HasShown" />
+              </MultiBinding>
+            </StackPanel.IsVisible>
+            <TextBlock Text="No Neuron matches the filter" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" Text="Clear the filter box to see them all." HorizontalAlignment="Center" />
+          </StackPanel>
 
           <StackPanel IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Fleet}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />

@@ -338,6 +338,39 @@ public sealed class ReportView : Decorator
 		};
 	}
 
+	/// <summary>Every table of a report as CSV, one after the other, each under its section's name.</summary>
+	public static string ToCsv(QueryRun run)
+	{
+		System.Text.StringBuilder sb = new();
+
+		void Walk(QueryItem item, string? heading)
+		{
+			switch (item)
+			{
+				case QuerySection s:
+					foreach (QueryItem child in s.Content)
+						Walk(child, s.Header);
+					break;
+
+				case QueryTable t:
+					Column[] columns = t.TableDefinition.Columns ?? [];
+					if (sb.Length > 0)
+						sb.AppendLine();
+					string? name = string.IsNullOrWhiteSpace(t.TableDefinition.Name) ? heading : t.TableDefinition.Name;
+					if (!string.IsNullOrWhiteSpace(name))
+						sb.AppendLine(name);
+					sb.Append(ViewModels.Export.Csv([.. columns.Select(c => c.Header ?? c.ColumnId)],
+						t.Records.Select(r => (IReadOnlyList<string?>)[.. columns.Select((c, i) => i < r.Elements.Length ? Format(r.Elements[i], c) : string.Empty)])));
+					break;
+			}
+		}
+
+		foreach (QueryItem item in run.Items)
+			Walk(item, null);
+
+		return sb.ToString();
+	}
+
 	private static string Format(object? v, Column c) => v switch
 	{
 		null => string.Empty,

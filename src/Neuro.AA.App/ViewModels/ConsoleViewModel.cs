@@ -23,10 +23,15 @@ public sealed partial class ConsoleTargetViewModel(Guid accountId, string bareJi
 }
 
 /// <summary>What one Neuron answered to a command.</summary>
-public sealed partial class ConsoleResultViewModel(ConsoleEntry entry, string neuronLabel) : ObservableObject
+public sealed partial class ConsoleResultViewModel(ConsoleEntry entry, string neuronLabel, Guid accountId = default, string? bareJid = null) : ObservableObject
 {
 	public ConsoleEntry Entry { get; } = entry;
 	public string NeuronLabel { get; } = neuronLabel;
+	public Guid AccountId { get; } = accountId;
+	public string BareJid { get; } = bareJid ?? neuronLabel;
+
+	/// <summary>The run this answer belongs to; set when it is added.</summary>
+	public ConsoleRunViewModel? Run { get; set; }
 
 	[ObservableProperty] private string markdown = string.Empty;
 	[ObservableProperty] private string status = "Waiting for the Neuron…";
@@ -60,7 +65,7 @@ public sealed class ConsoleRunViewModel(string command, DateTime time)
 /// The chat admin console: commands and script to one Neuron or several at once, with the
 /// answers rendered as Markdown and, for several Neurons, side by side.
 /// </summary>
-public sealed partial class ConsoleViewModel : ObservableObject
+public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 {
 	private readonly ChatService chat;
 	private readonly MonitorService monitors;
@@ -122,6 +127,104 @@ public sealed partial class ConsoleViewModel : ObservableObject
 		foreach (ConsoleTargetViewModel t in this.Targets)
 			t.IsChecked = t.AccountId == accountId && string.Equals(t.BareJid, bareJid, StringComparison.OrdinalIgnoreCase);
 		this.TargetsChanged();
+	}
+
+	/// <summary>Ticks exactly these Neurons. Used by "Run a command on these" on the Neurons list.</summary>
+	public void Focus(IReadOnlyList<(Guid Account, string Jid)> neurons)
+	{
+		this.SyncTargets();
+		foreach (ConsoleTargetViewModel t in this.Targets)
+			t.IsChecked = neurons.Any(n => n.Account == t.AccountId && string.Equals(n.Jid, t.BareJid, StringComparison.OrdinalIgnoreCase));
+		this.TargetsChanged();
+	}
+
+	// ----- Actions -----
+
+	/// <summary>Set by the shell: the moves to other screens.</summary>
+	public IShell? Shell { get; set; }
+
+	private async Task RunAgain(string command, IReadOnlyList<(Guid Account, string Jid)>? only)
+	{
+		if (only is not null)
+			this.Focus(only);
+
+		this.CommandText = command;
+		if (this.RunCommand.CanExecute(null))
+			await this.RunCommand.ExecuteAsync(null);
+	}
+
+	private static string Transcript(ConsoleRunViewModel run)
+	{
+		System.Text.StringBuilder sb = new();
+		sb.Append("> ").AppendLine(run.Command).AppendLine();
+		foreach (ConsoleResultViewModel r in run.Results)
+		{
+			if (run.Results.Count > 1)
+				sb.Append("**").Append(r.NeuronLabel).AppendLine("**").AppendLine();
+			sb.AppendLine(r.HasError ? r.Status : r.Markdown).AppendLine();
+		}
+
+		return sb.ToString();
+	}
+
+	/// <summary>Toolbar Save: everything in the transcript, as Markdown.</summary>
+	[RelayCommand]
+	private Task SaveTranscript()
+		=> Ui.Save(Ui.FileName("Console"), [new SaveFormat("Markdown", "md", () => string.Join(Environment.NewLine, this.Runs.Select(Transcript))),
+			new SaveFormat("Text", "txt", () => string.Join(Environment.NewLine, this.Runs.Select(Transcript)))]);
+
+	public IReadOnlyList<ItemAction> ActionsFor(IReadOnlyList<object> items)
+	{
+		if (items.Count != 1)
+			return [];
+
+		ActionList list = [];
+		switch (items[0])
+		{
+			case ConsoleResultViewModel r:
+				string command = r.Run?.Command ?? string.Empty;
+				string? csv = Export.MarkdownTablesAsCsv(r.Markdown);
+				list.Copy("Copy answer", () => r.HasError ? r.Status : r.Markdown, "the answer", "Ctrl+C");
+				if (csv is not null)
+				{
+					list.Copy("Copy table for a spreadsheet", () => string.Join(Environment.NewLine, Export.MarkdownTables(r.Markdown).Select(t => Export.Tabs(t[0], t.Skip(1)))), "the table");
+					list.Copy("Copy table as CSV", () => csv, "the table as CSV");
+				}
+
+				List<SaveFormat> formats = [new SaveFormat("Markdown", "md", () => "> " + command + Environment.NewLine + Environment.NewLine + r.Markdown)];
+				if (csv is not null)
+					formats.Insert(0, new SaveFormat("Spreadsheet (CSV)", "csv", () => csv));
+				formats.Add(new SaveFormat("Text", "txt", () => r.Markdown));
+				list.Save("Save…", Ui.FileName(command.Split(' ', 2)[0] + " " + r.NeuronLabel), [.. formats]);
+
+				if (this.Shell is IShell shell && r.AccountId != default)
+					list.Sub("Go to " + r.NeuronLabel, ActionGroup.GoTo, shell.NeuronPlaces(r.BareJid, r.AccountId, WorkspaceKind.Console));
+
+				if (command.Length > 0)
+				{
+					if (r.AccountId != default)
+						list.Do("Run again on " + r.NeuronLabel, () => this.RunAgain(command, [(r.AccountId, r.BareJid)]), icon: "Refresh");
+					list.Do("Run on all ticked Neurons", () => this.RunAgain(command, null));
+					list.Do("Put the command back in the box", () => this.CommandText = command, icon: "Edit");
+				}
+
+				break;
+
+			case ConsoleRunViewModel run:
+				list.Copy("Copy command", () => run.Command, "the command", "Ctrl+C");
+				list.Copy("Copy command and answers", () => Transcript(run), "the command and its answers");
+				list.Do("Run again", () => this.RunAgain(run.Command, null), icon: "Refresh");
+				list.Do("Put the command back in the box", () => this.CommandText = run.Command, icon: "Edit");
+				break;
+
+			case ConsoleTargetViewModel target:
+				list.Filter("Only this Neuron", () => this.Focus(target.AccountId, target.BareJid));
+				if (this.Shell is IShell s)
+					list.AddRange(s.NeuronActions(target.BareJid, target.AccountId, WorkspaceKind.Console));
+				break;
+		}
+
+		return list;
 	}
 
 	/// <summary>Updates the list of Neurons. UI thread.</summary>
@@ -279,7 +382,7 @@ public sealed partial class ConsoleViewModel : ObservableObject
 			s.Changed -= this.Session_Changed;
 			s.Changed += this.Session_Changed;
 			ConsoleEntry e = await s.SendAsync(command, broadcast);
-			ConsoleResultViewModel r = new(e, t.Label);
+			ConsoleResultViewModel r = new(e, t.Label, t.AccountId, t.BareJid) { Run = run };
 			r.Refresh();
 			run.Results.Add(r);
 		}

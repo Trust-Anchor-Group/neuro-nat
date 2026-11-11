@@ -110,7 +110,7 @@
           </ToggleButton>
         </Grid>
 
-        <TextBox DockPanel.Dock="Top" Text="{Binding SearchText}" PlaceholderText="Filter by text, person, Neuron or kind…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
+        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding SearchText}" PlaceholderText="Filter by text, person, Neuron or kind…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
 
         <!-- The last answer, and a moment to take it back -->
         <Border DockPanel.Dock="Bottom" Classes="panel" Padding="12,6,6,6" Margin="0,8,0,0" Background="{DynamicResource Surface.Raised}" IsVisible="{Binding HasUndo}">
@@ -141,7 +141,8 @@
         </Border>
 
         <Panel>
-          <ListBox x:Name="List" Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" SelectionMode="Multiple">
+          <ListBox x:Name="List" Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" SelectionMode="Multiple"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.KeepSelection="True">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:InboxRowViewModel">
                 <Grid Classes="row" Classes.done="{Binding IsDone}" ColumnDefinitions="Auto,*" ColumnSpacing="10">

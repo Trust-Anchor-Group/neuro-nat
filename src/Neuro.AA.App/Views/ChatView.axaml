@@ -189,10 +189,11 @@
           </StackPanel>
         </Border>
 
-        <TextBox DockPanel.Dock="Top" Text="{Binding FilterText}" PlaceholderText="Filter people…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
+        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding FilterText}" PlaceholderText="Filter people…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
 
         <Panel>
-          <ListBox Classes="rows" ItemsSource="{Binding People}" SelectedItem="{Binding SelectedPerson}">
+          <ListBox Classes="rows" ItemsSource="{Binding People}" SelectedItem="{Binding SelectedPerson}"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.KeepSelection="True">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
                 <VirtualizingStackPanel />

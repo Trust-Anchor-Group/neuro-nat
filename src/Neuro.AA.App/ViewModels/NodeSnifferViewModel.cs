@@ -14,7 +14,10 @@ public sealed partial class NodeSnifferViewModel : ObservableObject, IAsyncDispo
 		this.NeuronJid = neuronJid;
 		this.NodeLabel = nodeLabel;
 		this.NeuronLabel = neuronLabel;
-		this.Lines = new SnifferViewModel(sniffer.Sniffer);
+		this.Lines = new SnifferViewModel(sniffer.Sniffer, nodeLabel + " on " + neuronLabel)
+		{
+			EmptyText = "Everything the Neuron sends to and receives from this node shows here, live.",
+		};
 		sniffer.StateChanged += (_, _) => Dispatcher.UIThread.Post(this.Refresh);
 		this.Refresh();
 	}

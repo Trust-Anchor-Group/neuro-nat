@@ -3,6 +3,7 @@
              xmlns:vm="using:Neuro.AA.App.ViewModels"
              xmlns:conv="using:Neuro.AA.App.Converters"
              xmlns:c="using:Neuro.AA.App.Controls"
+             xmlns:views="using:Neuro.AA.App.Views"
              xmlns:sn="using:Neuro.AA.Engine.Sniffing"
              x:Class="Neuro.AA.App.Views.SourcesView"
              x:DataType="vm:SourcesViewModel">
@@ -113,7 +114,8 @@
                   ToolTip.Tip="Back to the tree">
             <c:LineIcon Classes="btn" Data="{StaticResource Icon.Close}" />
           </Button>
-          <TextBox Text="{Binding SearchText}" PlaceholderText="Find nodes in every source…" MinHeight="30" Padding="10,5">
+          <TextBox Classes="find" Text="{Binding SearchText}" PlaceholderText="Find nodes in every source…" MinHeight="30" Padding="10,5"
+                   ToolTip.Tip="Find nodes by name (Ctrl+F). Enter searches.">
             <TextBox.KeyBindings>
               <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
               <KeyBinding Gesture="Escape" Command="{Binding ClearSearchCommand}" />
@@ -125,7 +127,7 @@
           <!-- Search results replace the tree until cleared -->
           <DockPanel IsVisible="{Binding HasSearchResults}" Background="{DynamicResource Surface.Ground}" ZIndex="1">
             <TextBlock DockPanel.Dock="Top" Classes="meta" Margin="8,0,8,8" Text="{Binding SearchSummary}" TextWrapping="Wrap" />
-            <ListBox Classes="rows" ItemsSource="{Binding SearchResults}" SelectedItem="{Binding SearchSelection}">
+            <ListBox Classes="rows" ItemsSource="{Binding SearchResults}" SelectedItem="{Binding SearchSelection}" c:ActionMenu.Source="{Binding}">
               <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
                   <VirtualizingStackPanel />
@@ -145,7 +147,7 @@
             </ListBox>
           </DockPanel>
 
-          <TreeView ItemsSource="{Binding Roots}" SelectedItem="{Binding TreeSelection, Mode=TwoWay}">
+          <TreeView ItemsSource="{Binding Roots}" SelectedItem="{Binding TreeSelection, Mode=TwoWay}" c:ActionMenu.Source="{Binding}">
             <TreeView.Styles>
               <Style Selector="TreeViewItem" x:DataType="vm:TreeItemViewModel">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
@@ -253,7 +255,7 @@
                   ToolTip.Tip="Watch this node's traffic live. Only the Neuron's administrators may do this.">
             <StackPanel Classes="btn">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Sniffer}" />
-              <TextBlock Classes="btnLabel" Text="Sniff" />
+              <TextBlock Classes="btnLabel" Text="Watch traffic" />
             </StackPanel>
           </Button>
           <Button Classes="ghost" Command="{Binding ShareCommand}" ToolTip.Tip="Send this node's details to a coworker or a room" Margin="0,0,6,6">
@@ -309,14 +311,15 @@
                     <ItemsControl ItemsSource="{Binding Parameters}" Grid.IsSharedSizeScope="True">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ParameterRow">
-                          <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,6">
+                          <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,6" Background="Transparent"
+                                  c:ActionMenu.Source="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext)}">
                             <Grid ColumnSpacing="16">
                               <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="ParamName" MinWidth="120" />
                                 <ColumnDefinition Width="*" />
                               </Grid.ColumnDefinitions>
                               <TextBlock Foreground="{DynamicResource Ink.Secondary}" Text="{Binding Name}" />
-                              <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                              <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" ContextFlyout="{x:Null}" />
                             </Grid>
                           </Border>
                         </DataTemplate>
@@ -331,9 +334,10 @@
                 <ItemsControl ItemsSource="{Binding Messages}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:NodeMessageRow">
-                      <Grid ColumnDefinitions="150,*" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="150,*" Margin="0,0,0,6" Background="Transparent"
+                            c:ActionMenu.Source="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext)}">
                         <TextBlock Classes="mono tertiary" Text="{Binding Time}" />
-                        <SelectableTextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" />
+                        <SelectableTextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" ContextFlyout="{x:Null}" />
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -367,6 +371,12 @@
           <DockPanel IsVisible="{Binding IsReadout}">
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                <Button Classes="ghost" Command="{Binding CopyReadoutCommand}" ToolTip.Tip="Copy all readings, ready to paste into a spreadsheet">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+                </Button>
+                <Button Classes="ghost" Command="{Binding SaveReadoutCommand}" ToolTip.Tip="Save all readings to a file">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+                </Button>
                 <Button Content="Read again" Command="{Binding ReadCommand}" CommandParameter="momentary" />
                 <Button Content="Back to node" Command="{Binding BackToNodeCommand}" />
               </StackPanel>
@@ -375,8 +385,10 @@
                 <TextBlock Classes="meta" Text="{Binding ReadoutStatus}" TextWrapping="Wrap" />
               </StackPanel>
             </DockPanel>
+            <c:ActionBar x:Name="ReadoutBar" DockPanel.Dock="Bottom" Noun="reading" Margin="0,8,0,0" />
             <Border Classes="panel" Background="{DynamicResource Surface.Panel}" Padding="14,6">
-              <ListBox Classes="stream" ItemsSource="{Binding ReadoutRows}" Background="Transparent">
+              <ListBox Classes="stream" ItemsSource="{Binding ReadoutRows}" Background="Transparent" SelectionMode="Multiple"
+                       c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #ReadoutBar}">
                 <ListBox.ItemsPanel>
                   <ItemsPanelTemplate>
                     <VirtualizingStackPanel />
@@ -387,7 +399,7 @@
                     <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,6">
                       <Grid ColumnDefinitions="2*,3*,1.4*,1.4*" ColumnSpacing="14">
                         <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Ink.Secondary}" TextTrimming="CharacterEllipsis" />
-                        <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Classes.error="{Binding IsProblem}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Classes.error="{Binding IsProblem}" />
                         <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Kind}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="3" Classes="mono tertiary" Text="{Binding Time}" />
                       </Grid>
@@ -402,6 +414,12 @@
           <DockPanel IsVisible="{Binding IsReport}">
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                <Button Classes="ghost" Command="{Binding CopyReportCommand}" ToolTip.Tip="Copy the report's tables, ready to paste into a spreadsheet">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+                </Button>
+                <Button Classes="ghost" Command="{Binding SaveReportCommand}" ToolTip.Tip="Save the report's tables to a file">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+                </Button>
                 <Button Content="Change values" Command="{Binding CloseReportCommand}" />
                 <Button Content="Back to node" Command="{Binding BackToNodeCommand}" />
               </StackPanel>
@@ -432,20 +450,8 @@
     <Border Grid.Row="2" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Background="{DynamicResource Surface.Panel}">
       <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="14,8,12,4">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-            <ToggleButton Classes="ghost" IsChecked="{Binding SelectedSniffer.Lines.IsPaused}" ToolTip.Tip="Pause the view (traffic is still captured)">
-              <StackPanel Classes="btn">
-                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />
-                <TextBlock Classes="btnLabel" Text="Pause" />
-              </StackPanel>
-            </ToggleButton>
-            <Button Classes="ghost" Command="{Binding SelectedSniffer.Lines.ClearCommand}" ToolTip.Tip="Clear the view">
-              <StackPanel Classes="btn">
-                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Eraser}" />
-                <TextBlock Classes="btnLabel" Text="Clear" />
-              </StackPanel>
-            </Button>
-          </StackPanel>
+          <TextBlock DockPanel.Dock="Right" Classes="meta" Margin="12,0,4,0" Text="{Binding SelectedSniffer.StateText}" TextTrimming="CharacterEllipsis"
+                     VerticalAlignment="Center" MaxWidth="320" />
           <ListBox Classes="snifferTabs" ItemsSource="{Binding Sniffers}" SelectedItem="{Binding SelectedSniffer}" Background="Transparent">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
@@ -454,11 +460,12 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:NodeSnifferViewModel">
-                <StackPanel Orientation="Horizontal" Spacing="7" ToolTip.Tip="{Binding StateText}">
+                <StackPanel Orientation="Horizontal" Spacing="7" ToolTip.Tip="{Binding StateText}" Background="Transparent"
+                            c:ActionMenu.Source="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext)}">
                   <Ellipse Classes="dot" Classes.ok="{Binding IsLive}" Classes.bad="{Binding HasProblem}" VerticalAlignment="Center" />
                   <TextBlock Text="{Binding NodeLabel}" VerticalAlignment="Center" FontWeight="SemiBold" />
                   <TextBlock Classes="meta" Text="{Binding NeuronLabel}" VerticalAlignment="Center" />
-                  <Button Classes="ghost" Padding="3" MinHeight="0" VerticalAlignment="Center" ToolTip.Tip="Stop this sniffer"
+                  <Button Classes="ghost" Padding="3" MinHeight="0" VerticalAlignment="Center" ToolTip.Tip="Stop watching this node's traffic"
                           Command="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext).CloseSnifferCommand}" CommandParameter="{Binding}">
                     <c:LineIcon Data="{StaticResource Icon.Close}" Width="12" Height="12" />
                   </Button>
@@ -468,28 +475,7 @@
           </ListBox>
         </DockPanel>
 
-        <TextBlock DockPanel.Dock="Top" Classes="meta" Margin="16,0,16,4" Text="{Binding SelectedSniffer.StateText}" TextTrimming="CharacterEllipsis" />
-
-        <Border Classes="panel" Margin="14,0,14,12" Background="{DynamicResource Surface.Code}">
-          <ListBox Classes="stream" ItemsSource="{Binding SelectedSniffer.Lines.Lines}" Margin="0,4">
-            <ListBox.ItemsPanel>
-              <ItemsPanelTemplate>
-                <VirtualizingStackPanel />
-              </ItemsPanelTemplate>
-            </ListBox.ItemsPanel>
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="sn:SnifferLine">
-                <Grid ColumnDefinitions="Auto,36,*">
-                  <TextBlock Classes="mono tertiary" Margin="0,0,14,0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss.fff}'}" />
-                  <TextBlock Grid.Column="1" Classes="dir"
-                             Text="{Binding Direction, Converter={x:Static conv:SnifferDirectionGlyphConverter.Instance}}"
-                             Foreground="{Binding Direction, Converter={x:Static conv:SnifferDirectionBrushConverter.Instance}}" />
-                  <SelectableTextBlock Grid.Column="2" Classes="mono" Text="{Binding Text}" TextWrapping="Wrap" />
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </Border>
+        <views:TrafficView DataContext="{Binding SelectedSniffer.Lines}" Margin="14,2,14,12" />
       </DockPanel>
     </Border>
     </Grid>

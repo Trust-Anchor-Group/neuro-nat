@@ -53,7 +53,7 @@
 
         <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10" IsVisible="{Binding IsSearch}">
           <Button DockPanel.Dock="Right" Content="Search" Command="{Binding SearchCommand}" IsEnabled="{Binding !IsBusy}" Margin="8,0,0,0" IsDefault="True" />
-          <TextBox Text="{Binding SearchText}" PlaceholderText="Name, model, serial number…" MinHeight="28" Padding="10,4" />
+          <TextBox Classes="find" Text="{Binding SearchText}" PlaceholderText="Name, model, serial number…" MinHeight="28" Padding="10,4" />
         </DockPanel>
 
         <TextBlock DockPanel.Dock="Bottom" Classes="meta" Text="{Binding Note}" TextWrapping="Wrap" Margin="6,8,0,0"

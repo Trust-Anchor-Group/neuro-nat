@@ -184,6 +184,41 @@
                      Text="Starts in the tray, without opening the window." />
         </StackPanel>
       </Border>
+
+      <!-- Keyboard -->
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="section" Text="Keyboard" />
+            <TextBlock Classes="hint" Text="Every right-click menu shows the shortcut next to the action it belongs to. These are all of them." />
+          </StackPanel>
+          <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.Shortcuts}" Grid.IsSharedSizeScope="True">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ShortcutGroup">
+                <StackPanel Spacing="2" Margin="0,0,0,12">
+                  <TextBlock Classes="label" Text="{Binding Name}" Margin="0,0,0,2" />
+                  <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ShortcutRow">
+                        <Grid ColumnSpacing="16" Margin="0,3">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Keys" MinWidth="150" />
+                            <ColumnDefinition Width="*" />
+                          </Grid.ColumnDefinitions>
+                          <Border Classes="kbd" HorizontalAlignment="Left">
+                            <TextBlock Text="{Binding Keys}" />
+                          </Border>
+                          <TextBlock Grid.Column="1" Text="{Binding Does}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

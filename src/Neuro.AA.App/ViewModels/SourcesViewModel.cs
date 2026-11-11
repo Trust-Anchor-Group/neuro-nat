@@ -187,7 +187,7 @@ public sealed record ReadoutRow(string Name, string Value, string Kind, string T
 /// The Sources workspace: a Neuron's data sources and nodes, the selected node's parameters,
 /// messages and commands, and the Neuron's own forms for editing and adding nodes.
 /// </summary>
-public sealed partial class SourcesViewModel : ObservableObject
+public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 {
 	private readonly MonitorService monitors;
 	private readonly AccountManager accounts;
@@ -791,6 +791,168 @@ public sealed partial class SourcesViewModel : ObservableObject
 			sb.AppendLine().Append("> ").Append(m.Time).Append(": ").Append(m.Text);
 
 		this.ShareTo?.Invoke("Node: " + item.Label, sb.ToString());
+	}
+
+	// ---- Actions: right-click, shortcuts -------------------------------------------------
+
+	/// <summary>Set by the shell: the moves to other screens.</summary>
+	public IShell? Shell { get; set; }
+
+	/// <summary>Opens a Neuron's sources. Used by "Go to" on other screens.</summary>
+	public void Focus(Guid accountId, string neuronJid)
+	{
+		this.SyncNeurons();
+		if (this.Neurons.FirstOrDefault(n => n.AccountId == accountId && string.Equals(n.BareJid, neuronJid, StringComparison.OrdinalIgnoreCase)) is NeuronChoice n)
+			this.SelectedNeuron = n;
+		else
+			Ui.Say(neuronJid + " is not online, so its sources cannot be read");
+	}
+
+	private string ParametersAsText()
+		=> string.Join(Environment.NewLine, this.Parameters.Select(p => p.Name + ": " + p.Value));
+
+	private static readonly string[] readoutColumns = ["Field", "Value", "Kind", "Time"];
+
+	private SaveFormat[] ReadoutFormats() =>
+	[
+		new SaveFormat("Spreadsheet (CSV)", "csv", () => Export.Csv(readoutColumns, this.ReadoutRows.Select(r => (IReadOnlyList<string?>)[r.Name, r.Value, r.Kind, r.Time]))),
+		new SaveFormat("Markdown", "md", () => Export.Markdown(readoutColumns, this.ReadoutRows.Select(r => (IReadOnlyList<string?>)[r.Name, r.Value, r.Kind, r.Time]))),
+	];
+
+	/// <summary>Saves the sensor readings on screen.</summary>
+	[RelayCommand]
+	private Task SaveReadout() => Ui.Save(Ui.FileName("Readings " + this.NodeTitle), this.ReadoutFormats());
+
+	[RelayCommand]
+	private Task CopyReadout()
+		=> Ui.Copy(Export.Tabs(readoutColumns, this.ReadoutRows.Select(r => (IReadOnlyList<string?>)[r.Name, r.Value, r.Kind, r.Time])), Ui.Count(this.ReadoutRows.Count, "reading"));
+
+	/// <summary>Saves the tables of the report on screen.</summary>
+	[RelayCommand]
+	private Task SaveReport()
+		=> this.Report is QueryRun run
+			? Ui.Save(Ui.FileName(this.ReportTitle), [new SaveFormat("Spreadsheet (CSV)", "csv", () => Controls.ReportView.ToCsv(run))])
+			: Task.CompletedTask;
+
+	[RelayCommand]
+	private Task CopyReport()
+		=> this.Report is QueryRun run ? Ui.Copy(Controls.ReportView.ToCsv(run), "the report's tables") : Task.CompletedTask;
+
+	public IReadOnlyList<ItemAction> ActionsFor(IReadOnlyList<object> items)
+	{
+		if (items.Count == 0)
+			return [];
+
+		ActionList list = [];
+
+		if (items.All(i => i is ReadoutRow))
+		{
+			List<ReadoutRow> rows = [.. items.Cast<ReadoutRow>()];
+			string what = Ui.Count(rows.Count, "reading");
+			if (rows.Count == 1)
+			{
+				list.Copy("Copy value", () => rows[0].Value, "the value", "Ctrl+C");
+				list.Copy("Copy row", () => Export.Tabs(readoutColumns, rows.Select(r => (IReadOnlyList<string?>)[r.Name, r.Value, r.Kind, r.Time]), false).TrimEnd(), "the row", "Ctrl+Shift+C");
+			}
+			else
+				list.Copy("Copy " + what, () => Export.Tabs(readoutColumns, rows.Select(r => (IReadOnlyList<string?>)[r.Name, r.Value, r.Kind, r.Time])), what, "Ctrl+C", inBar: true);
+
+			list.Save("Save all readings…", Ui.FileName("Readings " + this.NodeTitle), this.ReadoutFormats());
+			return list;
+		}
+
+		if (items.Count != 1)
+			return [];
+
+		switch (items[0])
+		{
+			case ParameterRow p:
+				list.Copy("Copy value", () => p.Value, "the value", "Ctrl+C");
+				list.Copy("Copy name and value", () => p.Name + ": " + p.Value, p.Name);
+				list.Copy("Copy all parameters", this.ParametersAsText, Ui.Count(this.Parameters.Count, "parameter"));
+				break;
+
+			case NodeMessageRow m:
+				list.Copy("Copy message", () => m.Text, "the message", "Ctrl+C");
+				list.Copy("Copy with time", () => m.Time + "\t" + m.Text, "the message with its time");
+				break;
+
+			case NodeSnifferViewModel watch:
+				list.Copy("Copy node name", () => watch.NodeLabel, "the node's name", "Ctrl+C");
+				list.Do("Stop watching", () => this.CloseSnifferCommand.Execute(watch), icon: "Close");
+				list.Window("Open in its own window", () => Ui.OpenWindow?.Invoke(watch.Lines));
+				break;
+
+			case SourceItemViewModel source:
+				list.Copy("Copy name", () => source.Label, "the name", "Ctrl+C");
+				list.Do("Read again", () => _ = source.LoadAsync(), icon: "Refresh");
+				break;
+
+			case NodeItemViewModel node:
+				// The menu acts on the node the tree has selected, which a right-click makes this one.
+				bool current = ReferenceEquals(this.SelectedNode, node);
+				list.Copy("Copy name", () => node.Label, "the name", "Ctrl+C");
+				list.Copy("Copy path", () => Path(node), "the path");
+				if (current)
+					list.Copy("Copy parameters as text", this.ParametersAsText, Ui.Count(this.Parameters.Count, "parameter"), "Ctrl+Shift+C");
+
+				if (current && this.CanSniff)
+					list.GoTo("Its traffic", () => this.SniffCommand.Execute(null), "Sniffer");
+				if (this.Shell is IShell shell && this.SelectedNeuron is NeuronChoice neuron)
+					list.GoTo("Events that mention it", () => shell.ShowEvents(neuron.BareJid, node.Node.NodeId), "Events");
+
+				if (!current)
+					break;
+
+				list.Do("Edit", () => this.EditCommand.Execute(null), icon: "Edit", key: "F2");
+				if (this.AddableTypes.Count > 0)
+				{
+					list.Sub("Add under it", ActionGroup.Do, [.. this.AddableTypes.Take(40).Select(t =>
+						new ItemAction(t.Name, ActionGroup.Do, () => t.AddCommand.Execute(t)))], "Plus");
+				}
+				else
+					list.Do("Add under it…", () => this.LoadAddableThenSay(), icon: "Plus");
+
+				if (this.CanRead)
+				{
+					list.Do("Read", () => this.ReadCommand.Execute("momentary"));
+					list.Do("Read history", () => this.ReadCommand.Execute("all"));
+				}
+
+				if (this.CanControl)
+					list.Do("Control", () => this.ControlCommand.Execute(null));
+
+				list.Do("Copy node and what is under it", () => this.CopyCommand.Execute(null), icon: "Copy");
+				if (this.HasClipboard)
+					list.Do("Paste under it", () => this.PasteCommand.Execute(null));
+				if (this.CanMove)
+				{
+					list.Do("Move up", () => this.MoveUpCommand.Execute(null), key: "Alt+Up");
+					list.Do("Move down", () => this.MoveDownCommand.Execute(null), key: "Alt+Down");
+				}
+
+				list.Do("Read again", () => this.RefreshNodeCommand.Execute(null), icon: "Refresh", key: "F5");
+				list.Do("Share to chat…", () => this.ShareCommand.Execute(null), icon: "Share");
+				list.Do(this.DeleteArmed ? "Delete now" : "Delete…", () => this.DeleteCommand.Execute(null), danger: true, icon: "Trash", key: "Delete");
+				break;
+		}
+
+		return list;
+	}
+
+	private async void LoadAddableThenSay()
+	{
+		await this.LoadAddableCommand.ExecuteAsync(null);
+		Ui.Say(this.AddableTypes.Count > 0 ? "Right-click again, or use Add above, to pick what to add" : "Nothing can be added under this node");
+	}
+
+	private static string Path(TreeItemViewModel item)
+	{
+		List<string> parts = [];
+		for (TreeItemViewModel? i = item; i is not null; i = i.Parent)
+			parts.Insert(0, i.Label);
+
+		return string.Join(" / ", parts);
 	}
 
 	// ---- Sniffers -------------------------------------------------------------------------

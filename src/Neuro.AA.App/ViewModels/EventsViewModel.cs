@@ -21,7 +21,7 @@ public enum SeverityFilter
 /// selected event below. Engine notifications arrive on network threads and are applied to
 /// the collections in batches a few times per second.
 /// </summary>
-public sealed partial class EventsViewModel : ObservableObject, IDisposable
+public sealed partial class EventsViewModel : ObservableObject, IDisposable, IActionSource
 {
 	private const int MaxStream = 2000;
 
@@ -177,18 +177,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 		if (issue is null)
 			return;
 
-		Issue i = issue.Issue;
-		StringBuilder sb = new();
-		sb.Append("**Issue:** ").AppendLine(i.Title).AppendLine();
-		sb.AppendLine("| | |");
-		sb.AppendLine("|:--|:--|");
-		sb.Append("| Severity | ").Append(i.Severity).AppendLine(" |");
-		sb.Append("| Occurrences | ").Append(i.Count).AppendLine(" |");
-		sb.Append("| First seen | ").Append(i.FirstSeen.ToString("yyyy-MM-dd HH:mm:ss")).AppendLine(" |");
-		sb.Append("| Last seen | ").Append(i.LastSeen.ToString("yyyy-MM-dd HH:mm:ss")).AppendLine(" |");
-		sb.Append("| Neurons | ").Append(string.Join(", ", i.Neurons.Select(n => "`" + n + "`"))).AppendLine(" |");
-		sb.AppendLine().AppendLine("Latest occurrence:").AppendLine().Append(ToMarkdown(i.Latest));
-		this.ShareTo?.Invoke("Issue: " + i.Title, sb.ToString());
+		this.ShareTo?.Invoke("Issue: " + issue.Issue.Title, IssueMarkdown(issue.Issue));
 	}
 
 	partial void OnSeverityFilterChanged(SeverityFilter value) => this.Rebuild();
@@ -262,6 +251,9 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 
 		if (this.SelectedIssue is IssueItemViewModel issue)
 			return e.Fingerprint == issue.Fingerprint;
+
+		if (this.hidden.Count > 0 && this.hidden.Contains(e.Fingerprint))
+			return false;
 
 		switch (this.SeverityFilter)
 		{
@@ -428,6 +420,221 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 		DateTime now = DateTime.Now;
 		foreach (IssueItemViewModel vm in this.issueIndex.Values)
 			vm.Refresh(now);
+	}
+
+	// ----- Actions: the right-click menu, the selection bar and the shortcuts -----
+
+	/// <summary>Set by the shell: the moves to other screens.</summary>
+	public IShell? Shell { get; set; }
+
+	/// <summary>Set by the view: the events selected in the stream.</summary>
+	public IReadOnlyList<NeuronEvent> SelectedEvents { get; set; } = [];
+
+	/// <summary>Kinds of events the person asked not to see, by fingerprint. Kept until the app closes.</summary>
+	private readonly HashSet<string> hidden = [];
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasHidden), nameof(HiddenText))]
+	private int hiddenCount;
+
+	public bool HasHidden => this.HiddenCount > 0;
+	public string HiddenText => this.HiddenCount == 1 ? "1 kind of event hidden" : $"{this.HiddenCount} kinds of events hidden";
+
+	[RelayCommand]
+	private void ShowHidden()
+	{
+		this.hidden.Clear();
+		this.HiddenCount = 0;
+		this.Rebuild();
+	}
+
+	private void Hide(IEnumerable<NeuronEvent> events)
+	{
+		foreach (NeuronEvent e in events)
+			this.hidden.Add(e.Fingerprint);
+
+		this.HiddenCount = this.hidden.Count;
+		this.Rebuild();
+		Ui.Say("Hidden until you close the app. Show them again above the list.");
+	}
+
+	private static readonly string[] eventColumns = ["Time", "Level", "Neuron", "Where", "Message", "Event ID", "Object", "Actor", "Facility"];
+
+	private static string?[] Cells(NeuronEvent e)
+		=> [e.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"), e.Severity.ToString(), e.Source.NeuronJid, e.Module, e.Message, e.EventId, e.Object, e.Actor, e.Facility];
+
+	/// <summary>Events as tab-separated rows, oldest first, which pastes into a spreadsheet or a chat.</summary>
+	public static string ToRows(IEnumerable<NeuronEvent> events, bool header = true)
+		=> Export.Tabs(eventColumns, events.OrderBy(e => e.Timestamp).Select(Cells), header);
+
+	public static string ToCsv(IEnumerable<NeuronEvent> events)
+		=> Export.Csv(eventColumns, events.OrderBy(e => e.Timestamp).Select(Cells));
+
+	public static string ToMarkdown(IEnumerable<NeuronEvent> events)
+		=> string.Join(Environment.NewLine + "---" + Environment.NewLine + Environment.NewLine, events.OrderBy(e => e.Timestamp).Select(ToMarkdown));
+
+	private static SaveFormat[] Formats(IReadOnlyList<NeuronEvent> events) =>
+	[
+		new SaveFormat("Spreadsheet (CSV)", "csv", () => ToCsv(events)),
+		new SaveFormat("Markdown", "md", () => ToMarkdown(events)),
+		new SaveFormat("Text", "txt", () => ToRows(events)),
+	];
+
+	/// <summary>Toolbar Save: what is selected, or everything the filter shows when nothing is.</summary>
+	[RelayCommand]
+	private Task SaveStream()
+	{
+		IReadOnlyList<NeuronEvent> events = this.SelectedEvents.Count > 1 ? this.SelectedEvents : [.. this.Stream];
+		return Ui.Save(Ui.FileName("Events"), Formats(events));
+	}
+
+	/// <summary>Toolbar Copy: what is selected, or everything the filter shows when nothing is.</summary>
+	[RelayCommand]
+	private Task CopyStream()
+	{
+		IReadOnlyList<NeuronEvent> events = this.SelectedEvents.Count > 0 ? this.SelectedEvents : [.. this.Stream];
+		return Ui.Copy(ToRows(events), Ui.Count(events.Count, "event"));
+	}
+
+	public IReadOnlyList<ItemAction> ActionsFor(IReadOnlyList<object> items)
+	{
+		if (items.Count == 0)
+			return [];
+
+		if (items.All(i => i is NeuronEvent))
+			return this.EventActions([.. items.Cast<NeuronEvent>()]);
+
+		if (items.All(i => i is IssueItemViewModel))
+			return this.IssueActions([.. items.Cast<IssueItemViewModel>()]);
+
+		return [];
+	}
+
+	private ActionList EventActions(List<NeuronEvent> events)
+	{
+		ActionList list = [];
+		string what = Ui.Count(events.Count, "event");
+
+		if (events.Count == 1)
+		{
+			NeuronEvent e = events[0];
+			list.Copy("Copy message", () => e.Message, "the message", "Ctrl+C");
+			list.Copy("Copy row", () => ToRows(events, false).TrimEnd(), "the row");
+			list.Copy("Copy as Markdown", () => ToMarkdown(e), "the event as Markdown", "Ctrl+Shift+C");
+			if (!string.IsNullOrEmpty(e.StackTrace))
+				list.Copy("Copy stack trace", () => e.StackTrace, "the stack trace");
+			list.Save("Save…", Ui.FileName("Event " + e.Source.NeuronJid, e.Timestamp), Formats(events));
+
+			string jid = e.Source.NeuronJid;
+			if (this.NeuronFilter is null)
+				list.Filter("Only " + jid, () => this.Shell?.ShowEvents(jid));
+			if (this.SelectedIssue is null && this.issueIndex.TryGetValue(e.Fingerprint, out IssueItemViewModel? issue))
+				list.Filter("Only events like this", () => this.OpenIssue(issue));
+			if (this.SelectedIssue is null)
+				list.Filter("Hide events like this", () => this.Hide(events));
+
+			if (this.Shell is IShell shell)
+				list.Sub("Go to " + jid, ActionGroup.GoTo, shell.NeuronPlaces(jid, e.Source.AccountId, WorkspaceKind.Events));
+
+			list.Do("Share to chat…", () => this.ShareTo?.Invoke("Event: " + e.Title, ToMarkdown(e)), icon: "Share");
+		}
+		else
+		{
+			list.Copy("Copy " + what, () => ToRows(events), what, "Ctrl+C", inBar: true);
+			list.Copy("Copy as Markdown", () => ToMarkdown(events), what + " as Markdown", "Ctrl+Shift+C");
+			list.Save("Save " + what + "…", Ui.FileName("Events"), Formats(events));
+			if (this.SelectedIssue is null)
+				list.Filter("Hide events like these", () => this.Hide(events));
+			list.Add(new ItemAction("Share to chat…", ActionGroup.Do, () => this.ShareTo?.Invoke(what, ToMarkdown(events))) { InBar = true, BarText = "Share", Icon = "Share" });
+		}
+
+		return list;
+	}
+
+	private void OpenIssue(IssueItemViewModel issue)
+	{
+		if (!this.Issues.Contains(issue))
+			this.ShowResolved = true;
+
+		this.SelectedIssue = issue;
+	}
+
+	private static string IssueMarkdown(Issue i)
+	{
+		StringBuilder sb = new();
+		sb.Append("**Issue:** ").AppendLine(i.Title).AppendLine();
+		sb.AppendLine("| | |");
+		sb.AppendLine("|:--|:--|");
+		sb.Append("| Severity | ").Append(i.Severity).AppendLine(" |");
+		sb.Append("| Occurrences | ").Append(i.Count).AppendLine(" |");
+		sb.Append("| First seen | ").Append(i.FirstSeen.ToString("yyyy-MM-dd HH:mm:ss")).AppendLine(" |");
+		sb.Append("| Last seen | ").Append(i.LastSeen.ToString("yyyy-MM-dd HH:mm:ss")).AppendLine(" |");
+		sb.Append("| Neurons | ").Append(string.Join(", ", i.Neurons.Select(n => "`" + n + "`"))).AppendLine(" |");
+		sb.AppendLine().AppendLine("Latest occurrence:").AppendLine().Append(ToMarkdown(i.Latest));
+		return sb.ToString();
+	}
+
+	private ActionList IssueActions(List<IssueItemViewModel> issues)
+	{
+		ActionList list = [];
+		string what = Ui.Count(issues.Count, "issue");
+		bool anyOpen = issues.Any(i => i.State is IssueState.Open or IssueState.Acknowledged);
+		bool anyNew = issues.Any(i => i.State == IssueState.Open);
+		bool anyClosed = issues.Any(i => i.State is IssueState.Resolved or IssueState.Muted);
+
+		void All(IssueState state)
+		{
+			foreach (IssueItemViewModel i in issues)
+				this.monitors.Hub.SetState(i.Fingerprint, state);
+
+			if (issues.Count > 1)
+				Ui.Say(what + (state == IssueState.Open ? " reopened" : " " + state.ToString().ToLowerInvariant()));
+		}
+
+		if (issues.Count == 1)
+		{
+			IssueItemViewModel issue = issues[0];
+			if (!ReferenceEquals(this.SelectedIssue, issue))
+				list.Open("Show its events", () => this.SelectedIssue = issue);
+
+			list.Copy("Copy title", () => issue.Title, "the title", "Ctrl+C");
+			list.Copy("Copy summary as Markdown", () => IssueMarkdown(issue.Issue), "the summary", "Ctrl+Shift+C");
+			list.Save("Save its events…", Ui.FileName("Issue " + issue.Title[..Math.Min(40, issue.Title.Length)]),
+				Formats([.. this.monitors.Hub.EventsOf(issue.Fingerprint, MaxStream)]));
+
+			if (this.Shell is IShell shell)
+			{
+				IReadOnlyList<string> neurons = issue.Issue.Neurons;
+				if (neurons.Count == 1)
+					list.Sub("Go to " + neurons[0], ActionGroup.GoTo, shell.NeuronPlaces(neurons[0], null, WorkspaceKind.Events));
+				else
+				{
+					foreach (string n in neurons.Take(8))
+						list.Sub("Go to " + n, ActionGroup.GoTo, shell.NeuronPlaces(n));
+				}
+			}
+		}
+		else
+		{
+			list.Copy("Copy titles", () => string.Join(Environment.NewLine, issues.Select(i => i.Title)), what, "Ctrl+C");
+			list.Copy("Copy summaries as Markdown", () => string.Join(Environment.NewLine + "---" + Environment.NewLine + Environment.NewLine, issues.Select(i => IssueMarkdown(i.Issue))), what + " as Markdown", "Ctrl+Shift+C");
+		}
+
+		if (anyNew)
+			list.Do("Acknowledge", () => All(IssueState.Acknowledged), inBar: true, icon: "Check");
+		if (anyOpen)
+		{
+			list.Do("Mute", () => All(IssueState.Muted), inBar: true, icon: "BellOff");
+			list.Do("Resolve", () => All(IssueState.Resolved), inBar: true);
+		}
+
+		if (anyClosed)
+			list.Do("Reopen", () => All(IssueState.Open), inBar: !anyOpen, icon: "Undo");
+
+		if (issues.Count == 1)
+			list.Do("Share to chat…", () => this.ShareIssue(issues[0]), icon: "Share");
+
+		return list;
 	}
 
 	/// <summary>An event as Markdown, for pasting into chat or a ticket.</summary>

@@ -1,0 +1,200 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.AA.App.ViewModels"
+             xmlns:conv="using:Neuro.AA.App.Converters"
+             xmlns:c="using:Neuro.AA.App.Controls"
+             x:Class="Neuro.AA.App.Views.TrafficView"
+             x:DataType="vm:SnifferViewModel">
+
+  <!-- Traffic: everything a connection or a node sends and receives. One view, used on Accounts,
+       on Sources and in a window of its own. -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.dir">
+      <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Border.line">
+      <Setter Property="BorderThickness" Value="2,0,0,0" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Padding" Value="12,2,14,2" />
+    </Style>
+    <!-- Lines the find box matches, and the one it is on -->
+    <Style Selector="Border.line.match">
+      <Setter Property="Background" Value="{DynamicResource State.Busy.Subtle}" />
+    </Style>
+    <Style Selector="Border.line.current">
+      <Setter Property="BorderBrush" Value="{DynamicResource State.Busy}" />
+    </Style>
+    <Style Selector="ListBox.traffic ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="ListBox.traffic ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Surface.Hover}" />
+    </Style>
+    <Style Selector="ListBox.traffic ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+    </Style>
+    <Style Selector="Button.fold">
+      <Setter Property="Padding" Value="1" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0,1,4,0" />
+    </Style>
+    <Style Selector="ToggleButton.kind">
+      <Setter Property="Padding" Value="9,4" />
+    </Style>
+    <!-- The view fits itself to its own width, wherever it is shown: first the buttons lose
+         their words, then the find box takes a row of its own. -->
+    <Style Selector="TextBox.trafficFind">
+      <Setter Property="MinWidth" Value="170" />
+    </Style>
+    <Style Selector="Grid.tight TextBlock.btnLabel">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Grid.tight TextBox.trafficFind">
+      <Setter Property="MinWidth" Value="110" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+    <!-- Toolbar: what to show, find, and what to do with it -->
+    <Grid x:Name="Toolbar" DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="6" Margin="0,0,0,8">
+      <StackPanel Orientation="Horizontal">
+        <ToggleButton Classes="seg first kind" Content="Sent" IsChecked="{Binding ShowSent}" ToolTip.Tip="Show what this app sent" />
+        <ToggleButton Classes="seg kind" Content="Received" IsChecked="{Binding ShowReceived}" Margin="-1,0,0,0" ToolTip.Tip="Show what the server sent" />
+        <ToggleButton Classes="seg kind" Content="Notes" IsChecked="{Binding ShowInformation}" Margin="-1,0,0,0" ToolTip.Tip="Show notes from the connection, such as signing in" />
+        <ToggleButton Classes="seg last kind" Content="Problems" IsChecked="{Binding ShowProblems}" Margin="-1,0,0,0" ToolTip.Tip="Show warnings, errors and exceptions" />
+      </StackPanel>
+
+      <Grid x:Name="FindRow" Grid.Column="1" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="4" MaxWidth="420" HorizontalAlignment="Left">
+        <TextBox x:Name="FindBox" Classes="find trafficFind" Text="{Binding FindText}" PlaceholderText="Find in traffic…" MinHeight="28" Padding="10,4"
+                 ToolTip.Tip="Find text in the lines (Ctrl+F). Enter goes to the next match, Shift+Enter to the one before." />
+        <TextBlock Grid.Column="1" Classes="meta num" Text="{Binding FindStatus}" VerticalAlignment="Center" Margin="4,0" IsVisible="{Binding HasFind}" />
+        <Button Grid.Column="2" Classes="ghost small" Padding="5" Command="{Binding FindNextCommand}" CommandParameter="back" IsVisible="{Binding HasFind}" ToolTip.Tip="The match before (Shift+Enter)">
+          <c:LineIcon Data="{StaticResource Icon.ChevronDown}" Width="14" Height="14">
+            <c:LineIcon.RenderTransform>
+              <RotateTransform Angle="180" />
+            </c:LineIcon.RenderTransform>
+          </c:LineIcon>
+        </Button>
+        <Button Grid.Column="3" Classes="ghost small" Padding="5" Command="{Binding FindNextCommand}" IsVisible="{Binding HasFind}" ToolTip.Tip="The next match (Enter)">
+          <c:LineIcon Data="{StaticResource Icon.ChevronDown}" Width="14" Height="14" />
+        </Button>
+      </Grid>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+        <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause the view. Traffic is still captured and shows when you resume.">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />
+            <TextBlock Classes="btnLabel" Text="{Binding PauseText}" />
+          </StackPanel>
+        </ToggleButton>
+        <ToggleButton Classes="ghost" IsChecked="{Binding OpenAll}" ToolTip.Tip="Show every line as tidy XML, one element per row, instead of one row per line">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Sniffer}" />
+            <TextBlock Classes="btnLabel" Text="Tidy XML" />
+          </StackPanel>
+        </ToggleButton>
+        <Button Classes="ghost" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the selected lines, or every line shown when none is selected">
+          <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+        </Button>
+        <Button Classes="ghost" Command="{Binding SaveCommand}" ToolTip.Tip="Save the selected lines to a file, or every line shown when none is selected">
+          <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+        </Button>
+        <Button Classes="ghost" Command="{Binding ClearCommand}" ToolTip.Tip="Clear the view">
+          <c:LineIcon Classes="btn" Data="{StaticResource Icon.Eraser}" />
+        </Button>
+        <Button x:Name="WindowButton" Classes="ghost" Command="{Binding OpenWindowCommand}" ToolTip.Tip="Open this traffic in a window of its own">
+          <c:LineIcon Classes="btn" Data="{StaticResource Icon.Window}" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <Border Classes="panel" Background="{DynamicResource Surface.Code}" ClipToBounds="True">
+      <DockPanel>
+        <!-- How much is kept, and how to keep more -->
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="14,3,6,3" IsVisible="{Binding !IsEmpty}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="ghost small" ToolTip.Tip="How many lines to keep before the oldest are dropped">
+              <Button.Flyout>
+                <MenuFlyout Placement="TopEdgeAlignedRight">
+                  <MenuItem Header="Keep 2,000 lines" Command="{Binding SetLimitCommand}">
+                    <MenuItem.CommandParameter><x:Int32>2000</x:Int32></MenuItem.CommandParameter>
+                  </MenuItem>
+                  <MenuItem Header="Keep 10,000 lines" Command="{Binding SetLimitCommand}">
+                    <MenuItem.CommandParameter><x:Int32>10000</x:Int32></MenuItem.CommandParameter>
+                  </MenuItem>
+                  <MenuItem Header="Keep 50,000 lines" Command="{Binding SetLimitCommand}">
+                    <MenuItem.CommandParameter><x:Int32>50000</x:Int32></MenuItem.CommandParameter>
+                  </MenuItem>
+                </MenuFlyout>
+              </Button.Flyout>
+              <TextBlock Text="Keep more" />
+            </Button>
+            <Button DockPanel.Dock="Right" Classes="ghost small" Content="Show everything" Command="{Binding ShowEverythingCommand}" IsVisible="{Binding IsFiltered}"
+                    ToolTip.Tip="Turn all four kinds of lines back on" />
+            <TextBlock Classes="meta num" Text="{Binding LimitNote}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       Classes.warn="{Binding HasDropped}" />
+          </DockPanel>
+        </Border>
+
+        <Panel>
+          <ListBox x:Name="List" Classes="traffic" ItemsSource="{Binding Lines}" Margin="0,4" SelectionMode="Multiple"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #Bar}">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <VirtualizingStackPanel />
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:TrafficLineViewModel">
+                <Border Classes="line" Classes.match="{Binding IsMatch}" Classes.current="{Binding IsCurrentMatch}">
+                  <Grid ColumnDefinitions="Auto,42,18,*">
+                    <TextBlock Classes="mono tertiary" Margin="0,0,12,0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss.fff}'}" />
+                    <TextBlock Grid.Column="1" Classes="dir" Text="{Binding Tag}" ToolTip.Tip="{Binding TagTip}"
+                               Foreground="{Binding Direction, Converter={x:Static conv:SnifferDirectionBrushConverter.Instance}}" />
+                    <Button Grid.Column="2" Classes="ghost fold" IsVisible="{Binding CanOpen}" ToolTip.Tip="Open or close up this line (Enter, or double-click)"
+                            Command="{Binding $parent[UserControl].((vm:SnifferViewModel)DataContext).ToggleCommand}" CommandParameter="{Binding}">
+                      <Panel>
+                        <c:LineIcon Data="{StaticResource Icon.ChevronRight}" Width="12" Height="12" IsVisible="{Binding !IsOpen}" />
+                        <c:LineIcon Data="{StaticResource Icon.ChevronDown}" Width="12" Height="12" IsVisible="{Binding IsOpen}" />
+                      </Panel>
+                    </Button>
+                    <TextBlock Grid.Column="3" Classes="mono" Text="{Binding Shown}" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsOpen}" />
+                    <SelectableTextBlock Grid.Column="3" Classes="mono" Text="{Binding Shown}" TextWrapping="Wrap" IsVisible="{Binding IsOpen}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <!-- New lines wait here while the view is scrolled up -->
+          <Button Classes="primary" IsVisible="{Binding HasNew}" Command="{Binding JumpToLatestCommand}"
+                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,22,10" Padding="12,4" CornerRadius="{StaticResource Radius.Pill}"
+                  ToolTip.Tip="Go to the newest line and follow new ones again">
+            <TextBlock Text="{Binding NewText}" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+
+          <!-- Several lines selected -->
+          <c:ActionBar x:Name="Bar" Noun="line" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,8" MinWidth="360" />
+
+          <StackPanel IsVisible="{Binding IsEmpty}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360" Spacing="6">
+            <c:LineIcon Data="{StaticResource Icon.Sniffer}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+            <TextBlock Text="No traffic yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="{Binding EmptyText}" />
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsAllHidden}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360" Spacing="8">
+            <TextBlock Text="The filter hides every line" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <Button Content="Show everything" Command="{Binding ShowEverythingCommand}" HorizontalAlignment="Center" />
+          </StackPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+  </DockPanel>
+</UserControl>

@@ -91,7 +91,7 @@ public sealed record AccountChoice(Guid Id, string Label, int ColorIndex);
 /// The Chat workspace: contacts and conversations across all accounts, subscription requests,
 /// and the open conversation with a composer.
 /// </summary>
-public sealed partial class ChatViewModel : ObservableObject
+public sealed partial class ChatViewModel : ObservableObject, IActionSource
 {
 	private readonly ChatService chat;
 	private readonly AccountManager accounts;
@@ -549,9 +549,12 @@ public sealed partial class ChatViewModel : ObservableObject
 	[RelayCommand]
 	private void Unmute() => this.Mute(null);
 
-	private void Mute(DateTime? until)
+	private Conversation? ConversationOf(PersonViewModel p)
+		=> p.IsRoom ? this.chat.GetRoom(p.AccountId, p.BareJid) : this.chat.Get(p.AccountId, p.BareJid);
+
+	private void Mute(DateTime? until, PersonViewModel? person = null)
 	{
-		if (this.SelectedConversation is not Conversation c)
+		if ((person is null ? this.SelectedConversation : this.ConversationOf(person)) is not Conversation c)
 			return;
 
 		this.chat.SetMuted(c, until);
@@ -585,6 +588,107 @@ public sealed partial class ChatViewModel : ObservableObject
 		if (this.SelectedPerson is PersonViewModel p)
 			this.LoadConversation(p, false);
 		this.Refresh();
+	}
+
+	// ----- Actions: right-click on a person, a room or a message -----
+
+	/// <summary>Set by the shell: the moves to other screens.</summary>
+	public IShell? Shell { get; set; }
+
+	/// <summary>A conversation as Markdown, oldest message first.</summary>
+	public static string ToMarkdown(Conversation c, string title)
+	{
+		System.Text.StringBuilder sb = new();
+		sb.Append("# ").AppendLine(title).AppendLine();
+		DateTime day = DateTime.MinValue;
+		foreach (ChatMessage m in c.Messages)
+		{
+			if (m.Timestamp.Date != day)
+			{
+				day = m.Timestamp.Date;
+				sb.Append("## ").AppendLine(day.ToString("yyyy-MM-dd")).AppendLine();
+			}
+
+			string who = m.Direction == ChatDirection.Out ? "Me" : m.Sender ?? title;
+			sb.Append("**").Append(who).Append("** ").Append(m.Timestamp.ToString("HH:mm")).AppendLine().AppendLine();
+			sb.AppendLine(m.Markdown).AppendLine();
+		}
+
+		return sb.ToString();
+	}
+
+	private Task SaveConversation(PersonViewModel p)
+		=> this.ConversationOf(p) is Conversation c
+			? Ui.Save(Ui.FileName("Chat " + p.Label), [new SaveFormat("Markdown", "md", () => ToMarkdown(c, p.Label)), new SaveFormat("Text", "txt", () => ToMarkdown(c, p.Label))])
+			: Task.CompletedTask;
+
+	/// <summary>Header button: saves the open conversation.</summary>
+	[RelayCommand]
+	private Task SaveOpenConversation() => this.SelectedPerson is PersonViewModel p ? this.SaveConversation(p) : Task.CompletedTask;
+
+	public IReadOnlyList<ItemAction> ActionsFor(IReadOnlyList<object> items)
+	{
+		if (items.Count != 1)
+			return [];
+
+		ActionList list = [];
+		switch (items[0])
+		{
+			case PersonViewModel p:
+				bool open = ReferenceEquals(this.SelectedPerson, p);
+				if (!open)
+					list.Open(p.IsRoom ? "Open room" : "Open conversation", () => this.SelectedPerson = p);
+
+				list.Copy("Copy address", () => p.BareJid, "the address", "Ctrl+C");
+				list.Add(new ItemAction("Save conversation…", ActionGroup.Copy, () => this.SaveConversation(p)) { Icon = "Save", Key = "Ctrl+S" });
+
+				if (p.IsNeuron && this.Shell is IShell shell)
+					list.AddRange(shell.NeuronPlaces(p.BareJid, p.AccountId, WorkspaceKind.Chat));
+
+				if (p.Unread > 0)
+				{
+					list.Do("Mark as read", () =>
+					{
+						if (this.ConversationOf(p) is Conversation c)
+							this.chat.MarkRead(c);
+						this.Refresh();
+					}, icon: "Check");
+				}
+
+				if (p.IsMuted)
+					list.Do("Unmute", () => this.Mute(null, p), icon: "Bell");
+				else
+				{
+					list.Sub("Mute", ActionGroup.Do,
+					[
+						new ItemAction("For an hour", ActionGroup.Do, () => this.Mute(DateTime.Now.AddHours(1), p)),
+						new ItemAction("Until tomorrow morning", ActionGroup.Do, () => this.Mute(DateTime.Today.AddDays(1).AddHours(8), p)),
+						new ItemAction("Until I turn it back on", ActionGroup.Do, () => this.Mute(DateTime.MaxValue, p)),
+					], "BellOff");
+				}
+
+				break;
+
+			case MessageViewModel m:
+				list.Copy("Copy text", () => m.Markdown, "the message", "Ctrl+C");
+				list.Copy("Copy as a quote", () => Export.Quote(m.Markdown), "the message as a quote", "Ctrl+Shift+C");
+
+				if (this.SelectedPerson is PersonViewModel with)
+				{
+					if (with.IsNeuron && this.Shell is IShell s)
+						list.GoTo("Console for " + with.Label, () => s.ShowConsole([(with.AccountId, with.BareJid)]), "Console");
+
+					if (!m.IsMine)
+						list.Do("Mark as unread from here", () => this.MarkUnread(m), icon: "Undo");
+
+					string from = m.IsMine ? "me" : m.Sender ?? with.Label;
+					list.Do("Share with someone else…", () => this.BeginShare("Message from " + from, Export.Quote(m.Markdown)), icon: "Share");
+				}
+
+				break;
+		}
+
+		return list;
 	}
 
 	[RelayCommand(CanExecute = nameof(CanSend))]

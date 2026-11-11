@@ -453,6 +453,9 @@ public sealed class TopologyMap : Control
 
 	// ---- Pointer -----------------------------------------------------------------------------
 
+	/// <summary>The point under a position in the control, or null. For the right-click menu.</summary>
+	public string? IdAt(Point p) => this.HitTest(p);
+
 	private string? HitTest(Point p)
 	{
 		Point world = new((p.X - this.offset.X) / this.zoom, (p.Y - this.offset.Y) / this.zoom);

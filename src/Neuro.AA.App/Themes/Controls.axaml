@@ -427,6 +427,29 @@
     <Setter Property="CornerRadius" Value="{StaticResource Radius.Small}" />
     <Setter Property="Padding" Value="10,6" />
   </Style>
+  <!-- An action that removes or changes something for good -->
+  <Style Selector="MenuItem.danger">
+    <Setter Property="Foreground" Value="{DynamicResource State.Bad}" />
+  </Style>
+  <!-- The bar for several selected rows -->
+  <Style Selector="Border.actionBar">
+    <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+  </Style>
+  <Style Selector="Border.actionBar TextBlock.barText">
+    <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+  </Style>
+  <!-- The short note that confirms what just happened: "Copied 3 events" -->
+  <Style Selector="Border.flash">
+    <Setter Property="Background" Value="{DynamicResource Ink.Primary}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
+    <Setter Property="Padding" Value="14,3" />
+  </Style>
+  <Style Selector="Border.flash TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Surface.Panel}" />
+    <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
   <Style Selector="ToolTip">
     <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
     <Setter Property="Padding" Value="9,6" />

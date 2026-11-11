@@ -42,7 +42,7 @@
       <DockPanel Margin="12,14,12,12">
         <TextBlock DockPanel.Dock="Top" Classes="section" Text="Software" Margin="6,0,0,12" />
         <Panel>
-          <ListBox Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}">
+          <ListBox Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" c:ActionMenu.Source="{Binding}" c:ActionMenu.KeepSelection="True">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:UpdateRowViewModel">
                 <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
@@ -162,7 +162,8 @@
               <ItemsControl ItemsSource="{Binding Installed}" IsVisible="{Binding HasInstalled}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="x:String">
-                    <SelectableTextBlock Classes="mono" Text="{Binding}" Margin="0,2" />
+                    <SelectableTextBlock Classes="mono" Text="{Binding}" Margin="0,2" ContextFlyout="{x:Null}"
+                                         c:ActionMenu.Source="{Binding $parent[UserControl].((vm:UpdatesViewModel)DataContext)}" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
@@ -196,9 +197,10 @@
               <ItemsControl ItemsSource="{Binding Log}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:UpdateLogLine">
-                    <Grid ColumnDefinitions="70,*" Margin="0,2">
+                    <Grid ColumnDefinitions="70,*" Margin="0,2" Background="Transparent"
+                          c:ActionMenu.Source="{Binding $parent[UserControl].((vm:UpdatesViewModel)DataContext)}">
                       <TextBlock Classes="meta" Text="{Binding Time}" />
-                      <SelectableTextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" />
+                      <SelectableTextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" ContextFlyout="{x:Null}" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
