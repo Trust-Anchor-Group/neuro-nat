@@ -49,6 +49,12 @@ public sealed partial class FleetRowViewModel : ObservableObject
 	[ObservableProperty] private bool lowDisk;
 	[ObservableProperty] private bool lowMemory;
 
+	// The numbers behind the texts, for sorting. Null when the Neuron has not said.
+	internal double? Cpu { get; private set; }
+	internal double? UsedMemory { get; private set; }
+	internal double? FreeDisk { get; private set; }
+	internal DateTime? LastEvent { get; private set; }
+
 	private static string Mb(double mb) => mb >= 1024 ? $"{mb / 1024:0.0} GB" : $"{mb:0} MB";
 
 	internal void Apply(WatchedNeuron n, AccountProfile? account)
@@ -67,6 +73,9 @@ public sealed partial class FleetRowViewModel : ObservableObject
 			return;
 
 		this.Software = h.Software ?? "–";
+		this.Cpu = h.Cpu.Latest;
+		this.UsedMemory = h.AllocatedMemory.Latest;
+		this.FreeDisk = h.FreeDisk.Latest;
 
 		if (h.Cpu.Latest is double cpu)
 		{
@@ -104,6 +113,7 @@ public sealed partial class FleetRowViewModel : ObservableObject
 		this.WarningsLastHour = s?.WarningsLastHour ?? 0;
 		this.OpenIssues = s?.OpenIssues ?? 0;
 		this.HasErrors = this.ErrorsLastHour > 0;
+		this.LastEvent = s?.LastEvent;
 		this.LastEventText = s?.LastEvent is DateTime t ? RelativeTime.Format(t, now) : "–";
 	}
 }
@@ -141,6 +151,110 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 	[ObservableProperty] private bool hasShown;
 
 	partial void OnFilterTextChanged(string value) => this.SyncShown();
+
+	// ----- Sorting: click a column's name. Click it again for the other way round. -----
+
+	/// <summary>The column the list is sorted by: name, stream, version, cpu, memory, disk, errors, issues or last.</summary>
+	public string SortKey { get; private set; } = "name";
+
+	/// <summary>Largest, latest or Z first.</summary>
+	public bool SortDescending { get; private set; }
+
+	/// <summary>The sort as it is remembered: the column, with "-" after it for largest first. Null for by name.</summary>
+	public string? Sort
+	{
+		get => this.SortKey == "name" && !this.SortDescending ? null : this.SortKey + (this.SortDescending ? "-" : string.Empty);
+		set
+		{
+			string key = value?.TrimEnd('-') ?? "name";
+			if (!sortColumns.Contains(key))
+				key = "name";
+
+			this.SortKey = key;
+			this.SortDescending = value is not null && value.EndsWith('-') && key == value.TrimEnd('-');
+			this.SortChanged();
+		}
+	}
+
+	private static readonly string[] sortColumns = ["name", "stream", "version", "cpu", "memory", "disk", "errors", "issues", "last"];
+
+	/// <summary>Raised when the person sorts the list, so the choice can be remembered.</summary>
+	public event EventHandler? Sorted;
+
+	// The way a column sorts on the first click: where the trouble is. Most CPU, least disk, most errors, latest event.
+	private static bool StartsDescending(string key) => key is "cpu" or "memory" or "errors" or "issues" or "last";
+
+	[RelayCommand]
+	private void SortBy(string? key)
+	{
+		if (key is null || !sortColumns.Contains(key))
+			return;
+
+		if (this.SortKey == key)
+			this.SortDescending = !this.SortDescending;
+		else
+		{
+			this.SortKey = key;
+			this.SortDescending = StartsDescending(key);
+		}
+
+		this.SortChanged();
+		this.Sorted?.Invoke(this, EventArgs.Empty);
+	}
+
+	private void SortChanged()
+	{
+		foreach (string name in new[] { nameof(this.NameArrow), nameof(this.StreamArrow), nameof(this.VersionArrow), nameof(this.CpuArrow), nameof(this.MemoryArrow),
+			nameof(this.DiskArrow), nameof(this.ErrorsArrow), nameof(this.IssuesArrow), nameof(this.LastArrow), nameof(this.SortKey), nameof(this.SortDescending) })
+		{
+			this.OnPropertyChanged(name);
+		}
+
+		this.Refresh();
+	}
+
+	private string Arrow(string key) => this.SortKey != key ? string.Empty : this.SortDescending ? "↓" : "↑";
+
+	public string NameArrow => this.Arrow("name");
+	public string StreamArrow => this.Arrow("stream");
+	public string VersionArrow => this.Arrow("version");
+	public string CpuArrow => this.Arrow("cpu");
+	public string MemoryArrow => this.Arrow("memory");
+	public string DiskArrow => this.Arrow("disk");
+	public string ErrorsArrow => this.Arrow("errors");
+	public string IssuesArrow => this.Arrow("issues");
+	public string LastArrow => this.Arrow("last");
+
+	/// <summary>The rows in the order asked for. A Neuron that has not said its number goes last either way, and names break ties.</summary>
+	private List<FleetRowViewModel> InOrder(IEnumerable<FleetRowViewModel> rows)
+	{
+		List<FleetRowViewModel> byName = [.. rows.OrderBy(r => r.Label, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.AccountLabel, StringComparer.OrdinalIgnoreCase)];
+		bool down = this.SortDescending;
+
+		List<FleetRowViewModel> By<T>(Func<FleetRowViewModel, T?> value)
+			where T : struct, IComparable<T>
+		{
+			IEnumerable<FleetRowViewModel> known = byName.Where(r => value(r) is not null);
+			known = down ? known.OrderByDescending(r => value(r)!.Value) : known.OrderBy(r => value(r)!.Value);
+			return [.. known, .. byName.Where(r => value(r) is null)];
+		}
+
+		List<FleetRowViewModel> ByText(Func<FleetRowViewModel, string> value)
+			=> down ? [.. byName.OrderByDescending(value, StringComparer.OrdinalIgnoreCase)] : [.. byName.OrderBy(value, StringComparer.OrdinalIgnoreCase)];
+
+		return this.SortKey switch
+		{
+			"stream" => ByText(r => r.StateText),
+			"version" => ByText(r => r.Software),
+			"cpu" => By(r => r.Cpu),
+			"memory" => By(r => r.UsedMemory),
+			"disk" => By(r => r.FreeDisk),
+			"errors" => By<int>(r => r.ErrorsLastHour),
+			"issues" => By<int>(r => r.OpenIssues),
+			"last" => By(r => r.LastEvent),
+			_ => down ? [.. byName.AsEnumerable().Reverse()] : byName,
+		};
+	}
 
 	/// <summary>Bare JID of the one Neuron to show; null for all. Set by the shell from the Neuron chips.</summary>
 	public string? NeuronFilter
@@ -321,6 +435,8 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 			row.Apply(summaries.TryGetValue(n.BareJid, out EventHub.NeuronSummary? s) ? s : null, now);
 			keep.Add(row);
 		}
+
+		keep = this.InOrder(keep);
 
 		for (int i = this.Rows.Count - 1; i >= 0; i--)
 		{

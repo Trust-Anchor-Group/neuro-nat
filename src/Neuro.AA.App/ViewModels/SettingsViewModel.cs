@@ -35,6 +35,23 @@ public sealed record UiSettings
 
 	/// <summary>The one Neuron the screens were showing, by its address. Null for all of them.</summary>
 	public string? Neuron { get; init; }
+
+	/// <summary>Text size in percent: 90, 100, 115 or 130.</summary>
+	public int TextSize { get; init; } = 100;
+
+	public bool CompactRows { get; init; }
+
+	/// <summary>How wide each pane was dragged, by the pane's name.</summary>
+	public Dictionary<string, double> Widths { get; init; } = [];
+
+	/// <summary>The column the Neurons list is sorted by, with "-" after it for largest first.</summary>
+	public string? NeuronSort { get; init; }
+
+	/// <summary>Where the main window was.</summary>
+	public WindowPlace? Window { get; init; }
+
+	/// <summary>The other windows that were open.</summary>
+	public List<WindowPlace> MoreWindows { get; init; } = [];
 }
 
 /// <summary>Keeps <see cref="UiSettings"/> between runs.</summary>
@@ -87,6 +104,14 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 			new ShortcutRow("Ctrl+,", "Settings"),
 			new ShortcutRow("Ctrl+F", "Filter or find on the screen in front"),
 			new ShortcutRow("F5", "Read the screen again"),
+		]),
+		new ShortcutGroup("Sizes and windows",
+		[
+			new ShortcutRow("Ctrl+plus, Ctrl+minus", "Larger and smaller text"),
+			new ShortcutRow("Ctrl+0", "Text back to its normal size"),
+			new ShortcutRow("Ctrl+Shift+N", "Open the screen in front in a window of its own"),
+			new ShortcutRow("F11", "Wall view: the Neurons and their latest problems, for a big screen"),
+			new ShortcutRow("Drag the line between two panes", "Make one wider. Double-click it to put it back."),
 		]),
 		new ShortcutGroup("In any list",
 		[

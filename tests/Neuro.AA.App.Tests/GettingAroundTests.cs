@@ -37,13 +37,13 @@ public class GettingAroundTests
 	private const string Backup = "backup.prod.example.com";
 	private const string OpsRoom = "ops-team@muc.lab.tagroot.io";
 
-	private sealed record Sample(MainWindowViewModel Vm, ChatService Chat, PubSubService PubSub, SoftwareService Software, MonitorService Monitors, AccountManager Manager, FleetService Fleet,
+	internal sealed record Sample(MainWindowViewModel Vm, ChatService Chat, PubSubService PubSub, SoftwareService Software, MonitorService Monitors, AccountManager Manager, FleetService Fleet,
 		Guid Ops, Guid Admin, List<string> Said, List<string> Copied, List<string> Asked) : IDisposable
 	{
 		public void Dispose() => Ui.Said -= this.Said.Add;
 	}
 
-	private static void Capture(TopLevel window, string name)
+	internal static void Capture(TopLevel window, string name)
 	{
 		Dispatcher.UIThread.RunJobs();
 		var frame = window.CaptureRenderedFrame();
@@ -57,11 +57,11 @@ public class GettingAroundTests
 		frame!.Save(Path.Combine(folder, name + ".png"));
 	}
 
-	private static T Shown<T>(Visual root, string name)
+	internal static T Shown<T>(Visual root, string name)
 		where T : Control
 		=> root.GetVisualDescendants().OfType<T>().Single(v => v.Name == name && v.IsEffectivelyVisible);
 
-	private static MainWindow Window(Sample s, string theme, int width = 1440, int height = 900)
+	internal static MainWindow Window(Sample s, string theme, int width = 1440, int height = 900)
 	{
 		Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
 		MainWindow window = new() { DataContext = s.Vm, Width = width, Height = height };
@@ -85,7 +85,7 @@ public class GettingAroundTests
 	}
 
 	/// <summary>Synthetic sample data: a lab with two edge Neurons, production with a backup that is offline, people, a room and nodes.</summary>
-	private static async Task<Sample> SampleAsync(string? folder = null)
+	internal static async Task<Sample> SampleAsync(string? folder = null)
 	{
 		EngineRuntime.Initialize();
 		PubSubViewModel.FadeTime = TimeSpan.Zero;

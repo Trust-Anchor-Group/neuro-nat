@@ -15,6 +15,9 @@ public partial class MainWindow : Window
 	/// </summary>
 	private static readonly int[] steps = [780, 860, 900, 960, 1000, 1100, 1180, 1280];
 
+	/// <summary>From this width the layout is the large one.</summary>
+	public const double WideFrom = 1800;
+
 	public MainWindow()
 	{
 		this.InitializeComponent();
@@ -30,6 +33,31 @@ public partial class MainWindow : Window
 	}
 
 	private SearchViewModel? Search => (this.DataContext as MainWindowViewModel)?.Search;
+
+	private SettingsViewModel? settings;
+
+	protected override void OnDataContextChanged(EventArgs e)
+	{
+		base.OnDataContextChanged(e);
+		if (this.settings is not null)
+			this.settings.Changed -= this.Settings_Changed;
+
+		this.settings = (this.DataContext as MainWindowViewModel)?.Settings;
+		if (this.settings is not null)
+			this.settings.Changed += this.Settings_Changed;
+
+		this.ApplySizes();
+	}
+
+	private void Settings_Changed(object? sender, EventArgs e) => this.ApplySizes();
+
+	/// <summary>Text size and row height, as Settings has them. The whole window scales, so nothing is cut off.</summary>
+	private void ApplySizes()
+	{
+		double zoom = this.settings?.Zoom ?? 1;
+		this.Zoom.LayoutTransform = zoom == 1 ? null : new Avalonia.Media.ScaleTransform(zoom, zoom);
+		this.Root.Classes.Set("compact", this.settings?.CompactRows == true);
+	}
 
 	private void Window_KeyDown(object? sender, KeyEventArgs e)
 	{
@@ -53,6 +81,30 @@ public partial class MainWindow : Window
 		else if ((e.KeyModifiers == KeyModifiers.Alt && e.Key == Key.Right) || e.Key == Key.BrowserForward)
 		{
 			vm.GoForwardCommand.Execute(null);
+			e.Handled = true;
+		}
+
+		// Ctrl+Shift+N: what is showing, in a window of its own. F11: the Wall view.
+		else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.N)
+		{
+			vm.NewWindowCommand.Execute(null);
+			e.Handled = true;
+		}
+		else if (e.KeyModifiers == KeyModifiers.None && e.Key == Key.F11)
+		{
+			vm.OpenWallCommand.Execute(null);
+			e.Handled = true;
+		}
+
+		// Ctrl+plus, Ctrl+minus and Ctrl+0: the text size.
+		else if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Alt) && e.Key is Key.OemPlus or Key.Add or Key.OemMinus or Key.Subtract)
+		{
+			vm.Settings.StepTextSize(e.Key is Key.OemPlus or Key.Add ? 1 : -1);
+			e.Handled = true;
+		}
+		else if (e.KeyModifiers == KeyModifiers.Control && e.Key is Key.D0 or Key.NumPad0)
+		{
+			vm.Settings.SetTextSize(100);
 			e.Handled = true;
 		}
 
@@ -143,5 +195,8 @@ public partial class MainWindow : Window
 	{
 		foreach (int step in steps)
 			this.Root.Classes.Set("maxw" + step, width <= step);
+
+		// A very wide window: lists get some of the room instead of everything else stretching.
+		this.Root.Classes.Set("wide", width >= WideFrom);
 	}
 }

@@ -12,6 +12,10 @@
     <Style Selector="Border.treePane">
       <Setter Property="Width" Value="360" />
     </Style>
+    <!-- A very wide window (1800 px and up): the list gets some of the room, instead of the rest stretching -->
+    <Style Selector=".wide Border.treePane">
+      <Setter Property="Width" Value="460" />
+    </Style>
     <!-- Window width 1180 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
     <!-- A watched value that is not what it was a moment ago -->
     <Style Selector="TextBlock.changed">
@@ -88,7 +92,7 @@
   <Grid ColumnDefinitions="Auto,*">
 
     <!-- Neuron, sources and nodes -->
-    <Border Classes="treePane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+    <Border Classes="treePane" c:Pane.Key="sources" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel Margin="12,14,8,12">
         <DockPanel DockPanel.Dock="Top" Margin="6,0,4,10">
           <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding LoadTreeCommand}" ToolTip.Tip="Read the sources again" IsVisible="{Binding HasNeuron}">

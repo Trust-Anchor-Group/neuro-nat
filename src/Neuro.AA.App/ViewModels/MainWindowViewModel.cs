@@ -56,8 +56,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	private WorkspaceKind lastAccountsScreen = WorkspaceKind.Accounts;
 
 	public MainWindowViewModel(AccountManager accounts, FleetService fleet, Engine.Chat.ChatService? chat = null, Engine.Identity.IdentityService? identities = null,
-		Engine.Devices.DevicesService? devices = null, Engine.PubSub.PubSubService? pubsub = null, Engine.Software.SoftwareService? software = null)
+		Engine.Devices.DevicesService? devices = null, Engine.PubSub.PubSubService? pubsub = null, Engine.Software.SoftwareService? software = null,
+		MainWindowViewModel? primary = null)
 	{
+		this.primary = primary;
 		this.accounts = accounts;
 		this.fleet = fleet;
 		this.Search = new SearchViewModel(this.SearchItems)
@@ -78,11 +80,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		Engine.Chat.ChatService chatService = this.chatService = chat ?? new Engine.Chat.ChatService(accounts, fleet.Monitors);
 		this.devicesService = devices ?? new Engine.Devices.DevicesService(accounts);
 		this.identityService = identities ?? new Engine.Identity.IdentityService(accounts, chatService);
-		this.Settings = new SettingsViewModel(chatService);
+
+		// Windows opened beside the main one share its Settings.
+		this.Settings = primary?.Settings ?? new SettingsViewModel(chatService);
+		Ui.Layout = this.Settings;
 		this.Settings.Loaded += (_, _) =>
 		{
+			// The Neurons list is sorted the way it was left.
+			this.Fleet.Sort = this.Settings.NeuronSort;
+
 			// The Neuron picked last time is picked again as soon as it is among the Neurons.
-			if (this.LensJid is null && this.Settings.Neuron is string kept)
+			if (!this.IsExtra && this.LensJid is null && this.Settings.Neuron is string kept)
 			{
 				this.wantedLens = kept;
 				this.SyncNeurons();
@@ -128,8 +136,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			}
 		};
 
+		this.Fleet.Sorted += (_, _) => this.Settings.RememberNeuronSort(this.Fleet.Sort);
+		this.Chat.PropertyChanged += (_, e) =>
+		{
+			// Picking someone else by hand: what the window was waiting to show is no longer wanted.
+			if (e.PropertyName == nameof(ChatViewModel.SelectedPerson) && !this.goingTo && this.Chat.SelectedPerson is not null)
+				this.wantedAddress = null;
+		};
+		this.Settings.LayoutReset += (_, _) => this.Fleet.Sort = null;
+
 		// The Neuron chips and the status strip follow the Neurons list.
-		this.Fleet.Refreshed += (_, _) => this.SyncNeurons();
+		this.Fleet.Refreshed += (_, _) =>
+		{
+			this.SyncNeurons();
+			this.TryWanted();
+		};
 		foreach (NeuronEvent e in fleet.Monitors.Hub.Snapshot())
 			this.NoteEvent(e);
 		fleet.Monitors.Hub.EventAdded += (_, e) => this.NoteEvent(e);
@@ -137,6 +158,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		{
 			this.RefreshLastEvent();
 			this.PruneNotices();
+			this.TryWanted();
 			if (this.IsNeuronOverview)
 				this.RefreshPage();
 		});
@@ -182,6 +204,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.SyncWatched();
 		this.ApplyLens();
 		this.NoteStop();
+
+		// Going somewhere by hand: what the window was waiting to show is no longer wanted.
+		if (!this.goingTo)
+			this.wantedAddress = null;
+
+		if (this.IsExtra)
+			this.OnPropertyChanged(nameof(this.WindowTitle));
 	}
 
 	/// <summary>The window is in front. Set by the window; a conversation only counts as read while it is.</summary>
@@ -202,7 +231,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		=> this.Chat.IsWatched = this.IsWindowActive && (this.IsChat || (this.IsAttention && this.Inbox.ShowsConversation));
 
 	/// <summary>"(3) Neuro.AA": the title carries the Inbox count, so the taskbar shows it too.</summary>
-	public string WindowTitle => this.Inbox.WaitingCount > 0 ? $"({this.Inbox.Badge}) Neuro.AA" : "Neuro.AA";
+	public string WindowTitle => this.IsExtra ? this.WorkspaceTitle + " · Neuro.AA" : this.Inbox.WaitingCount > 0 ? $"({this.Inbox.Badge}) Neuro.AA" : "Neuro.AA";
 
 	/// <summary>The Inbox: everything that waits for you.</summary>
 	public InboxViewModel Inbox { get; }
@@ -291,7 +320,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		if (!this.lensByItself)
 		{
 			this.wantedLens = null;
-			this.Settings.RememberNeuron(value);
+
+			// The main window's choice is the one that comes back at start. The others keep theirs with the window.
+			if (!this.IsExtra)
+				this.Settings.RememberNeuron(value);
 		}
 	}
 
@@ -525,6 +557,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		yield return new SearchItem(this.Settings.IsDoNotDisturb ? "Available" : "Do not disturb", this.Settings.IsDoNotDisturb ? "Let pop-ups and sounds through again" : "Hold back pop-ups and sounds",
 			Icon(this.Settings.IsDoNotDisturb ? "Bell" : "BellOff"), () => this.Settings.SetStatus(this.Settings.IsDoNotDisturb ? OwnStatus.Available : OwnStatus.DoNotDisturb)) { Kind = "Do" };
 		yield return new SearchItem(this.IsDark ? "Light look" : "Dark look", "Switch between light and dark", Icon(this.IsDark ? "Sun" : "Moon"), this.ToggleTheme) { Kind = "Do" };
+		yield return new SearchItem("New window", "Open what is showing in a window of its own", Icon("Window"), () => this.NewWindowCommand.Execute(null)) { Kind = "Do", Words = "second monitor screen" };
+		yield return new SearchItem("Wall view", "The Neurons and their latest problems, large, for a big screen", Icon("Fleet"), () => this.OpenWallCommand.Execute(null)) { Kind = "Do", Words = "full screen monitor tv dashboard" };
+		yield return new SearchItem("Larger text", "One text size up", Icon("Settings"), () => this.Settings.StepTextSize(1)) { Kind = "Do", Words = "zoom font size bigger" };
+		yield return new SearchItem("Smaller text", "One text size down", Icon("Settings"), () => this.Settings.StepTextSize(-1)) { Kind = "Do", Words = "zoom font size" };
 		if (this.CanGoBack)
 			yield return new SearchItem("Back", this.BackTip, Icon("Back"), () => this.GoBackCommand.Execute(null)) { Kind = "Do" };
 		if (this.LensJid is string lens)

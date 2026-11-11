@@ -880,6 +880,8 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 				if (p.IsNeuron && this.Shell is IShell shell)
 					list.AddRange(shell.NeuronPlaces(p.BareJid, p.AccountId, WorkspaceKind.Chat));
 
+				list.Window("Open in a new window", () => Ui.NewWindow?.Invoke(string.Join('|', WorkspaceKind.Chat, p.AccountId.ToString("N"), p.BareJid, string.Empty)));
+
 				if (p.Unread > 0)
 				{
 					list.Do("Mark as read", () =>

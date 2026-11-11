@@ -51,8 +51,14 @@ public partial class ConversationView : UserControl
 	private void ReportWidth()
 	{
 		if (this.IsEffectivelyVisible && this.Bounds.Width > 0)
+		{
 			this.vm?.SetNarrow(this.Bounds.Width < NarrowBelow);
+			this.vm?.SetWide(this.Bounds.Width >= WideFrom);
+		}
 	}
+
+	/// <summary>From this width there is room for a third column: a person's details open beside the conversation by themselves.</summary>
+	public const double WideFrom = 1300;
 
 	/// <summary>Below this width the conversation keeps all of it: the panel beside it only opens when asked for.</summary>
 	public const double NarrowBelow = 720;

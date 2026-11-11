@@ -247,7 +247,12 @@ public sealed partial class MainWindowViewModel
 		return list;
 	}
 
-	partial void OnPageChanged(NeuronPageViewModel? value) => this.NoteStop();
+	partial void OnPageChanged(NeuronPageViewModel? value)
+	{
+		this.NoteStop();
+		if (this.IsExtra)
+			this.OnPropertyChanged(nameof(this.WindowTitle));
+	}
 
 	private void StartHistory()
 	{

@@ -11,6 +11,10 @@
     <Style Selector="Border.listPane">
       <Setter Property="Width" Value="320" />
     </Style>
+    <!-- A very wide window (1800 px and up): the list gets some of the room, instead of the rest stretching -->
+    <Style Selector=".wide Border.listPane">
+      <Setter Property="Width" Value="400" />
+    </Style>
     <!-- Window width 1100 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
     <Style Selector=".maxw1100 Border.listPane">
       <Setter Property="Width" Value="250" />
@@ -66,7 +70,7 @@
   <Grid ColumnDefinitions="Auto,*">
 
     <!-- The nodes, as a tree -->
-    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+    <Border Classes="listPane" c:Pane.Key="nodes" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel Margin="12,14,12,12">
         <DockPanel DockPanel.Dock="Top" Margin="6,0,0,8">
           <Button DockPanel.Dock="Right" Classes="ghost small" Command="{Binding ReloadNodesCommand}" ToolTip.Tip="Read the nodes again">

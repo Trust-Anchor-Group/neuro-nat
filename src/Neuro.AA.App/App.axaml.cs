@@ -54,6 +54,9 @@ public partial class App : Application
 				alerts.Watch(services.Identities);
 				vm.Settings.Attach(alerts, alertStore, new JsonUiSettingsStore(Path.Combine(services.DataFolder, "ui.json")), services.Autostart);
 
+				// Windows of their own, where they were, and the Wall view.
+				ShellWindows.Attach(window, vm, () => new MainWindowViewModel(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub, primary: vm));
+
 				Watch.WatchAgent watch = new(desktop, window, vm, alerts, services.Updates);
 				showMainWindow = watch.ShowWindow;
 				desktop.ShutdownRequested += async (_, _) =>
@@ -78,6 +81,8 @@ public partial class App : Application
 					await services.PubSub.DisposeAsync();
 					await services.Chat.DisposeAsync();
 					await vm.Sources.StopSniffersAsync();
+					foreach (MainWindowViewModel other in ShellWindows.Others.Distinct())
+						await ShellWindows.LeaveAsync(other);
 					await services.Fleet.DisposeAsync();
 					await services.Monitors.DisposeAsync();
 					await services.Accounts.DisposeAsync();

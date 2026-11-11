@@ -67,7 +67,22 @@ public sealed partial class ChatViewModel
 	// A room shows who is in it unless you close that; a person's details open when asked for.
 	private bool roomPanelWanted = true;
 	private bool personPanelWanted;
+	private bool personPanelChosen;
 	private bool narrow;
+	private bool wide;
+
+	/// <summary>
+	/// Told by the view when the conversation has room for a third column. Then a person's
+	/// details open by themselves, until you close them.
+	/// </summary>
+	public void SetWide(bool wide)
+	{
+		if (this.wide == wide)
+			return;
+
+		this.wide = wide;
+		this.ApplyPanel();
+	}
 
 	/// <summary>Told by the view when the conversation is too narrow to share its width with a panel.</summary>
 	public void SetNarrow(bool narrow)
@@ -81,7 +96,7 @@ public sealed partial class ChatViewModel
 
 	private void ApplyPanel()
 	{
-		this.IsPanelOpen = !this.narrow && this.SelectedPerson is PersonViewModel p && (p.IsRoom ? this.roomPanelWanted : this.personPanelWanted);
+		this.IsPanelOpen = !this.narrow && this.SelectedPerson is PersonViewModel p && (p.IsRoom ? this.roomPanelWanted : this.personPanelChosen ? this.personPanelWanted : this.wide);
 		this.OnPropertyChanged(nameof(this.IsRoomPanel));
 		this.OnPropertyChanged(nameof(this.IsPersonPanel));
 		this.LoadDetails();
@@ -99,7 +114,10 @@ public sealed partial class ChatViewModel
 			if (p.IsRoom)
 				this.roomPanelWanted = this.IsPanelOpen;
 			else
+			{
 				this.personPanelWanted = this.IsPanelOpen;
+				this.personPanelChosen = true;
+			}
 		}
 
 		this.LoadDetails();

@@ -13,6 +13,27 @@
       <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <Style Selector="TextBlock.th.arrow">
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+    </Style>
+    <!-- A column's name is a button: click to sort by it -->
+    <Style Selector="Button.th">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.th:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.th:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.th:pointerover TextBlock.th">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Primary}" />
+    </Style>
+    <Style Selector="Button.th:pressed">
+      <Setter Property="RenderTransform" Value="none" />
+    </Style>
     <Style Selector="TextBlock.num">
       <Setter Property="FontFeatures" Value="+tnum" />
     </Style>
@@ -24,10 +45,43 @@
       <Setter Property="Foreground" Value="{DynamicResource Severity.Error}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+    <!-- The columns that hold numbers have widths of their own; the name and the stream share what is left.
+         A column that is hidden takes no room, so the name is not squeezed. -->
+    <Style Selector="Grid.cols">
+      <Setter Property="ColumnSpacing" Value="12" />
+    </Style>
+    <Style Selector=":is(Control).colVersion">
+      <Setter Property="Width" Value="170" />
+    </Style>
+    <Style Selector=":is(Control).colCpu">
+      <Setter Property="Width" Value="132" />
+    </Style>
+    <Style Selector=":is(Control).colMem">
+      <Setter Property="Width" Value="180" />
+    </Style>
+    <Style Selector=":is(Control).colDisk">
+      <Setter Property="Width" Value="96" />
+    </Style>
+    <Style Selector=".wide :is(Control).colVersion">
+      <Setter Property="Width" Value="230" />
+    </Style>
     <!-- Narrow windows drop the version and disk columns. -->
     <!-- Window width 1180 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
     <Style Selector=".maxw1180 :is(Control).colWide">
       <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw1000 :is(Control).colMem">
+      <Setter Property="Width" Value="112" />
+    </Style>
+    <!-- Small windows keep what tells you something is wrong: the name, the stream, CPU as a number, errors, issues and the last event. -->
+    <Style Selector=".maxw860 Grid.cols">
+      <Setter Property="ColumnSpacing" Value="8" />
+    </Style>
+    <Style Selector=".maxw860 :is(Control).colMem, .maxw860 c|Sparkline.cpu, .maxw860 TextBlock.cpuLong">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw860 :is(Control).colCpu">
+      <Setter Property="Width" Value="48" />
     </Style>
     
   </UserControl.Styles>
@@ -57,16 +111,62 @@
       <DockPanel>
         <!-- Column headers -->
         <Border DockPanel.Dock="Top" Padding="14,9" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
-          <Grid ColumnDefinitions="2.4*,1.3*,1.3*,132,1.6*,1*,72,84,84" ColumnSpacing="12">
-            <TextBlock Classes="th" Text="Neuron" />
-            <TextBlock Grid.Column="1" Classes="th" Text="Stream" />
-            <TextBlock Grid.Column="2" Classes="th colWide" Text="Version" />
-            <TextBlock Grid.Column="3" Classes="th" Text="CPU, last 30 min" />
-            <TextBlock Grid.Column="4" Classes="th" Text="Memory" />
-            <TextBlock Grid.Column="5" Classes="th colWide" Text="Disk" />
-            <TextBlock Grid.Column="6" Classes="th" Text="Errors 1 h" HorizontalAlignment="Right" />
-            <TextBlock Grid.Column="7" Classes="th" Text="Open issues" HorizontalAlignment="Right" />
-            <TextBlock Grid.Column="8" Classes="th" Text="Last event" HorizontalAlignment="Right" />
+          <Grid Classes="cols" ColumnDefinitions="2.4*,1.3*,Auto,Auto,Auto,Auto,72,84,84">
+            <Button Classes="th" Command="{Binding SortByCommand}" CommandParameter="name" ToolTip.Tip="Sort by name. Click again for the other way round.">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="Neuron" />
+                <TextBlock Classes="th arrow" Text="{Binding NameArrow}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="1" Classes="th" Command="{Binding SortByCommand}" CommandParameter="stream" ToolTip.Tip="Sort by the state of the event stream. Click again for the other way round.">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="Stream" />
+                <TextBlock Classes="th arrow" Text="{Binding StreamArrow}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Classes="th colWide colVersion" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="version" ToolTip.Tip="Sort by version. Click again for the other way round.">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="Version" />
+                <TextBlock Classes="th arrow" Text="{Binding VersionArrow}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Classes="th colCpu" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="cpu" ToolTip.Tip="Sort by CPU: the busiest first. Click again for the other way round.">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="CPU" />
+                <TextBlock Classes="th cpuLong" Text="last 30 min" FontWeight="Normal" />
+                <TextBlock Classes="th arrow" Text="{Binding CpuArrow}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="4" Classes="th colMem" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="memory" ToolTip.Tip="Sort by memory in use: the most first. Click again for the other way round.">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="Memory" />
+                <TextBlock Classes="th arrow" Text="{Binding MemoryArrow}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="5" Classes="th colWide colDisk" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="disk" ToolTip.Tip="Sort by free disk: the least first. Click again for the other way round.">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="Disk" />
+                <TextBlock Classes="th arrow" Text="{Binding DiskArrow}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="6" Classes="th" Command="{Binding SortByCommand}" CommandParameter="errors" ToolTip.Tip="Sort by errors in the last hour: the most first. Click again for the other way round." HorizontalAlignment="Right">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="Errors 1 h" />
+                <TextBlock Classes="th arrow" Text="{Binding ErrorsArrow}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="7" Classes="th" Command="{Binding SortByCommand}" CommandParameter="issues" ToolTip.Tip="Sort by open issues: the most first. Click again for the other way round." HorizontalAlignment="Right">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="Open issues" />
+                <TextBlock Classes="th arrow" Text="{Binding IssuesArrow}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="8" Classes="th" Command="{Binding SortByCommand}" CommandParameter="last" ToolTip.Tip="Sort by the last event: the latest first. Click again for the other way round." HorizontalAlignment="Right">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Classes="th" Text="Last event" />
+                <TextBlock Classes="th arrow" Text="{Binding LastArrow}" />
+              </StackPanel>
+            </Button>
           </Grid>
         </Border>
 
@@ -75,7 +175,7 @@
                    c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #Bar}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:FleetRowViewModel">
-                <Grid ColumnDefinitions="2.4*,1.3*,1.3*,132,1.6*,1*,72,84,84" ColumnSpacing="12" RowDefinitions="Auto,Auto"
+                <Grid Classes="cols" ColumnDefinitions="2.4*,1.3*,Auto,Auto,Auto,Auto,72,84,84" RowDefinitions="Auto,Auto"
                       ToolTip.Tip="Double-click to open this Neuron's page. Right-click for everything else.">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                     <Ellipse Classes="dot" VerticalAlignment="Center"
@@ -104,13 +204,13 @@
                     </StackPanel>
                   </Grid>
                   <TextBlock Grid.Column="1" Classes="meta" Text="{Binding StateText}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                  <TextBlock Grid.Column="2" Classes="meta colWide" Text="{Binding Software}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                  <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <TextBlock Grid.Column="2" Classes="meta colWide colVersion" Text="{Binding Software}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                  <StackPanel Grid.Column="3" Classes="colCpu" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock Classes="num" Classes.warn="{Binding HighCpu}" Text="{Binding CpuText}" Width="40" VerticalAlignment="Center" />
-                    <c:Sparkline Values="{Binding CpuSeries}" Width="72" Height="16" Foreground="{DynamicResource Accent}" />
+                    <c:Sparkline Classes="cpu" Values="{Binding CpuSeries}" Width="72" Height="16" Foreground="{DynamicResource Accent}" />
                   </StackPanel>
-                  <TextBlock Grid.Column="4" Classes="num" Classes.warn="{Binding LowMemory}" Text="{Binding MemoryText}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                  <TextBlock Grid.Column="5" Classes="num colWide" Classes.warn="{Binding LowDisk}" Text="{Binding DiskText}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Classes="num colMem" Classes.warn="{Binding LowMemory}" Text="{Binding MemoryText}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="5" Classes="num colWide colDisk" Classes.warn="{Binding LowDisk}" Text="{Binding DiskText}" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="6" Classes="num" Classes.bad="{Binding HasErrors}" Text="{Binding ErrorsLastHour}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="7" Classes="num" Text="{Binding OpenIssues}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="8" Classes="meta" Text="{Binding LastEventText}" HorizontalAlignment="Right" VerticalAlignment="Center" />

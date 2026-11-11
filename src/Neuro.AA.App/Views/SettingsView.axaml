@@ -172,6 +172,40 @@
         </StackPanel>
       </Border>
 
+      <!-- Sizes -->
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="section" Text="Text size" />
+            <TextBlock Classes="hint" Text="Everything grows with the text, so nothing is cut off. Ctrl+plus and Ctrl+minus change it from anywhere, Ctrl+0 puts it back." />
+          </StackPanel>
+          <WrapPanel Orientation="Horizontal">
+            <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsTextSmall, Mode=OneWay}" Command="{Binding SetTextSizeCommand}">
+              <ToggleButton.CommandParameter><x:Int32>90</x:Int32></ToggleButton.CommandParameter>
+              <TextBlock Text="Small" FontSize="11.5" VerticalAlignment="Center" />
+            </ToggleButton>
+            <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsTextNormal, Mode=OneWay}" Command="{Binding SetTextSizeCommand}">
+              <ToggleButton.CommandParameter><x:Int32>100</x:Int32></ToggleButton.CommandParameter>
+              <TextBlock Text="Normal" FontSize="13" VerticalAlignment="Center" />
+            </ToggleButton>
+            <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsTextLarge, Mode=OneWay}" Command="{Binding SetTextSizeCommand}">
+              <ToggleButton.CommandParameter><x:Int32>115</x:Int32></ToggleButton.CommandParameter>
+              <TextBlock Text="Large" FontSize="15" VerticalAlignment="Center" />
+            </ToggleButton>
+            <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsTextLarger, Mode=OneWay}" Command="{Binding SetTextSizeCommand}">
+              <ToggleButton.CommandParameter><x:Int32>130</x:Int32></ToggleButton.CommandParameter>
+              <TextBlock Text="Larger" FontSize="17" VerticalAlignment="Center" />
+            </ToggleButton>
+          </WrapPanel>
+          <CheckBox IsChecked="{Binding CompactRows}" Content="Compact rows" />
+          <TextBlock Classes="hint" Margin="28,-6,0,0" Text="Rows in lists take less height, so more of them fit on the screen." />
+          <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+            <Button x:Name="ResetLayoutButton" Classes="small" Command="{Binding ResetLayoutCommand}" Content="Put the layout back" IsEnabled="{Binding HasOwnLayout}" />
+            <TextBlock Classes="hint" VerticalAlignment="Center" Text="Panes you made wider or narrower, and how the Neurons list is sorted." />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
       <!-- The app -->
       <Border Classes="card">
         <StackPanel Spacing="10">

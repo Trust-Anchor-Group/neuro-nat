@@ -37,6 +37,10 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 
 	private void Ui_Said(string note)
 	{
+		// With several windows, the note shows in the one in front.
+		if (this.IsExtra ? !this.IsWindowActive : this.IsAnotherWindowInFront?.Invoke() == true)
+			return;
+
 		if (Dispatcher.UIThread.CheckAccess())
 			this.ShowFlash(note);
 		else
@@ -124,6 +128,7 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 		if (row is not null)
 		{
 			Guid a = row.AccountId;
+			list.Window("Open in a new window", () => this.OpenNeuronWindow(neuronJid, a));
 			list.Do("Read its health now", () => this.Fleet.RefreshNowCommand.Execute(null), icon: "Refresh");
 			list.Do("Watch its traffic", () => this.WatchTrafficOf(a, neuronJid), icon: "Sniffer");
 			list.Do("Check for updates", () =>

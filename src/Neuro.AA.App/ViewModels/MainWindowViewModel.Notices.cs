@@ -23,7 +23,10 @@ public sealed partial class MainWindowViewModel
 	/// True when you are looking at what the alert is about: the message arrived in the
 	/// conversation that is open in front of you. Then nothing pops up and nothing sounds.
 	/// </summary>
-	public bool IsLookingAt(Alert a)
+	public bool IsLookingAt(Alert a) => this.LooksAt(a) || this.IsLookedAtElsewhere?.Invoke(a) == true;
+
+	/// <summary>The same, for this window alone.</summary>
+	public bool LooksAt(Alert a)
 		=> a.Kind == AlertKind.Message && this.Chat.IsWatched && a.AccountId is Guid account && this.Chat.SelectedPerson is PersonViewModel p &&
 			p.AccountId == account && string.Equals(p.BareJid, a.Target, StringComparison.OrdinalIgnoreCase);
 

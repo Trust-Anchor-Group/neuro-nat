@@ -182,7 +182,7 @@
       </Border>
 
       <!-- Beside the conversation: who is in the room, or the person's details -->
-      <Border DockPanel.Dock="Right" Classes="sidePanel" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0" IsVisible="{Binding IsPanelOpen}">
+      <Border DockPanel.Dock="Right" Classes="sidePanel" c:Pane.Key="chat.panel" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0" IsVisible="{Binding IsPanelOpen}">
         <Panel>
           <!-- A room: the people in it by what they may do, and the banned list when asked for -->
           <DockPanel IsVisible="{Binding IsRoomPanel}" Margin="12,14,8,12">

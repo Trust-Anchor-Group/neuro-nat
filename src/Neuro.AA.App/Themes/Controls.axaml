@@ -228,6 +228,12 @@
     <Setter Property="Margin" Value="0,1" />
     <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
   </Style>
+  <!-- Compact rows, chosen in Settings: the same rows with less air, so more fit -->
+  <Style Selector=".compact ListBox.rows ListBoxItem">
+    <Setter Property="Padding" Value="10,3" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
   <Style Selector="ListBox.rows ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Surface.Hover}" />
   </Style>

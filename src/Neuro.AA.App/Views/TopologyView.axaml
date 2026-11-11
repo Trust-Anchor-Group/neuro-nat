@@ -125,7 +125,7 @@
       </Panel>
 
       <!-- Beside the map: the selection, or how to read the map -->
-      <Border Grid.Column="1" Classes="side" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0" Background="{DynamicResource Surface.Panel}">
+      <Border Grid.Column="1" Classes="side" c:Pane.Key="map" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0" Background="{DynamicResource Surface.Panel}">
         <ScrollViewer>
           <StackPanel Margin="18,16" Spacing="16">
 

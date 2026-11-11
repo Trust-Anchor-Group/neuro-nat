@@ -19,6 +19,15 @@ public static class Ui
 	/// <summary>Opens something in a window of its own. Given the view model; the window knows which view fits.</summary>
 	public static Action<object>? OpenWindow { get; set; }
 
+	/// <summary>Opens a screen in a window of its own. Given what to show, as <see cref="MainWindowViewModel.Address"/> writes it.</summary>
+	public static Action<string>? NewWindow { get; set; }
+
+	/// <summary>Opens the Wall view: the Neurons and their latest problems, large, for a big screen.</summary>
+	public static Action? OpenWall { get; set; }
+
+	/// <summary>Remembers how wide the panes were dragged.</summary>
+	public static ILayoutStore? Layout { get; set; }
+
 	/// <summary>Raised with a short note for the person. May come from any thread.</summary>
 	public static event Action<string>? Said;
 

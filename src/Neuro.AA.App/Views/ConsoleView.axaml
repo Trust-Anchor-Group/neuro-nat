@@ -10,6 +10,10 @@
     <Style Selector="Border.listPane">
       <Setter Property="Width" Value="300" />
     </Style>
+    <!-- A very wide window (1800 px and up): the list gets some of the room, instead of the rest stretching -->
+    <Style Selector=".wide Border.listPane">
+      <Setter Property="Width" Value="360" />
+    </Style>
     <!-- Window width 1000 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
     <Style Selector=".maxw1000 Border.listPane">
       <Setter Property="Width" Value="240" />
@@ -40,7 +44,7 @@
   <Grid ColumnDefinitions="Auto,*">
 
     <!-- Neurons to talk to. Not shown on a Neuron's page, where the console talks to that Neuron only. -->
-    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0" IsVisible="{Binding !IsPinned}">
+    <Border Classes="listPane" c:Pane.Key="console" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0" IsVisible="{Binding !IsPinned}">
       <DockPanel Margin="12,14,12,12">
         <StackPanel DockPanel.Dock="Top" Margin="6,0,0,10" Spacing="4">
           <TextBlock Classes="section" Text="Neurons" />

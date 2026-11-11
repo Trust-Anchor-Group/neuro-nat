@@ -180,6 +180,9 @@
       <Setter Property="PlaceholderText" Value="Search…" />
       <Setter Property="Padding" Value="32,5,10,5" />
     </Style>
+    <Style Selector=".maxw780 Button.newWindow, .maxw780 Button.wallTab">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
     <Style Selector=".maxw960 Border.searchKey">
       <Setter Property="IsVisible" Value="False" />
     </Style>
@@ -219,6 +222,8 @@
     
   </Window.Styles>
 
+  <!-- Everything scales with the text size chosen in Settings -->
+  <LayoutTransformControl x:Name="Zoom">
   <Grid x:Name="Root" ColumnDefinitions="Auto,*" RowDefinitions="48,Auto,*,Auto">
 
     <!-- Rail: five places, with Accounts and the look at the bottom -->
@@ -338,6 +343,12 @@
           </Border>
         </Panel>
 
+        <!-- What is showing, in a window of its own -->
+        <Button x:Name="NewWindowButton" DockPanel.Dock="Right" Classes="ghost nav newWindow" Command="{Binding NewWindowCommand}" VerticalAlignment="Center" Margin="6,0,-4,0"
+                ToolTip.Tip="Open this in a window of its own (Ctrl+Shift+N)" AutomationProperties.Name="Open this in a window of its own">
+          <c:LineIcon Data="{StaticResource Icon.Window}" Width="16" Height="16" />
+        </Button>
+
         <!-- What you reach for most on a Neuron's page -->
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" IsVisible="{Binding IsNeuronPage}">
           <Button Classes="ghost" Command="{Binding WatchPageTrafficCommand}" ToolTip.Tip="Open the traffic of the account that reaches this Neuron, at the lines that mention it">
@@ -364,6 +375,8 @@
                   ToolTip.Tip="Every Neuron: version, health and errors" />
           <Button Classes="tab" Classes.current="{Binding IsTopology}" Command="{Binding ShowTopologyCommand}" Content="Map"
                   ToolTip.Tip="How your Neurons connect: parents, federation and groups" />
+          <Button x:Name="WallButton" Classes="tab wallTab" Command="{Binding OpenWallCommand}" Content="Wall"
+                  ToolTip.Tip="The Neurons and their latest problems, large, for a big screen (F11)" />
         </StackPanel>
 
         <!-- Neuron chips: click one to show only that Neuron -->
@@ -545,7 +558,7 @@
     <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="Auto,*" IsVisible="{Binding IsPlaceAccounts}">
 
       <!-- Account list with the inline add form -->
-      <Border Classes="accountList" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <Border Classes="accountList" c:Pane.Key="accounts" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
         <DockPanel Margin="12,14,12,12">
           <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
             <Button DockPanel.Dock="Right" Classes="primary" Margin="8,0,0,0" Command="{Binding ToggleAddFormCommand}"
@@ -833,4 +846,5 @@
       </StackPanel>
     </Grid>
   </Grid>
+  </LayoutTransformControl>
 </Window>
