@@ -88,7 +88,7 @@ public static class EventConverters
 	public static readonly IValueConverter HasItems = new FuncValueConverter<int, bool>(n => n > 0);
 }
 
-/// <summary>A state tone (ok, busy, bad, idle) to its State.* brush; "subtle" gives a tinted background.</summary>
+/// <summary>A tone (ok, busy, bad, accent, info, idle) to its brush; "subtle" gives a tinted background.</summary>
 public sealed class ToneBrushConverter : IValueConverter
 {
 	public static readonly ToneBrushConverter Instance = new();
@@ -100,6 +100,8 @@ public sealed class ToneBrushConverter : IValueConverter
 			"ok" => "State.Ok",
 			"busy" => "State.Busy",
 			"bad" => "State.Bad",
+			"accent" => "Accent",
+			"info" => "Severity.Informational",
 			_ => "State.Idle",
 		};
 

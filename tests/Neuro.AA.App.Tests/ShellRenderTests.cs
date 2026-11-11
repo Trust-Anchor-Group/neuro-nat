@@ -148,9 +148,24 @@ public class ShellRenderTests
 		MonitorService monitors = new(manager, new EventHub());
 		AddSampleEvents(monitors.Hub);
 
+		// Synthetic sample data: the Neurons the events come from, and one this account cannot read.
+		Guid account = manager.Sessions[0].Profile.Id;
+		foreach ((string jid, WatchState state) in new[] { ("alpha@lab.local", WatchState.Live), ("beta@lab.local", WatchState.Live), ("gamma@lab.local", WatchState.Live), ("delta@prod.example", WatchState.Forbidden) })
+		{
+			monitors.For(account)!.Preview(new WatchedNeuron
+			{
+				AccountId = account,
+				BareJid = jid,
+				State = state,
+				HistoryState = state == WatchState.Live ? HistoryState.Loaded : HistoryState.NotLoaded,
+				HistoryCount = state == WatchState.Live ? 212 : 0,
+			});
+		}
+
 		MainWindowViewModel vm = new(manager, new FleetService(monitors));
 		await vm.StartAsync();
 		vm.Workspace = WorkspaceKind.Events;
+		vm.Fleet.Refresh();
 		vm.Events.Flush();
 
 		if (selectIssue)
@@ -164,6 +179,138 @@ public class ShellRenderTests
 		Capture(window, $"events-{theme.ToLowerInvariant()}-{width}{(selectIssue ? "-issue" : "")}");
 
 		Assert.True(vm.Events.Issues.Count >= 3);
+		Assert.Equal(4, vm.NeuronChips.Count);
+		Assert.Equal("3 of 4 Neurons reporting", vm.StatusNeurons);
+		window.Close();
+	}
+
+	[AvaloniaFact]
+	public async Task SearchBoxWorksFromTheKeyboardAndWithAClick()
+	{
+		EngineRuntime.Initialize();
+		string store = Path.Combine(Path.GetTempPath(), "NeuroAA.Render." + Guid.NewGuid().ToString("N"), "accounts.json");
+		AccountManager manager = new(new JsonAccountStore(store), new InMemoryCredentialVault());
+		await manager.AddAsync(new AccountProfile { Host = "localhost", UserName = "neuroaa", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		MainWindowViewModel vm = new(manager, new FleetService(new MonitorService(manager, new EventHub())));
+		await vm.StartAsync();
+
+		MainWindow window = new() { DataContext = vm, Width = 1440, Height = 900 };
+		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		Avalonia.Controls.TextBox box = Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.TextBox>(window, "SearchBox")!;
+
+		// Ctrl+K opens it, typing narrows, Enter goes there and closes it.
+		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.K, Avalonia.Input.RawInputModifiers.Control);
+		Dispatcher.UIThread.RunJobs();
+		Assert.True(box.IsFocused);
+		Assert.True(vm.Search.IsOpen);
+
+		window.KeyTextInput("soft");
+		Dispatcher.UIThread.RunJobs();
+		Assert.Equal("Software", vm.Search.Selected?.Title);
+
+		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.Enter, Avalonia.Input.RawInputModifiers.None);
+		Dispatcher.UIThread.RunJobs();
+		Assert.Equal(WorkspaceKind.Updates, vm.Workspace);
+		Assert.False(vm.Search.IsOpen);
+		Assert.False(box.IsFocused);
+		Assert.Equal(string.Empty, vm.Search.Query);
+
+		// Down moves the highlight; Escape closes without going anywhere.
+		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.K, Avalonia.Input.RawInputModifiers.Control);
+		Dispatcher.UIThread.RunJobs();
+		Assert.Equal("Inbox", vm.Search.Selected?.Title);
+		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.ArrowDown, Avalonia.Input.RawInputModifiers.None);
+		Assert.Equal("Neurons", vm.Search.Selected?.Title);
+		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.Escape, Avalonia.Input.RawInputModifiers.None);
+		Dispatcher.UIThread.RunJobs();
+		Assert.False(vm.Search.IsOpen);
+		Assert.Equal(WorkspaceKind.Updates, vm.Workspace);
+
+		// A click on a result goes there too.
+		window.KeyPressQwerty(Avalonia.Input.PhysicalKey.K, Avalonia.Input.RawInputModifiers.Control);
+		Dispatcher.UIThread.RunJobs();
+		Avalonia.Controls.ListBox results = Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.ListBox>(window, "SearchResults")!;
+		Avalonia.Controls.Control third = results.ContainerFromIndex(2)!;
+		Point at = third.TranslatePoint(new Point(third.Bounds.Width / 2, third.Bounds.Height / 2), window)!.Value;
+		window.MouseDown(at, Avalonia.Input.MouseButton.Left);
+		window.MouseUp(at, Avalonia.Input.MouseButton.Left);
+		Dispatcher.UIThread.RunJobs();
+		Assert.Equal(WorkspaceKind.Events, vm.Workspace);
+		Assert.False(vm.Search.IsOpen);
+
+		window.Close();
+	}
+
+	[AvaloniaTheory]
+	[InlineData("Light")]
+	[InlineData("Dark")]
+	public async Task NeuronChipFiltersEventsAndSearchGoesPlaces(string theme)
+	{
+		Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+
+		EngineRuntime.Initialize();
+		string store = Path.Combine(Path.GetTempPath(), "NeuroAA.Render." + Guid.NewGuid().ToString("N"), "accounts.json");
+		AccountManager manager = new(new JsonAccountStore(store), new InMemoryCredentialVault());
+		await manager.AddAsync(new AccountProfile { Host = "localhost", UserName = "neuroaa", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		MonitorService monitors = new(manager, new EventHub());
+		AddSampleEvents(monitors.Hub);
+
+		Guid account = manager.Sessions[0].Profile.Id;
+		foreach (string jid in new[] { "alpha@lab.local", "beta@lab.local", "gamma@lab.local" })
+			monitors.For(account)!.Preview(new WatchedNeuron { AccountId = account, BareJid = jid, State = WatchState.Live, HistoryState = HistoryState.Loaded, HistoryCount = 212 });
+
+		MainWindowViewModel vm = new(manager, new FleetService(monitors));
+		await vm.StartAsync();
+		vm.Workspace = WorkspaceKind.Events;
+		vm.Fleet.Refresh();
+		vm.Events.SeverityFilter = SeverityFilter.All;
+		vm.Events.Flush();
+		int everything = vm.Events.Stream.Count;
+		int allIssues = vm.Events.Issues.Count;
+
+		MainWindow window = new() { DataContext = vm, Width = 1440, Height = 900 };
+		window.Show();
+
+		// One chip: only that Neuron's events and issues remain.
+		vm.ToggleNeuronCommand.Execute(vm.NeuronChips.First(c => c.BareJid == "gamma@lab.local"));
+		Capture(window, $"events-chip-{theme.ToLowerInvariant()}-1440");
+		Assert.Equal("gamma@lab.local", vm.Events.NeuronFilter);
+		Assert.NotEmpty(vm.Events.Stream);
+		Assert.All(vm.Events.Stream, e => Assert.Equal("gamma@lab.local", e.Source.NeuronJid));
+		Assert.True(vm.Events.Stream.Count < everything);
+		Assert.True(vm.Events.Issues.Count < allIssues);
+		Assert.False(vm.IsAllNeurons);
+
+		// The same chip again, or All Neurons, shows everything.
+		vm.ShowAllNeuronsCommand.Execute(null);
+		Assert.Null(vm.Events.NeuronFilter);
+		Assert.Equal(everything, vm.Events.Stream.Count);
+
+		// The search box narrows as you type and goes where you choose.
+		vm.Search.Open();
+		vm.Search.Query = "ma";
+		Capture(window, $"search-{theme.ToLowerInvariant()}-1440");
+		Assert.Equal("Map", vm.Search.Results[0].Title);
+		vm.Search.Run();
+		Assert.Equal(WorkspaceKind.Topology, vm.Workspace);
+		Assert.Equal(PlaceKind.Neurons, vm.Place);
+		Assert.False(vm.Search.IsOpen);
+
+		// A Neuron in the search list opens its events.
+		vm.Search.Open();
+		vm.Search.Query = "beta";
+		vm.Search.Run();
+		Assert.Equal(WorkspaceKind.Events, vm.Workspace);
+		Assert.Equal("beta@lab.local", vm.LensJid);
+
+		// Leaving a place and coming back returns to the screen you were on.
+		vm.ShowTopologyCommand.Execute(null);
+		vm.ShowChatCommand.Execute(null);
+		vm.ShowNeuronsCommand.Execute(null);
+		Assert.Equal(WorkspaceKind.Topology, vm.Workspace);
+		Capture(window, $"neurons-map-tab-{theme.ToLowerInvariant()}-1440");
+
 		window.Close();
 	}
 
@@ -285,10 +432,11 @@ public class ShellRenderTests
 		MainWindowViewModel vm = new(manager, new FleetService(monitors));
 		await vm.StartAsync();
 		vm.Workspace = WorkspaceKind.Attention;
-		vm.Attention.Filter = all ? AttentionFilter.All : AttentionFilter.Open;
+		vm.Inbox.ShowDone = all;
 		vm.Attention.Refresh();
-		vm.Attention.SelectedItem = vm.Attention.Items[all ? 2 : 0];
-		vm.Attention.Refresh();
+		vm.Inbox.Refresh();
+		vm.Inbox.SelectedRow = vm.Inbox.Rows[all ? 2 : 0];
+		vm.Inbox.Refresh();
 
 		MainWindow window = new() { DataContext = vm, Width = width, Height = height };
 		window.Show();
@@ -298,6 +446,9 @@ public class ShellRenderTests
 
 		Assert.Equal(6, vm.Attention.OpenCount);
 		Assert.Equal(all ? 9 : 6, vm.Attention.Items.Count);
+		Assert.Equal(all ? 9 : 6, vm.Inbox.Rows.Count);
+		Assert.Equal(6, vm.Inbox.WaitingCount);
+		Assert.True(vm.Inbox.ShowsNotification);
 		window.Close();
 	}
 

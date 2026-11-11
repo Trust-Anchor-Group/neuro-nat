@@ -222,31 +222,60 @@ public sealed partial class ChatService
 
 		n = WithOutOfBand(n, e);
 		bool mine = room is not null && string.Equals(nick, room.NickName, StringComparison.OrdinalIgnoreCase);
+		ChatMessage? fresh = null;
 
 		if (n.Replaces is string replaces && conv.Correct(replaces, n.Markdown, n.Text, n.Timestamp))
 		{
 		}
 		else
 		{
-			conv.Add(new ChatMessage
+			string text = string.IsNullOrWhiteSpace(n.Text) ? Attention.NotificationClassifier.Plain(n.Markdown) : n.Text;
+			ChatMessage m = new()
 			{
 				Id = Guid.NewGuid().ToString("N"),
 				MessageId = n.MessageId,
 				Direction = mine ? ChatDirection.Out : ChatDirection.In,
 				Timestamp = n.Timestamp,
 				Markdown = n.Markdown,
-				Text = string.IsNullOrWhiteSpace(n.Text) ? Attention.NotificationClassifier.Plain(n.Markdown) : n.Text,
+				Text = text,
 				Sender = nick,
-			});
+				Mention = !mine && room is not null && Mentions(text, room.NickName),
+			};
+			conv.Add(m);
 
 			// History the room replays on entry is not news.
 			if (!mine && n.Timestamp > DateTime.Now.AddMinutes(-2))
-				conv.Unread++;
+			{
+				conv.CountUnread(m);
+				fresh = m;
+			}
 		}
 
 		this.Touch();
 		this.ConversationChanged?.Invoke(this, conv);
+		if (fresh is not null)
+			this.MessageReceived?.Invoke(this, new IncomingMessage(conv, fresh, string.IsNullOrEmpty(nick) ? conv.BareJid : nick));
 		return Task.CompletedTask;
+	}
+
+	/// <summary>True when a message names a nickname as a word of its own, with or without an @.</summary>
+	internal static bool Mentions(string text, string nickName)
+	{
+		if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(nickName))
+			return false;
+
+		int at = 0;
+		while ((at = text.IndexOf(nickName, at, StringComparison.OrdinalIgnoreCase)) >= 0)
+		{
+			bool startOk = at == 0 || !char.IsLetterOrDigit(text[at - 1]);
+			int end = at + nickName.Length;
+			bool endOk = end >= text.Length || !char.IsLetterOrDigit(text[end]);
+			if (startOk && endOk)
+				return true;
+			at = end;
+		}
+
+		return false;
 	}
 
 	private Task Muc_RoomSubject(object sender, RoomOccupantMessageEventArgs e)

@@ -7,7 +7,7 @@
         xmlns:views="using:Neuro.AA.App.Views"
         x:Class="Neuro.AA.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="Neuro.AA"
+        Title="{Binding WindowTitle}"
         Width="1440" Height="900" MinWidth="720" MinHeight="480">
 
   <Window.Styles>
@@ -81,13 +81,25 @@
       <Setter Property="Stroke" Value="{DynamicResource Surface.Panel}" />
     </Style>
 
-    <!-- Account lens chips in the top bar -->
-    <Style Selector="Border.chip">
-      <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
-      <Setter Property="Padding" Value="4,4,10,4" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+    <!-- Search box in the top bar -->
+    <Style Selector="TextBox.search">
+      <Setter Property="Width" Value="280" />
+      <Setter Property="PlaceholderText" Value="Go to a screen or Neuron" />
       <Setter Property="Background" Value="{DynamicResource Surface.Ground}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+    </Style>
+    <Style Selector="ListBox.search ListBoxItem">
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Focusable" Value="False" />
+    </Style>
+    <!-- Status strip: a quiet, small button -->
+    <Style Selector="Button.strip">
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="Padding" Value="8,1" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!-- Sniffer direction tags -->
@@ -125,11 +137,17 @@
     <Style Selector=".maxw960 Border.rail">
       <Setter Property="Width" Value="56" />
     </Style>
-    <Style Selector=".maxw960 TextBlock.chipLabel">
-      <Setter Property="IsVisible" Value="False" />
+    <Style Selector=".maxw1100 TextBox.search">
+      <Setter Property="Width" Value="200" />
+      <Setter Property="PlaceholderText" Value="Go to…" />
     </Style>
-    <Style Selector=".maxw960 Border.chip">
-      <Setter Property="Padding" Value="4" />
+    <Style Selector=".maxw960 TextBox.search">
+      <Setter Property="Width" Value="150" />
+      <Setter Property="PlaceholderText" Value="Go to…" />
+      <Setter Property="Padding" Value="32,5,10,5" />
+    </Style>
+    <Style Selector=".maxw960 Border.searchKey">
+      <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector=".maxw960 Border.accountList">
       <Setter Property="Width" Value="260" />
@@ -167,63 +185,67 @@
     
   </Window.Styles>
 
-  <Grid x:Name="Root" ColumnDefinitions="Auto,*" RowDefinitions="48,*">
+  <Grid x:Name="Root" ColumnDefinitions="Auto,*" RowDefinitions="48,*,Auto">
 
-    <!-- Rail -->
-    <Border Grid.RowSpan="2" Classes="rail" Background="{DynamicResource Surface.Rail}"
+    <!-- Rail: five places, with Accounts and the look at the bottom -->
+    <Border Grid.RowSpan="3" Classes="rail" Background="{DynamicResource Surface.Rail}"
             BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel Margin="0,10,0,12">
         <TextBlock DockPanel.Dock="Top" Text="N·AA" HorizontalAlignment="Center" FontWeight="Bold" FontSize="13"
                    LetterSpacing="0.4" Margin="0,4,0,16" />
 
-        <Button DockPanel.Dock="Bottom" Classes="rail" HorizontalAlignment="Center" Command="{Binding ToggleThemeCommand}"
-                ToolTip.Tip="Switch between light and dark" AutomationProperties.Name="Switch between light and dark">
-          <StackPanel Spacing="4">
-            <c:LineIcon Data="{StaticResource Icon.Moon}" IsVisible="{Binding !IsDark}" />
-            <c:LineIcon Data="{StaticResource Icon.Sun}" IsVisible="{Binding IsDark}" />
-            <TextBlock Classes="railLabel" Text="Theme" HorizontalAlignment="Center" />
-          </StackPanel>
-        </Button>
-
-        <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel HorizontalAlignment="Center">
-          <Button Classes="rail" Classes.current="{Binding IsAttention}" Command="{Binding ShowAttentionCommand}"
-                  ToolTip.Tip="Notifications from your Neurons, and what needs you" AutomationProperties.Name="Attention">
+        <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center">
+          <Button Classes="rail" Classes.current="{Binding IsPlaceAccounts}" Command="{Binding ShowAccountsPlaceCommand}"
+                  ToolTip.Tip="Your accounts, their connections and your devices" AutomationProperties.Name="Accounts">
             <StackPanel Spacing="4">
               <Panel HorizontalAlignment="Center">
-                <c:LineIcon Data="{StaticResource Icon.Attention}" />
-                <Border Classes="badge" IsVisible="{Binding Attention.HasOpen}" ToolTip.Tip="Notifications that need you">
-                  <TextBlock Text="{Binding Attention.OpenBadge}" />
-                </Border>
+                <c:LineIcon Data="{StaticResource Icon.Accounts}" />
+                <Ellipse Classes="dot bad ringed" IsVisible="{Binding HasFailedAccount}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                         Margin="0,-3,-5,0" ToolTip.Tip="An account could not sign in" />
               </Panel>
-              <TextBlock Classes="railLabel" Text="Attention" HorizontalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Classes="rail" Classes.current="{Binding IsAccounts}" Command="{Binding ShowAccountsCommand}" ToolTip.Tip="Accounts">
-            <StackPanel Spacing="4">
-              <c:LineIcon Data="{StaticResource Icon.Accounts}" />
               <TextBlock Classes="railLabel" Text="Accounts" HorizontalAlignment="Center" />
             </StackPanel>
           </Button>
-          <Button Classes="rail" Classes.current="{Binding IsFleet}" Command="{Binding ShowFleetCommand}" ToolTip.Tip="Every Neuron: stream, version, health and errors">
+          <Button Classes="rail" Classes.current="{Binding IsSettings}" Command="{Binding ShowSettingsCommand}"
+                  ToolTip.Tip="Your status, pop-ups and sounds, and the look" AutomationProperties.Name="Settings">
             <StackPanel Spacing="4">
-              <c:LineIcon Data="{StaticResource Icon.Fleet}" />
-              <TextBlock Classes="railLabel" Text="Fleet" HorizontalAlignment="Center" />
+              <c:LineIcon Data="{StaticResource Icon.Settings}" />
+              <TextBlock Classes="railLabel" Text="Settings" HorizontalAlignment="Center" />
             </StackPanel>
           </Button>
-          <Button Classes="rail" Classes.current="{Binding IsEvents}" Command="{Binding ShowEventsCommand}" ToolTip.Tip="Events and exceptions from all your Neurons">
+        </StackPanel>
+
+        <StackPanel HorizontalAlignment="Center">
+          <Button Classes="rail" Classes.current="{Binding IsPlaceInbox}" Command="{Binding ShowAttentionCommand}"
+                  ToolTip.Tip="Everything that waits for you: messages, requests and what your Neurons need" AutomationProperties.Name="Inbox">
+            <StackPanel Spacing="4">
+              <Panel HorizontalAlignment="Center">
+                <c:LineIcon Data="{StaticResource Icon.Inbox}" />
+                <Border Classes="badge" IsVisible="{Binding Inbox.HasWaiting}" ToolTip.Tip="{Binding Inbox.Summary}">
+                  <TextBlock Text="{Binding Inbox.Badge}" />
+                </Border>
+              </Panel>
+              <TextBlock Classes="railLabel" Text="Inbox" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="rail" Classes.current="{Binding IsPlaceNeurons}" Command="{Binding ShowNeuronsCommand}"
+                  ToolTip.Tip="Every Neuron: health, map, sources, software and identities" AutomationProperties.Name="Neurons">
+            <StackPanel Spacing="4">
+              <Panel HorizontalAlignment="Center">
+                <c:LineIcon Data="{StaticResource Icon.Fleet}" />
+              </Panel>
+              <TextBlock Classes="railLabel" Text="Neurons" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="rail" Classes.current="{Binding IsEvents}" Command="{Binding ShowEventsCommand}"
+                  ToolTip.Tip="Problems and the live stream from all your Neurons" AutomationProperties.Name="Events">
             <StackPanel Spacing="4">
               <c:LineIcon Data="{StaticResource Icon.Events}" />
               <TextBlock Classes="railLabel" Text="Events" HorizontalAlignment="Center" />
             </StackPanel>
           </Button>
-          <Button Classes="rail" Classes.current="{Binding IsSources}" Command="{Binding ShowSourcesCommand}" ToolTip.Tip="Data sources and nodes on your Neurons">
-            <StackPanel Spacing="4">
-              <c:LineIcon Data="{StaticResource Icon.Sources}" />
-              <TextBlock Classes="railLabel" Text="Sources" HorizontalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Classes="rail" Classes.current="{Binding IsChat}" Command="{Binding ShowChatCommand}" ToolTip.Tip="Contacts and conversations from all your accounts">
+          <Button Classes="rail" Classes.current="{Binding IsChat}" Command="{Binding ShowChatCommand}"
+                  ToolTip.Tip="People and rooms from all your accounts" AutomationProperties.Name="Chat">
             <StackPanel Spacing="4">
               <Panel HorizontalAlignment="Center">
                 <c:LineIcon Data="{StaticResource Icon.Chat}" />
@@ -234,107 +256,175 @@
               <TextBlock Classes="railLabel" Text="Chat" HorizontalAlignment="Center" />
             </StackPanel>
           </Button>
-          <Button Classes="rail" Classes.current="{Binding IsConsole}" Command="{Binding ShowConsoleCommand}" ToolTip.Tip="Chat admin on one Neuron or several at once">
+          <Button Classes="rail" Classes.current="{Binding IsConsole}" Command="{Binding ShowConsoleCommand}"
+                  ToolTip.Tip="Send commands to one Neuron or several at once" AutomationProperties.Name="Console">
             <StackPanel Spacing="4">
               <c:LineIcon Data="{StaticResource Icon.Console}" />
               <TextBlock Classes="railLabel" Text="Console" HorizontalAlignment="Center" />
             </StackPanel>
           </Button>
-          <Button Classes="rail" Classes.current="{Binding IsDevices}" Command="{Binding ShowDevicesCommand}"
-                  ToolTip.Tip="Devices you own, the thing registry, and questions only an owner can answer" AutomationProperties.Name="Devices">
-            <StackPanel Spacing="4">
-              <Panel HorizontalAlignment="Center">
-                <c:LineIcon Data="{StaticResource Icon.Devices}" />
-                <Border Classes="badge" IsVisible="{Binding Devices.HasQuestions}" ToolTip.Tip="Questions waiting for you">
-                  <TextBlock Text="{Binding Devices.QuestionCount}" />
-                </Border>
-              </Panel>
-              <TextBlock Classes="railLabel" Text="Devices" HorizontalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Classes="rail" Classes.current="{Binding IsPubSub}" Command="{Binding ShowPubSubCommand}"
-                  ToolTip.Tip="Publish/subscribe nodes and personal storage" AutomationProperties.Name="Publish/subscribe">
-            <StackPanel Spacing="4">
-              <c:LineIcon Data="{StaticResource Icon.PubSub}" />
-              <TextBlock Classes="railLabel" Text="PubSub" HorizontalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Classes="rail" Classes.current="{Binding IsUpdates}" Command="{Binding ShowUpdatesCommand}"
-                  ToolTip.Tip="Software and updates on your Neurons" AutomationProperties.Name="Updates">
-            <StackPanel Spacing="4">
-              <c:LineIcon Data="{StaticResource Icon.Updates}" />
-              <TextBlock Classes="railLabel" Text="Updates" HorizontalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Classes="rail" Classes.current="{Binding IsTopology}" Command="{Binding ShowTopologyCommand}"
-                  ToolTip.Tip="How your Neurons connect: parents, federation and groups" AutomationProperties.Name="Topology">
-            <StackPanel Spacing="4">
-              <c:LineIcon Data="{StaticResource Icon.Topology}" />
-              <TextBlock Classes="railLabel" Text="Topology" HorizontalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Classes="rail" Classes.current="{Binding IsIdentities}" Command="{Binding ShowIdentitiesCommand}"
-                  ToolTip.Tip="Legal identities: yours, the Neurons', and applications waiting for review" AutomationProperties.Name="Identities">
-            <StackPanel Spacing="4">
-              <Panel HorizontalAlignment="Center">
-                <c:LineIcon Data="{StaticResource Icon.Identities}" />
-                <Border Classes="badge" IsVisible="{Binding Identities.HasPetitions}" ToolTip.Tip="Requests to see your identities">
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Top bar: the place, its screens, the Neuron chips and the search box -->
+    <Border Grid.Column="1" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <DockPanel Margin="20,0,16,0">
+        <TextBlock DockPanel.Dock="Left" Classes="title" Text="{Binding WorkspaceTitle}" VerticalAlignment="Center" Margin="0,0,16,0" />
+
+        <!-- Search: Ctrl+K from anywhere -->
+        <Panel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0">
+          <TextBox x:Name="SearchBox" Classes="search" Text="{Binding Search.Query}"
+                   MinHeight="30" Padding="32,5,58,5" AutomationProperties.Name="Go to a screen or Neuron" />
+          <c:LineIcon Data="{StaticResource Icon.Search}" Width="15" Height="15" Foreground="{DynamicResource Ink.Tertiary}"
+                      HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False" />
+          <Border Classes="kbd searchKey" HorizontalAlignment="Right" Margin="0,0,7,0" IsHitTestVisible="False">
+            <TextBlock Text="Ctrl K" />
+          </Border>
+        </Panel>
+
+        <!-- The screens inside Neurons -->
+        <ScrollViewer DockPanel.Dock="Left" IsVisible="{Binding IsPlaceNeurons}" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+          <StackPanel Orientation="Horizontal">
+            <Button Classes="tab" Classes.current="{Binding IsFleet}" Command="{Binding ShowFleetCommand}" Content="List"
+                    ToolTip.Tip="Every Neuron: version, health and errors" />
+            <Button Classes="tab" Classes.current="{Binding IsTopology}" Command="{Binding ShowTopologyCommand}" Content="Map"
+                    ToolTip.Tip="How your Neurons connect: parents, federation and groups" />
+            <Button Classes="tab" Classes.current="{Binding IsSources}" Command="{Binding ShowSourcesCommand}" Content="Sources"
+                    ToolTip.Tip="Data sources and nodes on your Neurons" />
+            <Button Classes="tab" Classes.current="{Binding IsUpdates}" Command="{Binding ShowUpdatesCommand}" Content="Software"
+                    ToolTip.Tip="Versions and updates on your Neurons" />
+            <Button Classes="tab" Classes.current="{Binding IsPubSub}" Command="{Binding ShowPubSubCommand}" Content="Publish/subscribe"
+                    ToolTip.Tip="Publish/subscribe nodes and personal storage" />
+            <Button Classes="tab" Classes.current="{Binding IsIdentities}" Command="{Binding ShowIdentitiesCommand}"
+                    ToolTip.Tip="Legal identities: yours, the Neurons', and applications waiting for review">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Identities" VerticalAlignment="Center" />
+                <Border Classes="count alert" IsVisible="{Binding Identities.HasPetitions}">
                   <TextBlock Text="{Binding Identities.PetitionCount}" />
                 </Border>
-              </Panel>
-              <TextBlock Classes="railLabel" Text="Identities" HorizontalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- The screens inside Accounts -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" IsVisible="{Binding IsPlaceAccounts}">
+          <Button Classes="tab" Classes.current="{Binding IsAccounts}" Command="{Binding ShowAccountsCommand}" Content="Accounts"
+                  ToolTip.Tip="Your accounts and their connections" />
+          <Button Classes="tab" Classes.current="{Binding IsDevices}" Command="{Binding ShowDevicesCommand}"
+                  ToolTip.Tip="Devices you own, the thing registry, and questions only an owner can answer">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Devices" VerticalAlignment="Center" />
+              <Border Classes="count alert" IsVisible="{Binding Devices.HasQuestions}">
+                <TextBlock Text="{Binding Devices.QuestionCount}" />
+              </Border>
             </StackPanel>
           </Button>
         </StackPanel>
+
+        <!-- Neuron chips: click one to show only that Neuron -->
+        <ScrollViewer IsVisible="{Binding IsLensVisible}" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasNeuronChips}">
+            <ToggleButton Classes="chip" Content="All Neurons" IsChecked="{Binding IsAllNeurons, Mode=OneWay}" Command="{Binding ShowAllNeuronsCommand}"
+                          ToolTip.Tip="Show every Neuron" />
+            <ItemsControl ItemsSource="{Binding NeuronChips}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="6" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NeuronChipViewModel">
+                  <ToggleButton Classes="chip" IsChecked="{Binding IsSelected, Mode=OneWay}" ToolTip.Tip="{Binding Tip}"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleNeuronCommand}" CommandParameter="{Binding}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <Ellipse Classes="dot" VerticalAlignment="Center" Classes.ok="{Binding IsOk}" Classes.busy="{Binding IsBusy}" Classes.bad="{Binding IsBad}" />
+                      <TextBlock Classes="chipLabel" FontFamily="{StaticResource Font.Mono}" Text="{Binding Label}" VerticalAlignment="Center" />
+                      <TextBlock Classes="num" Text="{Binding ErrorsLastHour}" IsVisible="{Binding HasErrors}" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource State.Bad}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </ToggleButton>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </ScrollViewer>
       </DockPanel>
     </Border>
 
-    <!-- Top bar: workspace title and the account lens -->
-    <Border Grid.Column="1" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
-      <DockPanel Margin="20,0,16,0">
-        <TextBlock DockPanel.Dock="Left" Classes="title" Text="{Binding WorkspaceTitle}" VerticalAlignment="Center" Margin="0,0,20,0" />
-        
-        <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center">
-          <ItemsControl ItemsSource="{Binding Accounts}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="6" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:AccountItemViewModel">
-                <Border Classes="chip">
-                  <ToolTip.Tip>
-                    <TextBlock>
-                      <Run Text="{Binding Label}" FontWeight="SemiBold" /><Run Text=" · " /><Run Text="{Binding StatusText}" />
-                    </TextBlock>
-                  </ToolTip.Tip>
-                  <StackPanel Orientation="Horizontal" Spacing="7">
-                    <Panel VerticalAlignment="Center">
-                      <Border Width="20" Height="20" CornerRadius="{StaticResource Radius}"
-                              Background="{Binding ColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
-                        <TextBlock Text="{Binding Label, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="11" FontWeight="SemiBold"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Foreground="{Binding ColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
-                      </Border>
-                      <Ellipse Classes="dot ringed" Width="8" Height="8" Classes.ok="{Binding IsOnline}" Classes.busy="{Binding IsBusy}" Classes.bad="{Binding IsFailed}"
-                               HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3" />
-                    </Panel>
-                    <TextBlock Classes="chipLabel" FontSize="{StaticResource Type.Meta}" FontWeight="Medium" VerticalAlignment="Center" Text="{Binding Label}" />
-                    <TextBlock Classes="chipLabel" FontSize="{StaticResource Type.Meta}" VerticalAlignment="Center" Text="{Binding ShortStatus}"
-                               Foreground="{DynamicResource State.Bad}" IsVisible="{Binding IsFailed}" />
-                  </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
+    <!-- Status strip: always says how the Neurons and the accounts are doing -->
+    <Border Grid.Row="2" Grid.Column="1" Height="28" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+      <DockPanel Margin="20,0,10,0">
+        <Button DockPanel.Dock="Right" Classes="ghost strip" Margin="2,0,0,0" ToolTip.Tip="Your status: what contacts see, and whether pop-ups and sounds reach you"
+                AutomationProperties.Name="Your status">
+          <Button.Flyout>
+            <MenuFlyout Placement="TopEdgeAlignedRight">
+              <MenuItem Header="Available" ToggleType="Radio" IsChecked="{Binding Settings.IsAvailable, Mode=OneWay}"
+                        Command="{Binding Settings.SetStatusCommand}" CommandParameter="{x:Static vm:OwnStatus.Available}" />
+              <MenuItem Header="Away" ToggleType="Radio" IsChecked="{Binding Settings.IsAway, Mode=OneWay}"
+                        Command="{Binding Settings.SetStatusCommand}" CommandParameter="{x:Static vm:OwnStatus.Away}" />
+              <MenuItem Header="Do not disturb" ToggleType="Radio" IsChecked="{Binding Settings.IsDoNotDisturb, Mode=OneWay}"
+                        Command="{Binding Settings.SetStatusCommand}" CommandParameter="{x:Static vm:OwnStatus.DoNotDisturb}" />
+              <Separator />
+              <MenuItem Header="Pop-ups and sounds…" Command="{Binding ShowSettingsCommand}" />
+            </MenuFlyout>
+          </Button.Flyout>
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Ellipse Classes="dot" VerticalAlignment="Center" Classes.ok="{Binding Settings.IsAvailable}" Classes.busy="{Binding Settings.IsAway}" Classes.bad="{Binding Settings.IsDoNotDisturb}" />
+            <TextBlock Text="{Binding Settings.StatusText}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button DockPanel.Dock="Right" Classes="ghost strip" Command="{Binding ShowAccountsCommand}" ToolTip.Tip="Open Accounts">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Ellipse Classes="dot bad" VerticalAlignment="Center" IsVisible="{Binding HasFailedAccount}" />
+            <Panel VerticalAlignment="Center">
+              <TextBlock Classes="summaryLong" Text="{Binding AccountSummary}" />
+              <TextBlock Classes="summaryShort" Text="{Binding AccountSummaryShort}" />
+            </Panel>
+          </StackPanel>
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Ellipse Classes="dot" VerticalAlignment="Center" Classes.ok="{Binding StatusOk}" Classes.busy="{Binding StatusBusy}" Classes.bad="{Binding StatusBad}" />
+          <TextBlock Classes="meta" Text="{Binding StatusNeurons}" Foreground="{DynamicResource Ink.Primary}" FontWeight="Medium" />
+          <TextBlock Classes="meta tertiary" Text="·" />
+          <TextBlock Classes="meta" Text="{Binding StatusLastEvent}" />
+        </StackPanel>
       </DockPanel>
     </Border>
 
-    <!-- Fleet workspace -->
-    <views:AttentionView Grid.Row="1" Grid.Column="1" DataContext="{Binding Attention}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAttention}" />
+    <!-- Search results: floats under the search box -->
+    <Border Grid.Row="1" Grid.Column="1" Classes="float" ZIndex="20" Width="380" HorizontalAlignment="Right" VerticalAlignment="Top"
+            Margin="0,6,16,0" Padding="4" IsVisible="{Binding Search.IsOpen}">
+      <Panel>
+        <ListBox x:Name="SearchResults" Classes="rows search" ItemsSource="{Binding Search.Results}" SelectedItem="{Binding Search.Selected}"
+                 Focusable="False" IsVisible="{Binding Search.HasResults}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:SearchItem">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                <c:LineIcon Data="{Binding Icon}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
+                <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="Medium" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="210" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Classes="meta" Text="Nothing matches. Try the name of a screen or a Neuron." Margin="10,8" IsVisible="{Binding !Search.HasResults}" />
+      </Panel>
+    </Border>
+
+    <!-- Pop-ups: bottom right, above everything else in the window -->
+    <ItemsControl Grid.Row="1" Grid.Column="1" ZIndex="30" ItemsSource="{Binding Notices}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,12">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:NoticeViewModel">
+          <views:NoticeCard Width="360" Margin="0,10,0,0" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- The screens -->
+    <views:InboxView Grid.Row="1" Grid.Column="1" DataContext="{Binding Inbox}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAttention}" />
+    <views:SettingsView Grid.Row="1" Grid.Column="1" DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettings}" />
     <views:ChatView Grid.Row="1" Grid.Column="1" DataContext="{Binding Chat}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsChat}" />
     <views:ConsoleView Grid.Row="1" Grid.Column="1" DataContext="{Binding Console}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsConsole}" />
     <views:PubSubView Grid.Row="1" Grid.Column="1" DataContext="{Binding PubSub}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPubSub}" />

@@ -14,6 +14,10 @@
       <SolidColorBrush x:Key="Surface.Pressed" Color="#E7EAEE" />
       <SolidColorBrush x:Key="Surface.Rail" Color="#ECEEF2" />
       <SolidColorBrush x:Key="Surface.Code" Color="#FAFBFC" />
+      <!-- Floating things (menus, the search list, toasts) and table headers -->
+      <SolidColorBrush x:Key="Surface.Raised" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Surface.Header" Color="#F7F8FA" />
+      <BoxShadows x:Key="Shadow.Float">0 10 28 0 #24101828, 0 1 3 0 #14101828</BoxShadows>
       <!-- Lines -->
       <SolidColorBrush x:Key="Line" Color="#E2E5EA" />
       <SolidColorBrush x:Key="Line.Strong" Color="#CDD2D9" />
@@ -25,6 +29,7 @@
       <!-- Accent: selection, primary action, focus. Nothing else. -->
       <SolidColorBrush x:Key="Accent" Color="#3358D4" />
       <SolidColorBrush x:Key="Accent.Hover" Color="#2A4BBE" />
+      <SolidColorBrush x:Key="Accent.Pressed" Color="#223FA3" />
       <SolidColorBrush x:Key="Accent.Subtle" Color="#EAEFFC" />
       <SolidColorBrush x:Key="Accent.Ink" Color="#2440A8" />
       <!-- Connection state -->
@@ -32,6 +37,8 @@
       <SolidColorBrush x:Key="State.Busy" Color="#B26B00" />
       <SolidColorBrush x:Key="State.Bad" Color="#C8312B" />
       <SolidColorBrush x:Key="State.Bad.Subtle" Color="#FCEBEA" />
+      <SolidColorBrush x:Key="State.Ok.Subtle" Color="#E6F4EC" />
+      <SolidColorBrush x:Key="State.Busy.Subtle" Color="#FBF1DF" />
       <SolidColorBrush x:Key="State.Idle" Color="#8A929E" />
       <!-- Event severity ramp (Debug to Emergency), used from Phase 1 -->
       <SolidColorBrush x:Key="Severity.Debug" Color="#8A929E" />
@@ -51,6 +58,20 @@
       <SolidColorBrush x:Key="Account.Hue5" Color="#3A8F3A" />
       <SolidColorBrush x:Key="Account.Hue6" Color="#0C86B5" />
       <SolidColorBrush x:Key="Account.Hue7" Color="#D2601A" />
+      <!-- Fluent controls pick up the tokens through these aliases -->
+      <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="Surface.Raised" />
+      <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="Line.Strong" />
+      <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="Surface.Hover" />
+      <StaticResource x:Key="MenuFlyoutItemBackgroundPressed" ResourceKey="Surface.Pressed" />
+      <StaticResource x:Key="ComboBoxBackground" ResourceKey="Surface.Panel" />
+      <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="Surface.Hover" />
+      <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="Line.Strong" />
+      <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="Ink.Tertiary" />
+      <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="Surface.Raised" />
+      <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="Line.Strong" />
+      <StaticResource x:Key="ToolTipBackground" ResourceKey="Surface.Raised" />
+      <StaticResource x:Key="ToolTipBorderBrush" ResourceKey="Line.Strong" />
+      <StaticResource x:Key="ToolTipForeground" ResourceKey="Ink.Primary" />
     </ResourceDictionary>
 
     <ResourceDictionary x:Key="Dark">
@@ -60,6 +81,9 @@
       <SolidColorBrush x:Key="Surface.Pressed" Color="#242930" />
       <SolidColorBrush x:Key="Surface.Rail" Color="#0C0E11" />
       <SolidColorBrush x:Key="Surface.Code" Color="#121519" />
+      <SolidColorBrush x:Key="Surface.Raised" Color="#1C2026" />
+      <SolidColorBrush x:Key="Surface.Header" Color="#13161A" />
+      <BoxShadows x:Key="Shadow.Float">0 12 32 0 #8C000000, 0 1 3 0 #66000000</BoxShadows>
       <SolidColorBrush x:Key="Line" Color="#252A31" />
       <SolidColorBrush x:Key="Line.Strong" Color="#353C46" />
       <SolidColorBrush x:Key="Ink.Primary" Color="#E6E9ED" />
@@ -68,12 +92,15 @@
       <SolidColorBrush x:Key="Ink.OnAccent" Color="#0B0D10" />
       <SolidColorBrush x:Key="Accent" Color="#7B9BFF" />
       <SolidColorBrush x:Key="Accent.Hover" Color="#94AEFF" />
+      <SolidColorBrush x:Key="Accent.Pressed" Color="#6A8BF0" />
       <SolidColorBrush x:Key="Accent.Subtle" Color="#1C2541" />
       <SolidColorBrush x:Key="Accent.Ink" Color="#B4C6FF" />
       <SolidColorBrush x:Key="State.Ok" Color="#45C27D" />
       <SolidColorBrush x:Key="State.Busy" Color="#E5A63F" />
       <SolidColorBrush x:Key="State.Bad" Color="#F26D64" />
       <SolidColorBrush x:Key="State.Bad.Subtle" Color="#2E1A1A" />
+      <SolidColorBrush x:Key="State.Ok.Subtle" Color="#142A1E" />
+      <SolidColorBrush x:Key="State.Busy.Subtle" Color="#2E2412" />
       <SolidColorBrush x:Key="State.Idle" Color="#6E7682" />
       <SolidColorBrush x:Key="Severity.Debug" Color="#6E7682" />
       <SolidColorBrush x:Key="Severity.Informational" Color="#A3ABB6" />
@@ -91,6 +118,20 @@
       <SolidColorBrush x:Key="Account.Hue5" Color="#6CC46C" />
       <SolidColorBrush x:Key="Account.Hue6" Color="#4BB8E6" />
       <SolidColorBrush x:Key="Account.Hue7" Color="#F08A4B" />
+      <!-- Fluent controls pick up the tokens through these aliases -->
+      <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="Surface.Raised" />
+      <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="Line.Strong" />
+      <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="Surface.Hover" />
+      <StaticResource x:Key="MenuFlyoutItemBackgroundPressed" ResourceKey="Surface.Pressed" />
+      <StaticResource x:Key="ComboBoxBackground" ResourceKey="Surface.Panel" />
+      <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="Surface.Hover" />
+      <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="Line.Strong" />
+      <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="Ink.Tertiary" />
+      <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="Surface.Raised" />
+      <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="Line.Strong" />
+      <StaticResource x:Key="ToolTipBackground" ResourceKey="Surface.Raised" />
+      <StaticResource x:Key="ToolTipBorderBrush" ResourceKey="Line.Strong" />
+      <StaticResource x:Key="ToolTipForeground" ResourceKey="Ink.Primary" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
@@ -102,10 +143,14 @@
   <x:Double x:Key="Type.Body">13</x:Double>
   <x:Double x:Key="Type.Section">15</x:Double>
   <x:Double x:Key="Type.Title">18</x:Double>
+  <!-- Counts that matter step up from the text around them. -->
+  <x:Double x:Key="Type.Number">20</x:Double>
 
   <!-- Shape -->
   <CornerRadius x:Key="Radius">6</CornerRadius>
   <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
+  <CornerRadius x:Key="Radius.Small">4</CornerRadius>
+  <CornerRadius x:Key="Radius.Float">8</CornerRadius>
 
   <!-- Line icons, 24 x 24 grid, drawn with LineIcon (stroke follows the text colour). -->
   <StreamGeometry x:Key="Icon.Attention">M4 13.5l2.5-8h11l2.5 8v5H4z M4 13.5h4.5l1 2h5l1-2H20</StreamGeometry>
@@ -135,5 +180,37 @@
   <StreamGeometry x:Key="Icon.Sniffer">M4 6.5h16 M4 12h10 M4 17.5h13</StreamGeometry>
   <StreamGeometry x:Key="Icon.Sun">M12 16a4 4 0 1 0 0-8a4 4 0 1 0 0 8 M12 2.5v2 M12 19.5v2 M2.5 12h2 M19.5 12h2 M5.3 5.3l1.4 1.4 M17.3 17.3l1.4 1.4 M5.3 18.7l1.4-1.4 M17.3 6.7l1.4-1.4</StreamGeometry>
   <StreamGeometry x:Key="Icon.Moon">M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Search">M10.5 17.5a7 7 0 1 0 0-14a7 7 0 1 0 0 14 M20.5 20.5l-5-5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.TrendUp">M4 16.5l5.5-5.5l3.5 3.5l7-7 M15 7.5h5v5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.TrendDown">M4 7.5l5.5 5.5l3.5-3.5l7 7 M15 16.5h5v-5</StreamGeometry>
   <StreamGeometry x:Key="Icon.Alert">M12 4l9 16H3z M12 10v4 M12 17h.01</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Settings">M4 6h10 M18 6h2 M4 12h4 M12 12h8 M4 18h12 M20 18h0 M16 4v4 M10 10v4 M18 16v4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Bell">M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z M10 20a2 2 0 0 0 4 0</StreamGeometry>
+  <StreamGeometry x:Key="Icon.BellOff">M6 16v-5a6 6 0 0 1 1-3.3 M9.5 5.5A6 6 0 0 1 18 11v5 M4 18h14 M10 20a2 2 0 0 0 4 0 M3 3l18 18</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Send">M4 12l16-8-6 16-3-7z M11 13l9-9</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Check">M5 12.5l4.5 4.5L19 7.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.More">M5 12h.01 M12 12h.01 M19 12h.01</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Copy">M9 9h10v11H9z M5 15V4h10</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Save">M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Reply">M10 7l-5 5 5 5 M5 12h9a5 5 0 0 1 5 5v1</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Edit">M4 20h4L19 9l-4-4L4 16z M13 7l4 4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Smile">M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M8.5 14a4 4 0 0 0 7 0 M9 9.5h.01 M15 9.5h.01</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Window">M4 5h16v14H4z M4 9h16</StreamGeometry>
+  <StreamGeometry x:Key="Icon.ChevronRight">M9 6l6 6-6 6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.ChevronDown">M6 9l6 6 6-6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Back">M19 12H5 M11 6l-6 6 6 6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Forward">M5 12h14 M13 6l6 6-6 6</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Filter">M4 5h16l-6 8v6l-4-2v-4z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Refresh">M19 12a7 7 0 1 1-2.1-5 M19 4v4h-4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Eye">M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Folder">M3 6h6l2 2h10v11H3z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.File">M6 3h8l4 4v14H6z M14 3v4h4</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Person">M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M4 20a8 8 0 0 1 16 0</StreamGeometry>
+  <StreamGeometry x:Key="Icon.People">M9 5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M2.5 20a6.5 6.5 0 0 1 13 0 M16 5.2a3.5 3.5 0 0 1 0 6.6 M18 14.5a6.5 6.5 0 0 1 3.5 5.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Key">M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M11 12l8-8 M16 7l3 3 M14 9l2 2</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Undo">M9 7L4 12l5 5 M4 12h10a5 5 0 0 1 0 10h-2</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Pin">M9 4h6l-1 6 3 3H7l3-3z M12 13v7</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Status">M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Mention">M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M16 8v5a2.5 2.5 0 0 0 5 0v-1a9 9 0 1 0-4 7.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Inbox">M4 13l3-8h10l3 8v6H4z M4 13h5a3 3 0 0 0 6 0h5</StreamGeometry>
 </ResourceDictionary>

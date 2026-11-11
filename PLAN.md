@@ -122,6 +122,18 @@ This is the important finding: the broker already exposes far more admin surface
 
 Thing registry and provisioning (claim, search, owner questions), PubSub/PEP, remote desktop, script console. These land in the parity sweep phase.
 
+### 3.9 PubSub overhaul
+
+Requested by Mille on 2026-11-11: the PubSub workspace works but needs love. Today it lists flat nodes (server or PEP), shows raw XML items, publishes/retracts XML, and creates/deletes nodes with the default configuration only. The overhaul:
+
+- **Node tree**: collection nodes as an expandable tree (the engine already accepts a parent), with search/filter across nodes and a node detail header (title, type, item count, owner).
+- **Live updates**: subscribe/unsubscribe per node; new, changed and retracted items arrive live and are highlighted, instead of reloading by hand.
+- **Node configuration**: view and edit the node's config as a data form (access model, persistence, max items, notify settings); choose config when creating a node, not only defaults.
+- **Affiliations and subscribers**: list and change owners/publishers/members/outcasts and current subscriptions, with confirmation for removals.
+- **Readable payloads**: known payloads rendered properly (PEP mood, activity, tune, location, avatar, nickname; sensor data as a table; Atom/JSON as formatted text), raw XML kept one click away; item list with paging, timestamps and publisher.
+- **Better publishing**: an XML editor with validation and templates for common payloads, plus "republish/edit this item".
+- **States**: clear empty, no-rights and service-unavailable messages instead of silent failures; destructive actions (delete node, purge, retract) confirm with the node name.
+
 ## 4. Architecture
 
 ```
@@ -243,7 +255,7 @@ Each phase ends in something usable. Estimates assume one developer with Claude 
 | 2. Sources and nodes | Retire IoTClient for daily admin | Data sources and node tree, inspector, data forms, add/edit/delete/move/copy/paste, commands, queries as reports, sensor readout and subscriptions, control, node search | 3–4 weeks |
 | 3. Communication | Retire Lil'Sis for chat | Roster, presence, subscriptions, unified inbox, Markdown, MUC, E2E coworker chat with trust indicators, rich shares, chat admin console with autocomplete and fan-out | 3 weeks |
 | 4. Identity and topology | The fleet as one picture | Legal identities and petitions, Neuron legal ID status, topology map from consolidated graphs with health overlay | 2–3 weeks |
-| 5. Parity sweep | Nothing left in IoTClient | Thing registry and provisioning, PubSub/PEP, remote desktop, script console, raw XMPP console, software packages and update control | 2–3 weeks |
+| 5. Parity sweep | Nothing left in IoTClient | Thing registry and provisioning, PubSub/PEP overhaul (section 3.9), remote desktop, script console, raw XMPP console, software packages and update control | 2–3 weeks |
 | 6. Bold ideas | Better than anything we have | Pick from section 9 | open |
 
 Phase 1 comes before parity on purpose: monitoring is the biggest pain today and the strongest reason for the team to switch.

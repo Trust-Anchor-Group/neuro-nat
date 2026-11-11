@@ -33,10 +33,33 @@ public sealed partial class PersonViewModel(Guid accountId, string bareJid) : Ob
 	[ObservableProperty] private string? subject;
 	[ObservableProperty] private int occupantCount;
 
+	/// <summary>No pop-ups or sounds from this person or room for now.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasCountedUnread))]
+	private bool isMuted;
+
+	/// <summary>"Muted until 14:30", or what the room may interrupt you for.</summary>
+	[ObservableProperty] private string notifyText = string.Empty;
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(IsNotifyAll), nameof(IsNotifyMentions), nameof(IsNotifyNothing))]
+	private RoomNotify notify;
+
+	public bool IsNotifyAll => this.Notify == RoomNotify.All;
+	public bool IsNotifyMentions => this.Notify == RoomNotify.Mentions;
+	public bool IsNotifyNothing => this.Notify == RoomNotify.Muted;
+
 	public DateTime LastActivity { get; set; }
 	public bool HasUnread => this.Unread > 0;
 
-	partial void OnUnreadChanged(int value) => this.OnPropertyChanged(nameof(this.HasUnread));
+	/// <summary>Unread, and not muted: it counts towards the totals.</summary>
+	public bool HasCountedUnread => this.Unread > 0 && !this.IsMuted;
+
+	partial void OnUnreadChanged(int value)
+	{
+		this.OnPropertyChanged(nameof(this.HasUnread));
+		this.OnPropertyChanged(nameof(this.HasCountedUnread));
+	}
 }
 
 /// <summary>A message in the open conversation.</summary>
@@ -53,6 +76,12 @@ public sealed partial class MessageViewModel(string id) : ObservableObject
 	[ObservableProperty] private bool isEncrypted;
 	[ObservableProperty] private string? sender;
 	[ObservableProperty] private bool showSender;
+
+	/// <summary>The first message you have not read: the "New" line sits above it.</summary>
+	[ObservableProperty] private bool isFirstNew;
+
+	/// <summary>In a room: the message names you.</summary>
+	[ObservableProperty] private bool isMention;
 }
 
 /// <summary>An account that can be used to add a contact.</summary>
@@ -69,6 +98,31 @@ public sealed partial class ChatViewModel : ObservableObject
 	private readonly DispatcherTimer timer;
 	private int dirty = 1;
 	private int conversationDirty;
+	private string? newLineId;
+
+	/// <summary>
+	/// True while you can actually see the open conversation: the window is in front and the
+	/// conversation is on screen. Only then do arriving messages count as read. Set by the shell.
+	/// </summary>
+	public bool IsWatched
+	{
+		get => this.isWatched;
+		set
+		{
+			if (this.isWatched == value)
+				return;
+
+			// Coming back: first place the "New" line (while still not watching), then read.
+			if (value && this.SelectedPerson is PersonViewModel p)
+				this.LoadConversation(p, false);
+
+			this.isWatched = value;
+			if (value && this.SelectedPerson is PersonViewModel q)
+				this.LoadConversation(q, false);
+		}
+	}
+
+	private bool isWatched = true;
 
 	public ChatViewModel(ChatService chat, AccountManager accounts)
 	{
@@ -294,6 +348,10 @@ public sealed partial class ChatViewModel : ObservableObject
 			p.LastActivity = conv.LastActivity;
 		}
 
+		// Someone who wrote without being a contact has no presence to show.
+		foreach (PersonViewModel p in list.Where(p => !p.IsRoom && !p.InRoster && p.PresenceText.Length == 0))
+			p.PresenceText = "Not a contact";
+
 		foreach (PersonViewModel p in list.Where(p => !p.IsRoom))
 		{
 			ContactSecurity s = this.chat.Security(p.AccountId, p.BareJid);
@@ -313,6 +371,17 @@ public sealed partial class ChatViewModel : ObservableObject
 			PersonViewModel p = Person(conv.AccountId, conv.BareJid);
 			ChatMessage? last = conv.Last;
 			p.Unread = conv.Unread;
+			p.Notify = conv.Notify;
+			p.IsMuted = conv.IsMuted(now);
+			p.NotifyText = conv.MutedUntil is DateTime until && until > now
+				? (until == DateTime.MaxValue ? "Muted" : "Muted until " + until.ToString(until.Date == now.Date ? "HH:mm" : "ddd HH:mm", CultureInfo.CurrentCulture))
+				: !conv.IsRoom ? string.Empty
+				: conv.Notify switch
+				{
+					RoomNotify.All => "Tells you about every message",
+					RoomNotify.Muted => "Muted",
+					_ => "Tells you when you are mentioned",
+				};
 			p.LastActivity = conv.LastActivity;
 			p.Preview = last is null ? null : (last.Direction == ChatDirection.Out ? "You: " : string.Empty) + OneLine(last.Text.Length > 0 ? last.Text : last.Markdown);
 			p.TimeText = last is null ? string.Empty : RelativeTime.Format(last.Timestamp, now);
@@ -361,7 +430,7 @@ public sealed partial class ChatViewModel : ObservableObject
 		}
 
 		this.HasPeople = this.People.Count > 0;
-		this.UnreadTotal = this.chat.Conversations.Sum(c => c.Unread);
+		this.UnreadTotal = this.chat.UnreadTotal;
 
 		this.Requests.Clear();
 		foreach (SubscriptionRequest r in this.chat.Requests)
@@ -403,7 +472,16 @@ public sealed partial class ChatViewModel : ObservableObject
 		Dictionary<string, MessageViewModel> shown = this.Messages.ToDictionary(m => m.Id);
 
 		if (reset)
+		{
 			this.Messages.Clear();
+			this.keepUnread = false;
+			this.newLineId = null;
+		}
+
+		// The "New" line goes above the first message that arrived while you were not looking.
+		// It stays there until you leave the conversation.
+		if (conv is not null && conv.Unread > 0 && conv.FirstUnreadId is string first && (reset || !this.IsWatched))
+			this.newLineId = first;
 
 		ChatMessage? previous = null;
 		int index = 0;
@@ -422,15 +500,91 @@ public sealed partial class ChatViewModel : ObservableObject
 			vm.Error = m.Error;
 			vm.IsEncrypted = m.Encrypted;
 			vm.Sender = m.Sender;
-			vm.StartsGroup = previous is null || previous.Direction != m.Direction || previous.Sender != m.Sender || (m.Timestamp - previous.Timestamp) > TimeSpan.FromMinutes(5);
+			vm.IsMention = m.Mention;
+			vm.IsFirstNew = m.Id == this.newLineId;
+			vm.StartsGroup = vm.IsFirstNew || previous is null || previous.Direction != m.Direction || previous.Sender != m.Sender || (m.Timestamp - previous.Timestamp) > TimeSpan.FromMinutes(5);
 			vm.ShowSender = p.IsRoom && !vm.IsMine && vm.StartsGroup && !string.IsNullOrEmpty(m.Sender);
 
 			previous = m;
 			index++;
 		}
 
-		if (conv is not null && conv.Unread > 0)
+		// Seen means read, but only while you can actually see it.
+		if (conv is not null && conv.Unread > 0 && this.IsWatched && !this.keepUnread)
 			this.chat.MarkRead(conv);
+	}
+
+	private bool keepUnread;
+
+	/// <summary>Opens a conversation, from a pop-up, the Inbox or a search. Returns false when it is not known.</summary>
+	public bool Open(Guid accountId, string bareJid)
+	{
+		this.FilterText = string.Empty;
+		this.Refresh();
+		PersonViewModel? p = this.People.FirstOrDefault(x => x.AccountId == accountId && string.Equals(x.BareJid, bareJid, StringComparison.OrdinalIgnoreCase));
+		if (p is null)
+			return false;
+
+		if (ReferenceEquals(this.SelectedPerson, p))
+			this.LoadConversation(p, false);
+		else
+			this.SelectedPerson = p;
+		return true;
+	}
+
+	private Conversation? SelectedConversation
+		=> this.SelectedPerson is not PersonViewModel p ? null
+			: p.IsRoom ? this.chat.GetRoom(p.AccountId, p.BareJid) : this.chat.Get(p.AccountId, p.BareJid);
+
+	/// <summary>Mutes the open person or room: no pop-ups or sounds, and it stays out of the counts.</summary>
+	[RelayCommand]
+	private void MuteHour() => this.Mute(DateTime.Now.AddHours(1));
+
+	[RelayCommand]
+	private void MuteTomorrow() => this.Mute(DateTime.Today.AddDays(1).AddHours(8));
+
+	[RelayCommand]
+	private void MuteForGood() => this.Mute(DateTime.MaxValue);
+
+	[RelayCommand]
+	private void Unmute() => this.Mute(null);
+
+	private void Mute(DateTime? until)
+	{
+		if (this.SelectedConversation is not Conversation c)
+			return;
+
+		this.chat.SetMuted(c, until);
+		if (until is null && c.Notify == RoomNotify.Muted)
+			this.chat.SetRoomNotify(c, RoomNotify.Mentions);
+		this.Refresh();
+	}
+
+	/// <summary>Chooses what the open room may interrupt you for.</summary>
+	[RelayCommand]
+	private void SetNotify(RoomNotify notify)
+	{
+		if (this.SelectedConversation is not Conversation c || !c.IsRoom)
+			return;
+
+		this.chat.SetRoomNotify(c, notify);
+		this.Refresh();
+	}
+
+	/// <summary>Marks a message, and everything after it, as not read, to come back to later.</summary>
+	[RelayCommand]
+	private void MarkUnread(MessageViewModel? m)
+	{
+		if (m is null || this.SelectedConversation is not Conversation c)
+			return;
+
+		// Leaving the conversation is what makes "unread" stick: while it stays open, do not read it again.
+		this.keepUnread = true;
+		this.chat.MarkUnreadFrom(c, m.Id);
+		this.newLineId = c.FirstUnreadId;
+		if (this.SelectedPerson is PersonViewModel p)
+			this.LoadConversation(p, false);
+		this.Refresh();
 	}
 
 	[RelayCommand(CanExecute = nameof(CanSend))]

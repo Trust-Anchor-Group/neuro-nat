@@ -139,4 +139,101 @@ public class AlertTests
 		alerts.ContactRequested(account, "other@example.com");
 		Assert.Single(got);
 	}
+
+	[Fact]
+	public async Task MessagesAlertUnlessMutedAndRoomsOnlyWhenTheyMay()
+	{
+		EngineRuntime.Initialize();
+		string dir = Path.Combine(Path.GetTempPath(), "NeuroAA.Alerts." + Guid.NewGuid().ToString("N"));
+		AccountManager manager = new(new JsonAccountStore(Path.Combine(dir, "accounts.json")), new InMemoryCredentialVault());
+		AccountSession s = await manager.AddAsync(new AccountProfile { Host = "lab.local", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		Guid account = s.Profile.Id;
+		MonitorService m = new(manager, new EventHub());
+		Chat.ChatService chat = new(manager, m);
+
+		DateTime now = DateTime.Now;
+		using AlertService alerts = new(m, new AlertSettings(), () => now, startTimer: false);
+		alerts.Watch(chat);
+		List<Alert> got = [];
+		alerts.Raised += (_, a) => got.Add(a);
+
+		// A person: always, one group per conversation.
+		chat.Preview(account, "kim@lab.local", "Hello", "Kim");
+		chat.Preview(account, "kim@lab.local", "Are you there?", "Kim");
+		Assert.Equal(2, got.Count);
+		Assert.All(got, a => Assert.Equal(AlertKind.Message, a.Kind));
+		Assert.Equal(got[0].Group, got[1].Group);
+		Assert.Equal("Kim", got[0].Title);
+		Assert.Equal("kim@lab.local", got[0].Target);
+		Assert.Equal(2, chat.UnreadTotal);
+
+		// Muted: nothing pops up, and it stays out of the count. Unmuted: it is back.
+		Chat.Conversation kim = chat.Get(account, "kim@lab.local");
+		chat.SetMuted(kim, now.AddHours(1));
+		chat.Preview(account, "kim@lab.local", "Hello?", "Kim");
+		Assert.Equal(2, got.Count);
+		Assert.Equal(0, chat.UnreadTotal);
+		chat.SetMuted(kim, null);
+		Assert.Equal(3, chat.UnreadTotal);
+
+		// A room: only what mentions you, until the room is set to tell you everything.
+		chat.Preview(account, "ops@muc.lab.local", "Lunch?", "sam", room: true);
+		Assert.Equal(2, got.Count);
+		chat.Preview(account, "ops@muc.lab.local", "ops: can you look at gamma?", "sam", room: true, mention: true);
+		Assert.Equal(3, got.Count);
+		Assert.True(got[2].IsRoom);
+		Assert.Equal("sam in ops", got[2].Title);
+
+		Chat.Conversation room = chat.GetRoom(account, "ops@muc.lab.local");
+		chat.SetRoomNotify(room, Chat.RoomNotify.All);
+		chat.Preview(account, "ops@muc.lab.local", "Anyone?", "sam", room: true);
+		Assert.Equal(4, got.Count);
+		chat.SetRoomNotify(room, Chat.RoomNotify.Muted);
+		chat.Preview(account, "ops@muc.lab.local", "ops: hello?", "sam", room: true, mention: true);
+		Assert.Equal(4, got.Count);
+
+		// Do not disturb holds everything back; the test button still shows.
+		alerts.Settings = alerts.Settings with { DoNotDisturb = true };
+		chat.Preview(account, "kim@lab.local", "Last one", "Kim");
+		Assert.Equal(4, got.Count);
+		alerts.Test(AlertKind.Message);
+		Assert.Equal(5, got.Count);
+	}
+
+	[Fact]
+	public void MentionsAreWholeWords()
+	{
+		Assert.True(Chat.ChatService.Mentions("hey Mille, can you look?", "mille"));
+		Assert.True(Chat.ChatService.Mentions("@mille: ping", "mille"));
+		Assert.True(Chat.ChatService.Mentions("mille", "Mille"));
+		Assert.False(Chat.ChatService.Mentions("a millennium ago", "mille"));
+		Assert.False(Chat.ChatService.Mentions("nothing here", "mille"));
+		Assert.False(Chat.ChatService.Mentions("anything", ""));
+	}
+
+	[Fact]
+	public async Task MarkingUnreadRemembersWhereReadingStopped()
+	{
+		EngineRuntime.Initialize();
+		string dir = Path.Combine(Path.GetTempPath(), "NeuroAA.Alerts." + Guid.NewGuid().ToString("N"));
+		AccountManager manager = new(new JsonAccountStore(Path.Combine(dir, "accounts.json")), new InMemoryCredentialVault());
+		AccountSession s = await manager.AddAsync(new AccountProfile { Host = "lab.local", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		Chat.ChatService chat = new(manager, new MonitorService(manager, new EventHub()));
+
+		Chat.ChatMessage one = chat.Preview(s.Profile.Id, "kim@lab.local", "One", "Kim");
+		Chat.ChatMessage two = chat.Preview(s.Profile.Id, "kim@lab.local", "Two", "Kim");
+		Chat.ChatMessage three = chat.Preview(s.Profile.Id, "kim@lab.local", "Three", "Kim");
+		Chat.Conversation c = chat.Get(s.Profile.Id, "kim@lab.local");
+		Assert.Equal(3, c.Unread);
+		Assert.Equal(one.Id, c.FirstUnreadId);
+
+		chat.MarkRead(c);
+		Assert.Equal(0, c.Unread);
+		Assert.Null(c.FirstUnreadId);
+
+		chat.MarkUnreadFrom(c, two.Id);
+		Assert.Equal(2, c.Unread);
+		Assert.Equal(two.Id, c.FirstUnreadId);
+		Assert.NotEqual(three.Id, c.FirstUnreadId);
+	}
 }

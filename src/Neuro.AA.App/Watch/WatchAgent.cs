@@ -8,9 +8,11 @@ using Neuro.AA.Engine.Alerts;
 namespace Neuro.AA.App.Watch;
 
 /// <summary>
-/// Keeps Neuro.AA watching when its window is closed: a tray icon that shows when something needs
-/// you, a menu to open the window, snooze alerts, choose alerts and quit, and alerts in the corner
-/// of the screen that open the right place when clicked.
+/// Keeps Neuro.AA watching when its window is closed, and makes sure you notice what arrives: a
+/// pop-up in the corner of the window while it is in front, the same pop-up on the desktop when
+/// it is not, a sound, a flashing taskbar button, and a tray icon that carries the number of
+/// things that wait for you. The tray menu is short: do not disturb, open, quit. Everything
+/// else is in Settings.
 /// </summary>
 public sealed class WatchAgent : IDisposable
 {
@@ -20,33 +22,36 @@ public sealed class WatchAgent : IDisposable
 	private readonly Window window;
 	private readonly MainWindowViewModel vm;
 	private readonly AlertService alerts;
-	private readonly JsonAlertSettingsStore store;
 	private readonly TrayIcon tray;
 	private readonly List<ToastWindow> toasts = [];
-	private readonly List<Alert> waiting = [];
 	private readonly DispatcherTimer refresh;
-	private readonly IAutostart? autostart;
 	private readonly IAppUpdates? updates;
 	private NativeMenu? menu;
-	private NativeMenuItem? snoozeItem;
+	private NativeMenuItem? quietItem;
 	private NativeMenuItem? updateItem;
+	private int shownCount = -1;
+	private bool shownQuiet;
 	private bool updateArranged;
 	private bool quitting;
 
-	public WatchAgent(IClassicDesktopStyleApplicationLifetime desktop, Window window, MainWindowViewModel vm, AlertService alerts, JsonAlertSettingsStore store,
-		IAutostart? autostart = null, IAppUpdates? updates = null)
+	public WatchAgent(IClassicDesktopStyleApplicationLifetime desktop, Window window, MainWindowViewModel vm, AlertService alerts, IAppUpdates? updates = null)
 	{
 		this.desktop = desktop;
 		this.window = window;
 		this.vm = vm;
 		this.alerts = alerts;
-		this.store = store;
-		this.autostart = autostart;
 		this.updates = updates;
 
 		desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 		window.Icon = AppIcon.Get();
 		window.Closing += this.Window_Closing;
+
+		// A conversation only counts as read while the window is in front.
+		vm.IsWindowActive = window.IsActive;
+		window.Activated += (_, _) => vm.IsWindowActive = true;
+		window.Deactivated += (_, _) => vm.IsWindowActive = false;
+		vm.BringForward = this.ShowWindow;
+		vm.Settings.Changed += (_, _) => this.UpdateTray();
 
 		this.tray = new TrayIcon
 		{
@@ -59,9 +64,8 @@ public sealed class WatchAgent : IDisposable
 		TrayIcon.SetIcons(Application.Current!, [this.tray]);
 
 		alerts.Raised += (_, a) => Dispatcher.UIThread.Post(() => this.Show(a));
-		alerts.SnoozeChanged += (_, _) => Dispatcher.UIThread.Post(this.UpdateTray);
 
-		this.refresh = new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, (_, _) => this.UpdateTray());
+		this.refresh = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => this.UpdateTray());
 		this.refresh.Start();
 
 		if (updates is not null)
@@ -85,6 +89,7 @@ public sealed class WatchAgent : IDisposable
 		// Keep watching: hide instead of closing.
 		e.Cancel = true;
 		this.window.Hide();
+		this.vm.IsWindowActive = false;
 	}
 
 	public void ShowWindow()
@@ -123,35 +128,10 @@ public sealed class WatchAgent : IDisposable
 		NativeMenuItem open = new("Open Neuro.AA");
 		open.Click += (_, _) => this.ShowWindow();
 		menu.Add(open);
-		menu.Add(new NativeMenuItemSeparator());
 
-		this.snoozeItem = new NativeMenuItem("Snooze alerts for an hour");
-		this.snoozeItem.Click += (_, _) =>
-		{
-			if (this.alerts.IsSnoozed)
-				this.alerts.Resume();
-			else
-				this.alerts.Snooze(TimeSpan.FromHours(1));
-		};
-		menu.Add(this.snoozeItem);
-
-		NativeMenuItem which = new("Alert me about") { Menu = [] };
-		which.Menu.Add(this.Toggle("Notifications that need someone", s => s.Notifications, (s, v) => s with { Notifications = v }));
-		which.Menu.Add(this.Toggle("New and returning errors", s => s.Errors, (s, v) => s with { Errors = v }));
-		which.Menu.Add(this.Toggle("Neurons going down", s => s.NeuronDown, (s, v) => s with { NeuronDown = v }));
-		which.Menu.Add(this.Toggle("Contact requests", s => s.ContactRequests, (s, v) => s with { ContactRequests = v }));
-		which.Menu.Add(this.Toggle("Information too (updates, restarts)", s => s.InformationalNotifications, (s, v) => s with { InformationalNotifications = v }));
-		menu.Add(which);
-
-		NativeMenuItem sounds = new("Play a sound for") { Menu = [] };
-		sounds.Menu.Add(this.Toggle("Errors and Neurons going down", s => s.SoundForErrors, (s, v) => s with { SoundForErrors = v }));
-		sounds.Menu.Add(this.Toggle("Notifications that need someone", s => s.SoundForNotifications, (s, v) => s with { SoundForNotifications = v }));
-		sounds.Menu.Add(this.Toggle("Contact requests", s => s.SoundForContactRequests, (s, v) => s with { SoundForContactRequests = v }));
-		sounds.Menu.Add(this.Toggle("Information too", s => s.SoundForInformation, (s, v) => s with { SoundForInformation = v }));
-		menu.Add(sounds);
-		menu.Add(this.Toggle("Keep watching when the window closes", s => s.KeepRunningInTray, (s, v) => s with { KeepRunningInTray = v }));
-		if (this.autostart is not null)
-			menu.Add(this.AutostartToggle(this.autostart));
+		this.quietItem = new NativeMenuItem("Do not disturb") { ToggleType = MenuItemToggleType.CheckBox, IsChecked = this.vm.Settings.IsDoNotDisturb };
+		this.quietItem.Click += (_, _) => this.vm.Settings.SetStatus(this.vm.Settings.IsDoNotDisturb ? OwnStatus.Available : OwnStatus.DoNotDisturb);
+		menu.Add(this.quietItem);
 
 		menu.Add(new NativeMenuItemSeparator());
 		NativeMenuItem quit = new("Quit");
@@ -159,24 +139,6 @@ public sealed class WatchAgent : IDisposable
 		menu.Add(quit);
 		this.menu = menu;
 		return menu;
-	}
-
-	private NativeMenuItem AutostartToggle(IAutostart autostart)
-	{
-		NativeMenuItem item = new("Start with Windows") { ToggleType = MenuItemToggleType.CheckBox, IsChecked = autostart.IsEnabled };
-		item.Click += (_, _) =>
-		{
-			try
-			{
-				autostart.SetEnabled(!autostart.IsEnabled);
-			}
-			catch (Exception ex)
-			{
-				AppLog.Error("Could not change whether Neuro.AA starts with Windows.", ex);
-			}
-			item.IsChecked = autostart.IsEnabled;
-		};
-		return item;
 	}
 
 	/// <summary>An update has been downloaded: offer to restart into it, at the top of the menu.</summary>
@@ -212,97 +174,85 @@ public sealed class WatchAgent : IDisposable
 		}
 	}
 
-	private NativeMenuItem Toggle(string header, Func<AlertSettings, bool> get, Func<AlertSettings, bool, AlertSettings> set)
-	{
-		NativeMenuItem item = new(header) { ToggleType = MenuItemToggleType.CheckBox, IsChecked = get(this.alerts.Settings) };
-		item.Click += (_, _) =>
-		{
-			AlertSettings s = set(this.alerts.Settings, !get(this.alerts.Settings));
-			this.alerts.Settings = s;
-			item.IsChecked = get(s);
-			try
-			{
-				this.store.Save(s);
-			}
-			catch (Exception ex)
-			{
-				AppLog.Error("Could not save the alert settings.", ex);
-			}
-		};
-		return item;
-	}
-
-	/// <summary>The icon shows a dot when something needs you; the tooltip says what.</summary>
+	/// <summary>The tray icon, the window's icon and the tooltip carry the number of things that wait for you.</summary>
 	private void UpdateTray()
 	{
-		int open = this.vm.Attention.OpenCount;
-		int questions = this.vm.Devices.QuestionCount + this.vm.Identities.PetitionCount + this.vm.Chat.Requests.Count;
+		int waiting = this.vm.Inbox.WaitingCount;
 		int down = this.vm.Fleet.Rows.Count(r => r.State is Engine.Events.WatchState.Offline or Engine.Events.WatchState.Failed);
-		bool attention = open + questions + down > 0;
-		bool snoozed = this.alerts.IsSnoozed;
+		bool quiet = this.vm.Settings.IsDoNotDisturb;
 
-		this.tray.Icon = AppIcon.Get(attention, snoozed);
+		if (waiting != this.shownCount || quiet != this.shownQuiet)
+		{
+			this.shownCount = waiting;
+			this.shownQuiet = quiet;
+			this.tray.Icon = AppIcon.Get(waiting, quiet);
+
+			// The taskbar button carries the count too.
+			this.window.Icon = AppIcon.Get(waiting);
+		}
 
 		List<string> parts = [];
-		if (open > 0)
-			parts.Add($"{open} need{(open == 1 ? "s" : "")} you");
-		if (questions > 0)
-			parts.Add($"{questions} question{(questions == 1 ? "" : "s")}");
+		if (waiting > 0)
+			parts.Add(waiting == 1 ? "1 thing waits for you" : $"{waiting} things wait for you");
 		if (down > 0)
 			parts.Add($"{down} Neuron{(down == 1 ? "" : "s")} down");
-		if (snoozed && this.alerts.SnoozedUntil is DateTime until)
-			parts.Add($"alerts snoozed until {until:HH:mm}");
+		if (quiet)
+			parts.Add("do not disturb is on");
 		this.tray.ToolTipText = parts.Count == 0 ? "Neuro.AA · all quiet" : "Neuro.AA · " + string.Join(", ", parts);
 
-		if (this.snoozeItem is not null)
-			this.snoozeItem.Header = snoozed ? "Resume alerts" : "Snooze alerts for an hour";
+		if (this.quietItem is not null)
+			this.quietItem.IsChecked = quiet;
 	}
 
 	// ---- Alerts ----------------------------------------------------------------------------
 
 	private void Show(Alert a)
 	{
+		bool inFront = this.window.IsVisible && this.window.IsActive && this.window.WindowState != WindowState.Minimized;
+		this.vm.IsWindowActive = inFront;
+
+		// In the conversation the message is about: it appears there, and that is all.
+		if (this.vm.IsLookingAt(a))
+			return;
+
 		if (this.alerts.Settings.WantsSound(a))
 			AlertSound.Play(a);
 
-		// While the window is in front, the app itself shows what changed; errors, Neurons going
-		// down and contact requests still interrupt then.
-		if (this.window.IsActive && a.Kind is AlertKind.Notification or AlertKind.NeuronBack)
+		// The list in front of you already shows it.
+		if (this.vm.ShowsItself(a))
 			return;
 
-		if (this.toasts.Count >= MaxToasts)
+		NoticeViewModel notice = this.vm.Notice(a, out bool isNew);
+		if (!isNew)
+			return;
+
+		if (inFront)
 		{
-			this.waiting.Add(a);
+			this.vm.ShowInApp(notice);
 			return;
 		}
 
-		ToastWindow t = new(a, 0, () => this.Open(a));
+		// Behind other windows: the taskbar button flashes until you come back.
+		if (this.window.IsVisible)
+			TaskbarFlash.Start(this.window);
+
+		while (this.toasts.Count >= MaxToasts)
+			this.toasts[0].Close();
+
+		ToastWindow t = new(notice);
 		t.Closed += (_, _) =>
 		{
 			this.toasts.Remove(t);
 			this.Arrange();
-			if (this.waiting.Count > 0)
-			{
-				// Several waited: show the newest, and say how many more there were.
-				Alert next = this.waiting[^1];
-				int more = this.waiting.Count - 1;
-				this.waiting.Clear();
-				ToastWindow n = new(next, more, () => this.Open(next));
-				this.Add(n);
-			}
 		};
-		this.Add(t);
-	}
-
-	private void Add(ToastWindow t)
-	{
 		this.toasts.Add(t);
 		t.Opened += (_, _) => this.Arrange();
+		t.SizeChanged += (_, _) => this.Arrange();
 		t.Show();
 		this.Arrange();
 	}
 
-	/// <summary>Stacks the alerts up from the bottom right corner of the main screen's work area.</summary>
+	/// <summary>Stacks the pop-ups up from the bottom right corner of the main screen's work area.</summary>
 	private void Arrange()
 	{
 		Avalonia.Platform.Screen? screen = this.window.Screens.Primary ?? this.window.Screens.All.FirstOrDefault();
@@ -311,20 +261,14 @@ public sealed class WatchAgent : IDisposable
 
 		PixelRect area = screen.WorkingArea;
 		double scale = screen.Scaling;
-		int y = area.Bottom - (int)(8 * scale);
+		int y = area.Bottom - (int)(4 * scale);
 		foreach (ToastWindow t in this.toasts)
 		{
 			int h = (int)((t.Bounds.Height > 0 ? t.Bounds.Height : 110) * scale);
 			int w = (int)(t.Width * scale);
 			y -= h;
-			t.Position = new PixelPoint(area.Right - w - (int)(8 * scale), y);
+			t.Position = new PixelPoint(area.Right - w - (int)(6 * scale), y);
 		}
-	}
-
-	private void Open(Alert a)
-	{
-		this.ShowWindow();
-		this.vm.OpenAlert(a);
 	}
 
 	public void Dispose()

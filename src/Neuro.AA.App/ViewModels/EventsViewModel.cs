@@ -120,6 +120,10 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 	[ObservableProperty]
 	private bool showResolved;
 
+	/// <summary>Bare JID of the one Neuron to show, set by the shell's Neuron chips; null shows all.</summary>
+	[ObservableProperty]
+	private string? neuronFilter;
+
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasSelectedIssue), nameof(StreamTitle))]
 	private IssueItemViewModel? selectedIssue;
@@ -192,6 +196,27 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 	partial void OnSelectedIssueChanged(IssueItemViewModel? value) => this.Rebuild();
 	partial void OnShowResolvedChanged(bool value) => this.RebuildIssues();
 
+	partial void OnNeuronFilterChanged(string? value)
+	{
+		if (this.SelectedIssue is IssueItemViewModel issue && !this.IsOnFilteredNeuron(issue))
+			this.SelectedIssue = null;
+
+		this.RebuildIssues();
+		this.Rebuild();
+		this.RefreshErrorCount(DateTime.Now);
+	}
+
+	private bool IsOnFilteredNeuron(IssueItemViewModel issue)
+		=> this.NeuronFilter is not string jid || issue.Issue.Neurons.Contains(jid, StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>Errors in the last hour: everywhere, or on the filtered Neuron.</summary>
+	private void RefreshErrorCount(DateTime now)
+	{
+		this.ErrorsLastHour = this.NeuronFilter is string jid
+			? (this.monitors.Hub.SummarizeByNeuron(now).TryGetValue(jid, out EventHub.NeuronSummary? s) ? s.ErrorsLastHour : 0)
+			: this.issueIndex.Values.Where(i => i.Severity >= EventSeverity.Error).Sum(i => i.Issue.CountSince(now, TimeSpan.FromHours(1)));
+	}
+
 	[RelayCommand]
 	private void SetFilter(SeverityFilter filter) => this.SeverityFilter = filter;
 
@@ -232,6 +257,9 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 
 	private bool Matches(NeuronEvent e)
 	{
+		if (this.NeuronFilter is string only && !string.Equals(e.Source.NeuronJid, only, StringComparison.OrdinalIgnoreCase))
+			return false;
+
 		if (this.SelectedIssue is IssueItemViewModel issue)
 			return e.Fingerprint == issue.Fingerprint;
 
@@ -298,7 +326,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 			}
 
 			this.RebuildIssues();
-			this.ErrorsLastHour = this.issueIndex.Values.Where(i => i.Severity >= EventSeverity.Error).Sum(i => i.Issue.CountSince(now, TimeSpan.FromHours(1)));
+			this.RefreshErrorCount(now);
 		}
 
 		if (Interlocked.Exchange(ref this.neuronsDirty, 0) == 1)
@@ -313,6 +341,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 
 		List<IssueItemViewModel> ordered = [.. this.issueIndex.Values
 			.Where(i => this.ShowResolved || i.State is IssueState.Open or IssueState.Acknowledged)
+			.Where(this.IsOnFilteredNeuron)
 			.OrderBy(i => i.State == IssueState.Open ? 0 : i.State == IssueState.Acknowledged ? 1 : 2)
 			.ThenByDescending(i => i.Severity >= EventSeverity.Error)
 			.ThenByDescending(i => i.LastSeen)];
@@ -348,9 +377,27 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable
 	{
 		this.held.Clear();
 		this.HeldCount = 0;
+		IReadOnlyList<NeuronEvent> snapshot = this.monitors.Hub.Snapshot();
+
+		// Events still waiting for the next flush are already in the snapshot: showing them now and
+		// again at the flush would list them twice.
+		if (!this.pendingEvents.IsEmpty)
+		{
+			HashSet<NeuronEvent> shown = new(snapshot, ReferenceEqualityComparer.Instance);
+			List<NeuronEvent> later = [];
+			while (this.pendingEvents.TryDequeue(out NeuronEvent? e))
+			{
+				if (!shown.Contains(e))
+					later.Add(e);
+			}
+
+			foreach (NeuronEvent e in later)
+				this.pendingEvents.Enqueue(e);
+		}
+
 		IEnumerable<NeuronEvent> source = this.SelectedIssue is IssueItemViewModel issue
 			? this.monitors.Hub.EventsOf(issue.Fingerprint, MaxStream)
-			: this.monitors.Hub.Snapshot().AsEnumerable().Reverse();
+			: snapshot.AsEnumerable().Reverse();
 
 		List<NeuronEvent> list = [.. source.Where(this.Matches).OrderByDescending(e => e.Timestamp).Take(MaxStream)];
 		this.Stream.Clear();

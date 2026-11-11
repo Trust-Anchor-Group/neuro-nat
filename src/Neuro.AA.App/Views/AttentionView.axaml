@@ -7,213 +7,89 @@
              x:Class="Neuro.AA.App.Views.AttentionView"
              x:DataType="vm:AttentionViewModel">
 
-  <UserControl.Styles>
-    <Style Selector="Border.pill">
-      <Setter Property="CornerRadius" Value="4" />
-      <Setter Property="Padding" Value="6,1" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="HorizontalAlignment" Value="Left" />
-    </Style>
-    <Style Selector="Border.pill TextBlock">
-      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector="Ellipse.unread">
-      <Setter Property="Width" Value="7" />
-      <Setter Property="Height" Value="7" />
-      <Setter Property="Fill" Value="{DynamicResource Accent}" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="TextBlock.itemTitle">
-      <Setter Property="FontWeight" Value="Normal" />
-    </Style>
-    <Style Selector="TextBlock.itemTitle.unread">
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector="Border.listPane">
-      <Setter Property="Width" Value="400" />
-    </Style>
-    <Style Selector="ToggleButton.seg">
-      <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="Padding" Value="10,4" />
-      <Setter Property="MinHeight" Value="28" />
-      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
-    </Style>
-    <Style Selector="ToggleButton.seg.first">
-      <Setter Property="CornerRadius" Value="6,0,0,6" />
-    </Style>
-    <Style Selector="ToggleButton.seg.last">
-      <Setter Property="CornerRadius" Value="0,6,6,0" />
-    </Style>
-    <!-- Window width 1180 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
-    <Style Selector=".maxw1180 Border.listPane">
-      <Setter Property="Width" Value="330" />
-    </Style>
-    
-    <!-- Window width 900 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
-    <Style Selector=".maxw900 Border.listPane">
-      <Setter Property="Width" Value="270" />
-    </Style>
-    <Style Selector=".maxw900 TextBlock.wideOnly">
-      <Setter Property="IsVisible" Value="False" />
-    </Style>
-    
-  </UserControl.Styles>
-
-  <Grid ColumnDefinitions="Auto,*">
-
-    <!-- The list -->
-    <Border Classes="listPane" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
-      <DockPanel Margin="12,14,12,12">
-        <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-            <ToggleButton Classes="seg first" IsChecked="{Binding IsOpenFilter, Mode=OneWay}"
-                          Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:AttentionFilter.Open}"
-                          ToolTip.Tip="What still needs a person">
-              <TextBlock Text="Needs you" />
-            </ToggleButton>
-            <ToggleButton Classes="seg last" IsChecked="{Binding IsAllFilter, Mode=OneWay}" Margin="-1,0,0,0"
-                          Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:AttentionFilter.All}"
-                          ToolTip.Tip="Every notification, newest first">
-              <TextBlock Text="All" />
-            </ToggleButton>
+  <!-- One notification from a Neuron, as the Neuron wrote it, with what you can do about it.
+       The Inbox shows it beside its list. -->
+  <DockPanel IsVisible="{Binding HasSelection}" Margin="24,16,24,20">
+    <DockPanel DockPanel.Dock="Top" DataContext="{Binding SelectedItem}" x:DataType="vm:AttentionItemViewModel" Margin="0,0,0,14">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+        <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ShowEventsCommand}" CommandParameter="{Binding}"
+                ToolTip.Tip="This Neuron's events">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Events}" />
+            <TextBlock Classes="btnLabel" Text="Events" />
           </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-            <TextBlock Classes="section" Text="Notifications" />
-            <TextBlock Classes="meta wideOnly" Text="{Binding Summary}" VerticalAlignment="Center" />
+        </Button>
+        <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ShareCommand}" CommandParameter="{Binding}"
+                ToolTip.Tip="Send this notification to a coworker or a room">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
+            <TextBlock Classes="btnLabel" Text="Share" />
           </StackPanel>
-        </DockPanel>
-
-        <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
-          <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding MarkAllReadCommand}" Margin="8,0,0,0"
-                  ToolTip.Tip="Mark every notification as read">
-            <TextBlock Text="Mark all read" FontSize="{StaticResource Type.Meta}" />
-          </Button>
-          <TextBox Text="{Binding SearchText}" PlaceholderText="Filter by text, Neuron or kind…" MinHeight="28" Padding="10,4" />
-        </DockPanel>
-
-        <Panel>
-          <ListBox Classes="rows" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:AttentionItemViewModel">
-                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Ellipse Classes="unread" IsVisible="{Binding IsUnread}" />
-                    <Border Classes="pill" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
-                      <TextBlock Text="{Binding KindLabel}" Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
-                    </Border>
-                    <Border Classes="pill" Background="{DynamicResource Accent.Subtle}" IsVisible="{Binding IsOpen}">
-                      <TextBlock Text="Needs you" Foreground="{DynamicResource Accent.Ink}" />
-                    </Border>
-                    <Border Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding IsHandled}">
-                      <TextBlock Text="Handled" Foreground="{DynamicResource Ink.Secondary}" />
-                    </Border>
-                  </StackPanel>
-                  <TextBlock Grid.Column="1" Classes="meta" Text="{Binding TimeText}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="itemTitle" Classes.unread="{Binding IsUnread}" Text="{Binding Title}"
-                             TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Margin="0,5,0,3" />
-                  <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="meta" Text="{Binding Meta}" TextTrimming="CharacterEllipsis" />
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-
-          <StackPanel IsVisible="{Binding !HasItems}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="300" Spacing="6">
-            <c:LineIcon Data="{StaticResource Icon.Attention}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
-            <TextBlock Text="Nothing needs you" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsOpenFilter}" />
-            <TextBlock Text="No notifications" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsAllFilter}" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                       Text="Your Neurons' notifications land here: identity applications, account requests, alerts, backups and updates. The ones that need a person stay under Needs you until you mark them handled." />
+        </Button>
+        <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).CopyCommand}" CommandParameter="{Binding}"
+                ToolTip.Tip="Copy as Markdown, for chat or a ticket">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+            <TextBlock Classes="btnLabel" Text="Copy" />
           </StackPanel>
-        </Panel>
-      </DockPanel>
-    </Border>
-
-    <!-- The selected notification -->
-    <Panel Grid.Column="1">
-      <DockPanel IsVisible="{Binding HasSelection}" Margin="24,16,24,20">
-        <DockPanel DockPanel.Dock="Top" DataContext="{Binding SelectedItem}" x:DataType="vm:AttentionItemViewModel" Margin="0,0,0,14">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-            <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ShowEventsCommand}" CommandParameter="{Binding}"
-                    ToolTip.Tip="This Neuron's events">
-              <StackPanel Classes="btn">
-                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Events}" />
-                <TextBlock Classes="btnLabel" Text="Events" />
-              </StackPanel>
-            </Button>
-            <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ShareCommand}" CommandParameter="{Binding}"
-                    ToolTip.Tip="Send this notification to a coworker or a room">
-              <StackPanel Classes="btn">
-                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
-                <TextBlock Classes="btnLabel" Text="Share" />
-              </StackPanel>
-            </Button>
-            <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).CopyCommand}" CommandParameter="{Binding}"
-                    ToolTip.Tip="Copy as Markdown, for chat or a ticket">
-              <TextBlock Text="Copy" FontSize="{StaticResource Type.Meta}" />
-            </Button>
-            <Button Content="Reopen" IsVisible="{Binding IsHandled}"
-                    Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ReopenCommand}" CommandParameter="{Binding}" />
-            <Button Classes="primary" Content="Mark handled" IsVisible="{Binding !IsHandled}"
-                    Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).MarkHandledCommand}" CommandParameter="{Binding}" />
-          </StackPanel>
-
-          <StackPanel Spacing="6" Margin="0,0,16,0">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <Border Classes="pill" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
-                <TextBlock Text="{Binding KindLabel}" Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
-              </Border>
-              <Border Classes="pill" Background="{DynamicResource Accent.Subtle}" IsVisible="{Binding IsOpen}">
-                <TextBlock Text="Needs you" Foreground="{DynamicResource Accent.Ink}" />
-              </Border>
-            </StackPanel>
-            <TextBlock Classes="title" Text="{Binding Title}" TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <Border Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
-                      Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}"
-                      ToolTip.Tip="{Binding AccountLabel}">
-                <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="10" FontWeight="SemiBold"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
-              </Border>
-              <TextBlock Classes="mono" Text="{Binding NeuronLabel}" VerticalAlignment="Center" />
-              <TextBlock Classes="meta" Text="{Binding WhenText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
-          </StackPanel>
-        </DockPanel>
-
-        <!-- Links to the Neuron's own pages: approve an identity, open an account, read the release notes. -->
-        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding SelectedItem.Links}" Margin="0,0,0,14"
-                      IsVisible="{Binding SelectedItem.HasLinks}">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <WrapPanel Orientation="Horizontal" />
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="at:NotificationLink">
-              <Button Margin="0,0,8,8" ToolTip.Tip="{Binding Url}"
-                      Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).OpenLinkCommand}" CommandParameter="{Binding}">
-                <TextBlock FontSize="{StaticResource Type.Meta}" MaxWidth="320" TextTrimming="CharacterEllipsis">
-                  <Run Text="Open " /><Run Text="{Binding Text}" FontWeight="SemiBold" />
-                </TextBlock>
-              </Button>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <Border Classes="panel" Background="{DynamicResource Surface.Panel}">
-          <ScrollViewer Padding="18,14">
-            <c:MarkdownView Markdown="{Binding SelectedItem.Markdown}" MaxWidth="860" HorizontalAlignment="Left" />
-          </ScrollViewer>
-        </Border>
-      </DockPanel>
-
-      <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
-        <TextBlock Text="Pick a notification" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                   Text="It opens here as the Neuron wrote it, with its links to the Neuron's own pages." />
+        </Button>
+        <Button Content="Reopen" IsVisible="{Binding IsHandled}" ToolTip.Tip="Put it back among what needs you"
+                Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ReopenCommand}" CommandParameter="{Binding}" />
+        <Button Classes="primary" Content="Done" IsVisible="{Binding IsOpen}" ToolTip.Tip="You have dealt with it: it leaves the Inbox"
+                Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).MarkHandledCommand}" CommandParameter="{Binding}" />
       </StackPanel>
-    </Panel>
-  </Grid>
+
+      <StackPanel Spacing="6" Margin="0,0,16,0">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Border Classes="pill" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
+            <TextBlock Text="{Binding KindLabel}" Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+          </Border>
+          <Border Classes="pill" Background="{DynamicResource Accent.Subtle}" IsVisible="{Binding IsOpen}">
+            <TextBlock Text="Needs you" Foreground="{DynamicResource Accent.Ink}" />
+          </Border>
+          <Border Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding IsHandled}">
+            <TextBlock Text="Done" Foreground="{DynamicResource Ink.Secondary}" />
+          </Border>
+        </StackPanel>
+        <TextBlock Classes="title" Text="{Binding Title}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Border Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
+                  Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}"
+                  ToolTip.Tip="{Binding AccountLabel}">
+            <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="10" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+          </Border>
+          <TextBlock Classes="mono" Text="{Binding NeuronLabel}" VerticalAlignment="Center" />
+          <TextBlock Classes="meta" Text="{Binding WhenText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </StackPanel>
+    </DockPanel>
+
+    <!-- Links to the Neuron's own pages: approve an identity, open an account, read the release notes. -->
+    <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding SelectedItem.Links}" Margin="0,0,0,14"
+                  IsVisible="{Binding SelectedItem.HasLinks}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="at:NotificationLink">
+          <Button Margin="0,0,8,8" ToolTip.Tip="{Binding Url}"
+                  Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).OpenLinkCommand}" CommandParameter="{Binding}">
+            <TextBlock FontSize="{StaticResource Type.Meta}" MaxWidth="320" TextTrimming="CharacterEllipsis">
+              <Run Text="Open " /><Run Text="{Binding Text}" FontWeight="SemiBold" />
+            </TextBlock>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <Border Classes="panel" Background="{DynamicResource Surface.Panel}">
+      <ScrollViewer Padding="18,14">
+        <c:MarkdownView Markdown="{Binding SelectedItem.Markdown}" MaxWidth="860" HorizontalAlignment="Left" />
+      </ScrollViewer>
+    </Border>
+  </DockPanel>
 </UserControl>

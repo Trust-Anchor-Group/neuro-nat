@@ -41,18 +41,34 @@ public partial class App : Application
 				if (!services.StartHidden)
 					desktop.MainWindow = window;
 
-				// Watching from the tray: alerts while the window is closed.
+				// Noticing things: pop-ups, sounds and counts, in the window and from the tray.
 				Engine.Alerts.JsonAlertSettingsStore alertStore = new(Path.Combine(services.DataFolder, "alerts.json"));
 				Engine.Alerts.AlertService alerts = new(services.Monitors, alertStore.Load())
 				{
 					AccountLabel = id => services.Accounts.Sessions.FirstOrDefault(s => s.Profile.Id == id)?.Profile.Label,
 				};
-				Watch.WatchAgent watch = new(desktop, window, vm, alerts, alertStore, services.Autostart, services.Updates);
+				// Messages, invitations, questions and requests pop up the same way.
+				alerts.Watch(services.Chat);
+				alerts.Watch(services.Devices);
+				alerts.Watch(services.Identities);
+				vm.Settings.Attach(alerts, alertStore, new JsonUiSettingsStore(Path.Combine(services.DataFolder, "ui.json")), services.Autostart);
+
+				Watch.WatchAgent watch = new(desktop, window, vm, alerts, services.Updates);
 				showMainWindow = watch.ShowWindow;
 				desktop.ShutdownRequested += async (_, _) =>
 				{
 					watch.Dispose();
 					alerts.Dispose();
+
+					// An answer that could still be taken back is final now.
+					try
+					{
+						await vm.Inbox.CommitAsync();
+					}
+					catch (Exception ex)
+					{
+						AppLog.Error("Could not send the last answer from the Inbox.", ex);
+					}
 
 					// Save the Attention list first: it is quick, and the rest may outlive the process.
 					await services.Monitors.Attention.DisposeAsync();

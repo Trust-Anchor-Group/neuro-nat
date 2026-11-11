@@ -185,7 +185,11 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable
 		this.Summary = keep.Count == 0
 			? "No Neurons yet"
 			: $"{keep.Count} Neuron{(keep.Count == 1 ? "" : "s")} · {live} live" + (failing > 0 ? $" · {failing} with errors in the last hour" : string.Empty);
+		this.Refreshed?.Invoke(this, EventArgs.Empty);
 	}
+
+	/// <summary>Raised on the UI thread after the rows were rebuilt; the shell's Neuron chips and status strip follow it.</summary>
+	public event EventHandler? Refreshed;
 
 	[RelayCommand]
 	private Task RefreshNow() => this.fleet.RefreshAsync();

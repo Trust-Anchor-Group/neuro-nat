@@ -59,6 +59,9 @@ public sealed partial class ChatService : IAsyncDisposable
 	/// <summary>Raised when a conversation gets a message or changes. Any thread.</summary>
 	public event EventHandler<Conversation>? ConversationChanged;
 
+	/// <summary>Raised for each new message from someone else (not history, not corrections). Any thread.</summary>
+	public event EventHandler<IncomingMessage>? MessageReceived;
+
 	/// <summary>Raised when an account's roster or a contact's presence changes. Any thread.</summary>
 	public event EventHandler<Guid>? RosterChanged;
 
@@ -83,8 +86,71 @@ public sealed partial class ChatService : IAsyncDisposable
 			return;
 
 		c.Unread = 0;
+		c.FirstUnreadId = null;
 		this.Touch();
 		this.ConversationChanged?.Invoke(this, c);
+	}
+
+	/// <summary>Marks a message, and everything after it, as not read.</summary>
+	public void MarkUnreadFrom(Conversation c, string messageId)
+	{
+		if (!c.MarkUnreadFrom(messageId))
+			return;
+
+		this.Touch();
+		this.ConversationChanged?.Invoke(this, c);
+	}
+
+	/// <summary>Mutes a person or room until a time, for good (<see cref="DateTime.MaxValue"/>), or not at all (null).</summary>
+	public void SetMuted(Conversation c, DateTime? until)
+	{
+		c.MutedUntil = until;
+		this.Touch();
+		this.ConversationChanged?.Invoke(this, c);
+	}
+
+	/// <summary>Chooses what a room may interrupt you for.</summary>
+	public void SetRoomNotify(Conversation c, RoomNotify notify)
+	{
+		c.Notify = notify;
+		this.Touch();
+		this.ConversationChanged?.Invoke(this, c);
+	}
+
+	/// <summary>Unread messages in everything that is not muted.</summary>
+	public int UnreadTotal
+	{
+		get
+		{
+			DateTime now = DateTime.Now;
+			return this.conversations.Values.Where(c => !c.IsMuted(now)).Sum(c => c.Unread);
+		}
+	}
+
+	// ---- Your own status -------------------------------------------------------------------
+
+	/// <summary>What contacts see: online, away or do not disturb.</summary>
+	public Availability OwnAvailability { get; private set; } = Availability.Online;
+
+	/// <summary>Shows your status to the contacts of every connected account, now and when accounts connect.</summary>
+	public async Task SetOwnAvailabilityAsync(Availability availability)
+	{
+		this.OwnAvailability = availability;
+		foreach (AccountChat a in this.attached.Values)
+			await ApplyAvailabilityAsync(a.Client, availability);
+	}
+
+	private static async Task ApplyAvailabilityAsync(XmppClient client, Availability availability)
+	{
+		try
+		{
+			if (client.State == XmppState.Connected)
+				await client.SetPresenceAsync(availability);
+		}
+		catch (Exception)
+		{
+			// The next connect sets it again.
+		}
 	}
 
 	/// <summary>Sends a Markdown chat message to a contact.</summary>
@@ -258,6 +324,45 @@ public sealed partial class ChatService : IAsyncDisposable
 		this.Forget(r);
 	}
 
+	/// <summary>Adds a request as it is, for previews and UI tests.</summary>
+	internal void Preview(SubscriptionRequest r)
+	{
+		lock (this.requests)
+			this.requests.Add(r);
+
+		this.RequestsChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	/// <summary>Adds an invitation as it is, for previews and UI tests.</summary>
+	internal void Preview(RoomInvitation i)
+	{
+		lock (this.invitations)
+			this.invitations.Add(i);
+
+		this.RoomsChanged?.Invoke(this, EventArgs.Empty);
+	}
+
+	/// <summary>Receives a message as if it just arrived, for previews and UI tests.</summary>
+	internal ChatMessage Preview(Guid accountId, string bareJid, string text, string? senderLabel = null, bool room = false, bool mention = false)
+	{
+		Conversation c = room ? this.GetRoom(accountId, bareJid) : this.Get(accountId, bareJid);
+		ChatMessage m = new()
+		{
+			Id = Guid.NewGuid().ToString("N"),
+			Direction = ChatDirection.In,
+			Timestamp = DateTime.Now,
+			Markdown = text,
+			Text = text,
+			Sender = room ? senderLabel : null,
+			Mention = mention,
+		};
+		c.Add(m);
+		c.CountUnread(m);
+		this.ConversationChanged?.Invoke(this, c);
+		this.MessageReceived?.Invoke(this, new IncomingMessage(c, m, senderLabel ?? bareJid));
+		return m;
+	}
+
 	private void Forget(SubscriptionRequest r)
 	{
 		lock (this.requests)
@@ -375,6 +480,9 @@ public sealed partial class ChatService : IAsyncDisposable
 			// Without the services, files and rooms are simply not offered.
 		}
 
+		if (this.OwnAvailability != Availability.Online)
+			await ApplyAvailabilityAsync(a.Client, this.OwnAvailability);
+
 		await this.RejoinRoomsAsync(a);
 		this.RosterChanged?.Invoke(this, a.AccountId);
 	}
@@ -419,6 +527,7 @@ public sealed partial class ChatService : IAsyncDisposable
 
 			Conversation conv = this.Get(accountId, bare);
 			n = WithOutOfBand(n, e);
+			ChatMessage? fresh = null;
 
 			// Neurons answer Markdown with Markdown only; keep a plain version for previews.
 			string text = string.IsNullOrWhiteSpace(n.Text) ? NotificationClassifier.Plain(n.Markdown) : n.Text;
@@ -429,7 +538,7 @@ public sealed partial class ChatService : IAsyncDisposable
 			}
 			else
 			{
-				conv.Add(new ChatMessage
+				fresh = new ChatMessage
 				{
 					Id = Guid.NewGuid().ToString("N"),
 					MessageId = n.MessageId,
@@ -438,12 +547,20 @@ public sealed partial class ChatService : IAsyncDisposable
 					Markdown = n.Markdown,
 					Text = text,
 					Encrypted = e.UsesE2eEncryption,
-				});
-				conv.Unread++;
+				};
+				conv.Add(fresh);
+				conv.CountUnread(fresh);
 			}
 
 			this.Touch();
 			this.ConversationChanged?.Invoke(this, conv);
+
+			// Messages that waited on the server while the account was offline are not news any more.
+			if (fresh is not null && fresh.Timestamp > DateTime.Now.AddMinutes(-2))
+			{
+				RosterItem? item = client.GetRosterItem(bare);
+				this.MessageReceived?.Invoke(this, new IncomingMessage(conv, fresh, string.IsNullOrWhiteSpace(item?.Name) ? bare : item!.Name));
+			}
 		}
 		catch (Exception)
 		{
@@ -521,7 +638,8 @@ public sealed class JsonChatStore(string filePath) : IChatStore
 
 	private readonly object gate = new();
 
-	private sealed record Stored(Guid AccountId, string BareJid, int Unread, List<ChatMessage> Messages, bool IsRoom = false, string? Subject = null);
+	private sealed record Stored(Guid AccountId, string BareJid, int Unread, List<ChatMessage> Messages, bool IsRoom = false, string? Subject = null,
+		RoomNotify Notify = RoomNotify.Mentions, DateTime? MutedUntil = null, string? FirstUnreadId = null);
 	private sealed record StoredRoom(Guid AccountId, string RoomJid, string NickName, string? Password);
 	private sealed record StoredFile(List<Stored> Conversations, List<StoredRoom> Rooms);
 
@@ -542,7 +660,15 @@ public sealed class JsonChatStore(string filePath) : IChatStore
 				List<Conversation> result = [];
 				foreach (Stored s in file.Conversations ?? [])
 				{
-					Conversation c = new(s.AccountId, s.BareJid) { Unread = s.Unread, IsRoom = s.IsRoom, Subject = s.Subject };
+					Conversation c = new(s.AccountId, s.BareJid)
+					{
+						Unread = s.Unread,
+						IsRoom = s.IsRoom,
+						Subject = s.Subject,
+						Notify = s.Notify,
+						MutedUntil = s.MutedUntil,
+						FirstUnreadId = s.FirstUnreadId,
+					};
 					foreach (ChatMessage m in s.Messages)
 						c.Add(m);
 					result.Add(c);
@@ -568,7 +694,8 @@ public sealed class JsonChatStore(string filePath) : IChatStore
 				Directory.CreateDirectory(folder);
 
 			StoredFile file = new(
-				[.. conversations.Where(c => c.Messages.Count > 0 || c.IsRoom).Select(c => new Stored(c.AccountId, c.BareJid, c.Unread, [.. c.Messages], c.IsRoom, c.Subject))],
+				[.. conversations.Where(c => c.Messages.Count > 0 || c.IsRoom || c.MutedUntil is not null)
+					.Select(c => new Stored(c.AccountId, c.BareJid, c.Unread, [.. c.Messages], c.IsRoom, c.Subject, c.Notify, c.MutedUntil, c.FirstUnreadId))],
 				[.. rooms.Select(r => new StoredRoom(r.AccountId, r.RoomJid, r.NickName, r.Password))]);
 			string tmp = filePath + ".tmp";
 			File.WriteAllText(tmp, JsonSerializer.Serialize(file, options));

@@ -1,0 +1,203 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.AA.App.ViewModels"
+             xmlns:conv="using:Neuro.AA.App.Converters"
+             xmlns:c="using:Neuro.AA.App.Controls"
+             xmlns:ch="using:Neuro.AA.Engine.Chat"
+             x:Class="Neuro.AA.App.Views.ConversationView"
+             x:DataType="vm:ChatViewModel">
+
+  <!-- One conversation: who it is with, its messages and the box to write in. Chat shows it
+       beside its list, and so does the Inbox when a message row is open. -->
+  <UserControl.Styles>
+    <!-- Message bubbles: theirs on the panel tint, mine on the accent tint, aligned right. -->
+    <Style Selector="Border.bubble">
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="MaxWidth" Value="640" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Background" Value="{DynamicResource Surface.Panel}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Border.bubble.mine">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBlock.stamp">
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="TextBlock.stamp.mine">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <!-- A message that names you -->
+    <Style Selector="Border.bubble.mention">
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <DockPanel IsVisible="{Binding HasConversation}">
+      <Border DockPanel.Dock="Top" Padding="24,12" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+        <DockPanel DataContext="{Binding SelectedPerson}" x:DataType="vm:PersonViewModel">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Classes="ghost" ToolTip.Tip="What may interrupt you here: pop-ups and sounds">
+              <Button.Flyout>
+                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                  <MenuItem Header="Tell me about every message" IsVisible="{Binding IsRoom}" ToggleType="Radio" IsChecked="{Binding IsNotifyAll, Mode=OneWay}"
+                            Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).SetNotifyCommand}" CommandParameter="{x:Static ch:RoomNotify.All}" />
+                  <MenuItem Header="Tell me when I am mentioned" IsVisible="{Binding IsRoom}" ToggleType="Radio" IsChecked="{Binding IsNotifyMentions, Mode=OneWay}"
+                            Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).SetNotifyCommand}" CommandParameter="{x:Static ch:RoomNotify.Mentions}" />
+                  <Separator IsVisible="{Binding IsRoom}" />
+                  <MenuItem Header="Mute for an hour" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).MuteHourCommand}" />
+                  <MenuItem Header="Mute until tomorrow" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).MuteTomorrowCommand}" />
+                  <MenuItem Header="Mute until I turn it back on" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).MuteForGoodCommand}" />
+                  <Separator IsVisible="{Binding IsMuted}" />
+                  <MenuItem Header="Turn pop-ups and sounds back on" IsVisible="{Binding IsMuted}"
+                            Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).UnmuteCommand}" />
+                </MenuFlyout>
+              </Button.Flyout>
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Bell}" IsVisible="{Binding !IsMuted}" />
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.BellOff}" IsVisible="{Binding IsMuted}" />
+                <TextBlock Classes="btnLabel" Text="Muted" IsVisible="{Binding IsMuted}" />
+              </StackPanel>
+            </Button>
+            <Button Classes="ghost" IsVisible="{Binding IsNeuron}" ToolTip.Tip="Open this Neuron's chat admin console"
+                    Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).OpenConsoleCommand}">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Console}" />
+                <TextBlock Classes="btnLabel" Text="Console" />
+              </StackPanel>
+            </Button>
+            <Button Classes="ghost" IsVisible="{Binding IsRoom}" ToolTip.Tip="Who is in the room, and inviting more">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <StackPanel Spacing="10" Width="300">
+                    <TextBlock Classes="label" Text="In the room" />
+                    <ItemsControl ItemsSource="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).Occupants}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="ch:RoomOccupant">
+                          <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">
+                            <TextBlock Text="{Binding NickName}" FontWeight="SemiBold" />
+                            <TextBlock Classes="meta" Text="{Binding Affiliation}" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="label" Text="Invite" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                      <TextBox Text="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).InviteJid}" PlaceholderText="Address, such as kim@lab.local" />
+                      <Button Grid.Column="1" Classes="primary" Content="Invite" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).InviteCommand}" />
+                    </Grid>
+                    <TextBlock Classes="meta" Text="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).RoomError}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Accounts}" />
+                <TextBlock Classes="btnLabel" Text="{Binding OccupantCount, StringFormat='People ({0})'}" />
+              </StackPanel>
+            </Button>
+            <Button Classes="danger" IsVisible="{Binding IsRoom}" ToolTip.Tip="Leave the room. Asks once more first."
+                    Classes.armed="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).RemoveArmed}"
+                    Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).LeaveRoomCommand}">
+              <TextBlock Classes="btnLabel" Text="Leave" />
+            </Button>
+            <Button Classes="danger" IsVisible="{Binding InRoster}" ToolTip.Tip="Remove from contacts. Asks once more first."
+                    Classes.armed="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).RemoveArmed}"
+                    Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).RemoveContactCommand}">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Trash}" />
+                <TextBlock Classes="btnLabel" Text="Remove" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+          <StackPanel Spacing="2">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Classes="section" Text="{Binding Label}" />
+              <TextBlock Classes="mono tertiary" Text="{Binding BareJid}" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Classes="meta" TextTrimming="CharacterEllipsis">
+              <Run Text="{Binding PresenceText}" /><Run Text=" · via " /><Run Text="{Binding AccountLabel}" />
+            </TextBlock>
+            <TextBlock Classes="meta" Text="{Binding SubscriptionNote}" IsVisible="{Binding SubscriptionNote, Converter={x:Static conv:EventConverters.HasText}}" />
+            <TextBlock Classes="meta" Text="{Binding NotifyText}" IsVisible="{Binding IsMuted}" />
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding SecurityText, Converter={x:Static conv:EventConverters.HasText}}">
+              <c:LineIcon Data="{StaticResource Icon.Lock}" Width="13" Height="13" VerticalAlignment="Center"
+                          Foreground="{DynamicResource State.Ok}" IsVisible="{Binding IsEncrypted}" />
+              <TextBlock Classes="meta" Text="{Binding SecurityText}" TextTrimming="CharacterEllipsis"
+                         ToolTip.Tip="Compare the key with what your contact sees as their own key. If they match, nobody is in between." />
+            </StackPanel>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <!-- Composer -->
+      <Border DockPanel.Dock="Bottom" Padding="24,10,24,16" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="error" Text="{Binding SendError}" TextWrapping="Wrap"
+                     IsVisible="{Binding SendError, Converter={x:Static conv:EventConverters.HasText}}" />
+          <TextBlock Classes="meta" Text="{Binding FileStatus}" IsVisible="{Binding FileStatus, Converter={x:Static conv:EventConverters.HasText}}" />
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <Button x:Name="AttachButton" Classes="ghost" VerticalAlignment="Bottom" IsVisible="{Binding CanSendFiles}"
+                    ToolTip.Tip="Send a file. You can also drop files on the conversation.">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Attach}" />
+            </Button>
+            <TextBox x:Name="Composer" Grid.Column="1" Text="{Binding Draft}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="40" MaxHeight="200"
+                     PlaceholderText="Message. Markdown works. Enter sends, Shift+Enter starts a new line." Padding="10,8" />
+            <Button Grid.Column="2" Classes="primary" Content="Send" Command="{Binding SendCommand}" VerticalAlignment="Bottom" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <ScrollViewer x:Name="MessageScroller" Padding="24,14" DragDrop.AllowDrop="True">
+        <ItemsControl ItemsSource="{Binding Messages}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:MessageViewModel">
+              <StackPanel Spacing="3" Margin="0,2">
+                <StackPanel.Margin>
+                  <Binding Path="StartsGroup" Converter="{x:Static conv:BoolToThicknessConverter.GroupGap}" />
+                </StackPanel.Margin>
+                <!-- Where you stopped reading -->
+                <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="10" Margin="0,4,0,8" IsVisible="{Binding IsFirstNew}">
+                  <Border Height="1" Background="{DynamicResource Accent}" VerticalAlignment="Center" Opacity="0.6" />
+                  <TextBlock Grid.Column="1" Text="New" FontSize="{StaticResource Type.Caption}" FontWeight="SemiBold" Foreground="{DynamicResource Accent.Ink}" />
+                  <Border Grid.Column="2" Height="1" Background="{DynamicResource Accent}" VerticalAlignment="Center" Opacity="0.6" />
+                </Grid>
+                <TextBlock Classes="meta" Text="{Binding Sender}" FontWeight="SemiBold" IsVisible="{Binding ShowSender}" Margin="2,0,0,0" />
+                <Border Classes="bubble" Classes.mine="{Binding IsMine}" Classes.mention="{Binding IsMention}">
+                  <Border.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Mark as unread from here" IsVisible="{Binding !IsMine}"
+                                Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).MarkUnreadCommand}" CommandParameter="{Binding}" />
+                    </ContextMenu>
+                  </Border.ContextMenu>
+                  <c:MarkdownView Markdown="{Binding Markdown}" />
+                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding StartsGroup}"
+                            HorizontalAlignment="{Binding IsMine, Converter={x:Static conv:BoolToTextConverter.RightIfTrue}}">
+                  <c:LineIcon Data="{StaticResource Icon.Lock}" Width="11" Height="11" VerticalAlignment="Center" IsVisible="{Binding IsEncrypted}"
+                              Foreground="{DynamicResource Ink.Tertiary}" ToolTip.Tip="End-to-end encrypted" />
+                  <TextBlock Classes="meta">
+                    <Run Text="{Binding TimeText}" /><Run Text="{Binding IsCorrected, Converter={x:Static conv:BoolToTextConverter.Edited}}" />
+                  </TextBlock>
+                </StackPanel>
+                <TextBlock Classes="error stamp" Classes.mine="{Binding IsMine}" Text="{Binding Error}" TextWrapping="Wrap"
+                           IsVisible="{Binding Error, Converter={x:Static conv:EventConverters.HasText}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+
+    <StackPanel IsVisible="{Binding !HasConversation}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
+      <TextBlock Text="Pick someone to talk to" FontWeight="SemiBold" HorizontalAlignment="Center" />
+      <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                 Text="Conversations from all your accounts are in one list. Neurons are contacts too: open one to reach its chat admin console." />
+    </StackPanel>
+  </Panel>
+</UserControl>

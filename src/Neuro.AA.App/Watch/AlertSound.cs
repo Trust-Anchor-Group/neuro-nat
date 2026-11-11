@@ -5,30 +5,50 @@ using Neuro.AA.Engine.Alerts;
 namespace Neuro.AA.App.Watch;
 
 /// <summary>
-/// Plays the operating system's own alert sounds, so they follow the user's sound scheme and
-/// volume: a harder one for errors and Neurons going down, a softer one for the rest.
+/// Plays the operating system's own sounds, so they follow the user's sound scheme and volume.
+/// There are three, and you can tell them apart without looking: a hard one for errors and
+/// Neurons going down, a softer one for what a Neuron or a person asks of you, and the
+/// operating system's message sound for chat messages.
 /// </summary>
 public static class AlertSound
 {
-	private static DateTime last = DateTime.MinValue;
+	private static DateTime lastAlert = DateTime.MinValue;
+	private static DateTime lastMessage = DateTime.MinValue;
 
-	/// <summary>Plays the sound for an alert. Several alerts at once make one sound.</summary>
+	/// <summary>Plays the sound for an alert. Several at once make one sound; a message and an alert each keep their own.</summary>
 	public static void Play(Alert a)
 	{
 		DateTime now = DateTime.UtcNow;
-		if (now - last < TimeSpan.FromSeconds(2))
+		bool message = a.Kind == AlertKind.Message;
+		if (now - (message ? lastMessage : lastAlert) < TimeSpan.FromSeconds(2))
 			return;
-		last = now;
+
+		if (message)
+			lastMessage = now;
+		else
+			lastAlert = now;
 
 		bool hard = a.Kind is AlertKind.Error or AlertKind.NeuronDown;
 		try
 		{
 			if (OperatingSystem.IsWindows())
-				_ = PlaySound(hard ? "SystemHand" : a.Kind == AlertKind.ContactRequest ? "SystemAsterisk" : "SystemNotification", IntPtr.Zero, SndAlias | SndAsync | SndNoDefault);
+			{
+				if (message)
+				{
+					// The instant-message sound; older sound schemes only have the mail one.
+					if (!PlaySound("Notification.IM", IntPtr.Zero, SndAlias | SndAsync | SndNoDefault) &&
+						!PlaySound("MailBeep", IntPtr.Zero, SndAlias | SndAsync | SndNoDefault))
+					{
+						_ = PlaySound("SystemAsterisk", IntPtr.Zero, SndAlias | SndAsync | SndNoDefault);
+					}
+				}
+				else
+					_ = PlaySound(hard ? "SystemHand" : a.IsRequest ? "SystemAsterisk" : "SystemNotification", IntPtr.Zero, SndAlias | SndAsync | SndNoDefault);
+			}
 			else if (OperatingSystem.IsMacOS())
-				Run("afplay", hard ? "/System/Library/Sounds/Basso.aiff" : "/System/Library/Sounds/Glass.aiff");
+				Run("afplay", hard ? "/System/Library/Sounds/Basso.aiff" : message ? "/System/Library/Sounds/Tink.aiff" : "/System/Library/Sounds/Glass.aiff");
 			else if (OperatingSystem.IsLinux())
-				Run("canberra-gtk-play", "-i " + (hard ? "dialog-error" : "message-new-instant"));
+				Run("canberra-gtk-play", "-i " + (hard ? "dialog-error" : message ? "message-new-instant" : "dialog-information"));
 		}
 		catch (Exception)
 		{

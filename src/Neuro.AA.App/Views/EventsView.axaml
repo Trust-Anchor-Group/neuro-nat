@@ -22,25 +22,6 @@
     <Style Selector="Border.issuesPane">
       <Setter Property="Width" Value="380" />
     </Style>
-    <Style Selector="Border.neuronChip">
-      <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
-      <Setter Property="Padding" Value="8,3,10,3" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
-      <Setter Property="Background" Value="{DynamicResource Surface.Panel}" />
-    </Style>
-    <Style Selector="ToggleButton.seg">
-      <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="Padding" Value="10,4" />
-      <Setter Property="MinHeight" Value="28" />
-      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
-    </Style>
-    <Style Selector="ToggleButton.seg.first">
-      <Setter Property="CornerRadius" Value="6,0,0,6" />
-    </Style>
-    <Style Selector="ToggleButton.seg.last">
-      <Setter Property="CornerRadius" Value="0,6,6,0" />
-    </Style>
     <!-- Narrower windows: slimmer issue list, drop the module column. -->
     <!-- Window width 1280 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
     <Style Selector=".maxw1280 Border.issuesPane">
@@ -57,9 +38,15 @@
     <Style Selector=".maxw960 TextBox.streamFilter">
       <Setter Property="Width" Value="160" />
     </Style>
-    
-    <Style Selector="TextBlock.num">
-      <Setter Property="FontFeatures" Value="+tnum" />
+
+    <!-- Stream rows and their header share these column widths. -->
+    <Style Selector="TextBlock.colNeuron">
+      <Setter Property="Width" Value="150" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style Selector="TextBlock.colModule">
+      <Setter Property="Width" Value="130" />
+      <Setter Property="Margin" Value="0,0,10,0" />
     </Style>
   </UserControl.Styles>
 
@@ -104,8 +91,15 @@
                              TextTrimming="CharacterEllipsis" Margin="0,5,0,3" ToolTip.Tip="{Binding Title}" />
                   <TextBlock Grid.Row="2" Classes="meta" Text="{Binding Meta}" TextTrimming="CharacterEllipsis" />
 
-                  <StackPanel Grid.Column="1" Grid.RowSpan="3" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="4">
-                    <TextBlock Classes="num" Text="{Binding Count}" FontSize="{StaticResource Type.Section}" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                  <StackPanel Grid.Column="1" Grid.RowSpan="3" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5" ToolTip.Tip="{Binding TrendText}">
+                      <c:LineIcon Data="{StaticResource Icon.TrendUp}" Width="15" Height="15" StrokeWidth="2" VerticalAlignment="Center" IsVisible="{Binding IsRising}"
+                                  Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+                      <c:LineIcon Data="{StaticResource Icon.TrendDown}" Width="15" Height="15" StrokeWidth="2" VerticalAlignment="Center" IsVisible="{Binding IsFalling}"
+                                  Foreground="{DynamicResource Ink.Tertiary}" />
+                      <TextBlock Classes="num" Text="{Binding Count, StringFormat='{}{0:N0}'}" FontSize="{StaticResource Type.Number}" FontWeight="SemiBold"
+                                 LetterSpacing="-0.3" />
+                    </StackPanel>
                     <c:Sparkline Values="{Binding Histogram}" Width="64" Height="16"
                                  Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}"
                                  ToolTip.Tip="Occurrences per minute, last hour" />
@@ -126,48 +120,18 @@
     </Border>
 
     <!-- Stream and detail -->
-    <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto">
-
-      <!-- Neurons and the state of their streams -->
-      <Border Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="20,10">
-        <DockPanel>
-          <TextBlock DockPanel.Dock="Left" Classes="meta" Text="{Binding NeuronSummary}" VerticalAlignment="Center" Margin="0,0,14,0" />
-          <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Neurons}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="6" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="ev:WatchedNeuron">
-                  <Border Classes="neuronChip" ToolTip.Tip="{Binding Details}">
-                    <StackPanel Orientation="Horizontal" Spacing="7">
-                      <Ellipse Classes="dot" VerticalAlignment="Center"
-                               Classes.ok="{Binding State, Converter={x:Static conv:EventConverters.IsLive}}"
-                               Classes.busy="{Binding State, Converter={x:Static conv:EventConverters.IsPending}}"
-                               Classes.bad="{Binding State, Converter={x:Static conv:EventConverters.IsProblem}}" />
-                      <TextBlock Classes="mono" Text="{Binding Label}" VerticalAlignment="Center" />
-                      <TextBlock Classes="meta" Text="{Binding StatusText}" VerticalAlignment="Center" />
-                    </StackPanel>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
-        </DockPanel>
-      </Border>
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
 
       <!-- Toolbar: filters, or the selected issue's header -->
-      <Panel Grid.Row="1" Margin="20,14,16,8">
+      <Panel Margin="20,14,16,10">
         <DockPanel IsVisible="{Binding !HasSelectedIssue}">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
             <StackPanel Orientation="Horizontal">
               <ToggleButton Classes="seg first" Content="All" IsChecked="{Binding IsAllSelected, Mode=OneWay}"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.All}" />
-              <ToggleButton Classes="seg" Content="Warnings+" IsChecked="{Binding IsWarningsSelected, Mode=OneWay}" Margin="-1,0,0,0"
+              <ToggleButton Classes="seg" Content="Warnings and up" IsChecked="{Binding IsWarningsSelected, Mode=OneWay}" Margin="-1,0,0,0"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.WarningsAndWorse}" />
-              <ToggleButton Classes="seg last" Content="Errors+" IsChecked="{Binding IsErrorsSelected, Mode=OneWay}" Margin="-1,0,0,0"
+              <ToggleButton Classes="seg last" Content="Errors and up" IsChecked="{Binding IsErrorsSelected, Mode=OneWay}" Margin="-1,0,0,0"
                             Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.ErrorsAndWorse}" />
             </StackPanel>
             <TextBox Classes="streamFilter" Text="{Binding SearchText}" PlaceholderText="Filter messages, modules, Neurons…" Width="260" MinHeight="28" Padding="10,4" />
@@ -218,9 +182,20 @@
       </Panel>
 
       <!-- The stream -->
-      <Border Grid.Row="2" Classes="panel" Margin="20,0,20,12" Background="{DynamicResource Surface.Panel}">
+      <Border Grid.Row="1" Classes="panel" Margin="20,0,20,12" Background="{DynamicResource Surface.Panel}">
+        <DockPanel>
+          <!-- Column names; the widths match the rows below -->
+          <Border DockPanel.Dock="Top" Classes="thead" Padding="14,0">
+            <Grid ColumnDefinitions="76,74,Auto,Auto,*">
+              <TextBlock Classes="th" Text="Time" />
+              <TextBlock Grid.Column="1" Classes="th" Text="Level" />
+              <TextBlock Grid.Column="2" Classes="th colNeuron" Text="Neuron" />
+              <TextBlock Grid.Column="3" Classes="th colModule" Text="Where" ToolTip.Tip="The part of the Neuron that logged the event" />
+              <TextBlock Grid.Column="4" Classes="th" Text="Message" />
+            </Grid>
+          </Border>
         <Panel>
-          <ListBox x:Name="StreamList" Classes="stream" ItemsSource="{Binding Stream}" SelectedItem="{Binding SelectedEvent}" Margin="0,4">
+          <ListBox x:Name="StreamList" Classes="stream" ItemsSource="{Binding Stream}" SelectedItem="{Binding SelectedEvent}" Margin="0,2,0,4">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
                 <VirtualizingStackPanel />
@@ -234,8 +209,9 @@
                     <TextBlock Text="{Binding Severity, Converter={x:Static conv:SeverityTextConverter.Instance}}"
                                Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
                   </Border>
-                  <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Source.NeuronJid}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Width="140" Margin="0,0,10,0" />
-                  <TextBlock Grid.Column="3" Classes="meta colModule" Text="{Binding Module}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Width="120" Margin="0,0,10,0" />
+                  <TextBlock Grid.Column="2" Classes="mono colNeuron" Text="{Binding Source.NeuronJid}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="3" Classes="meta colModule" Text="{Binding Module}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Module}" />
                   <TextBlock Grid.Column="4" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </Grid>
               </DataTemplate>
@@ -260,10 +236,11 @@
                        Text="Neuro.AA streams events from every Neuron in your accounts' rosters where the account is an administrator (a notification address, or a user with the Admin privilege). Neurons that send you notifications are picked up automatically." />
           </StackPanel>
         </Panel>
+        </DockPanel>
       </Border>
 
       <!-- Detail of the selected event -->
-      <Border Grid.Row="3" Classes="panel" Margin="20,0,20,20" MaxHeight="360" IsVisible="{Binding HasSelectedEvent}">
+      <Border Grid.Row="2" Classes="panel" Margin="20,0,20,20" MaxHeight="360" IsVisible="{Binding HasSelectedEvent}">
         <DockPanel DataContext="{Binding SelectedEvent}" x:DataType="ev:NeuronEvent" x:CompileBindings="True">
           <Border DockPanel.Dock="Top" Padding="14,10" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
             <DockPanel>

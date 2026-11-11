@@ -21,6 +21,18 @@ public enum AlertKind
 
 	/// <summary>Someone asks to become one of the account's contacts (a presence subscription).</summary>
 	ContactRequest,
+
+	/// <summary>A chat message from a person, or one in a room that may interrupt.</summary>
+	Message,
+
+	/// <summary>An invitation to a room.</summary>
+	RoomInvitation,
+
+	/// <summary>A device asks its owner whether someone may read, control or befriend it.</summary>
+	DeviceQuestion,
+
+	/// <summary>Someone asks to see an identity, or for a signature.</summary>
+	IdentityRequest,
 }
 
 /// <summary>Something worth interrupting someone for.</summary>
@@ -40,6 +52,15 @@ public sealed record Alert
 
 	/// <summary>True when someone has to do something about it.</summary>
 	public bool NeedsYou { get; init; }
+
+	/// <summary>Alerts with the same group replace each other on screen: one pop-up per conversation.</summary>
+	public string? Group { get; init; }
+
+	/// <summary>For a message: it came from a room.</summary>
+	public bool IsRoom { get; init; }
+
+	/// <summary>True for the kinds that are answered rather than read: requests, invitations and questions.</summary>
+	public bool IsRequest => this.Kind is AlertKind.ContactRequest or AlertKind.RoomInvitation or AlertKind.DeviceQuestion or AlertKind.IdentityRequest;
 }
 
 /// <summary>Which alerts to show.</summary>
@@ -55,7 +76,20 @@ public sealed record AlertSettings
 	/// <summary>Also alert for notifications that are only information (updates, restarts).</summary>
 	public bool InformationalNotifications { get; init; }
 
+	/// <summary>Contact requests, room invitations, questions from devices and requests for identities.</summary>
 	public bool ContactRequests { get; init; } = true;
+
+	/// <summary>Chat messages from people, and from rooms as each room is set.</summary>
+	public bool Messages { get; init; } = true;
+
+	/// <summary>Play the message sound for chat messages.</summary>
+	public bool SoundForMessages { get; init; } = true;
+
+	/// <summary>Hold back every pop-up and sound until it is turned off. Counts keep running.</summary>
+	public bool DoNotDisturb { get; init; }
+
+	/// <summary>Show contacts that you are away. Pop-ups and sounds still come.</summary>
+	public bool Away { get; init; }
 
 	/// <summary>Play a sound for errors and Neurons going down.</summary>
 	public bool SoundForErrors { get; init; } = true;
@@ -73,7 +107,8 @@ public sealed record AlertSettings
 	public bool WantsSound(Alert a) => a.Kind switch
 	{
 		AlertKind.Error or AlertKind.NeuronDown => this.SoundForErrors,
-		AlertKind.ContactRequest => this.SoundForContactRequests,
+		AlertKind.ContactRequest or AlertKind.RoomInvitation or AlertKind.DeviceQuestion or AlertKind.IdentityRequest => this.SoundForContactRequests,
+		AlertKind.Message => this.SoundForMessages,
 		AlertKind.NeuronBack => this.SoundForInformation,
 		_ when a.Severity >= Events.EventSeverity.Warning || a.NeedsYou => this.SoundForNotifications,
 		_ => this.SoundForInformation,
@@ -158,6 +193,9 @@ public sealed class AlertService : IDisposable
 
 	public bool IsSnoozed => this.SnoozedUntil is DateTime t && t > this.clock();
 
+	/// <summary>True while pop-ups and sounds are held back: do not disturb, or snoozed.</summary>
+	public bool IsQuiet => this.Settings.DoNotDisturb || this.IsSnoozed;
+
 	/// <summary>Raised for every alert, unless snoozed. Any thread.</summary>
 	public event EventHandler<Alert>? Raised;
 
@@ -195,8 +233,155 @@ public sealed class AlertService : IDisposable
 			this.recent.RemoveAll(x => x.At < cutoff);
 		}
 
-		if (!this.IsSnoozed)
+		if (!this.IsQuiet)
 			this.Raised?.Invoke(this, a);
+	}
+
+	/// <summary>Raises a made-up alert, to try the pop-up and the sound. Ignores do not disturb.</summary>
+	public void Test(AlertKind kind)
+	{
+		DateTime now = this.clock();
+		this.Raised?.Invoke(this, kind switch
+		{
+			AlertKind.Message => new Alert
+			{
+				Id = "test:" + now.Ticks,
+				Kind = AlertKind.Message,
+				Title = "Test message",
+				Detail = "This is how a new chat message looks and sounds.",
+				At = now,
+			},
+			_ => new Alert
+			{
+				Id = "test:" + now.Ticks,
+				Kind = kind,
+				Title = "Test alert",
+				Detail = "This is how an alert from a Neuron looks and sounds.",
+				Severity = kind is AlertKind.Error or AlertKind.NeuronDown ? EventSeverity.Error : EventSeverity.Warning,
+				At = now,
+			},
+		});
+	}
+
+	// ---- Chat messages, invitations, questions and requests ----------------------------------
+
+	private readonly HashSet<string> seenRequests = [];
+
+	/// <summary>Alerts for new chat messages and room invitations.</summary>
+	public void Watch(Chat.ChatService chat)
+	{
+		chat.MessageReceived += (_, m) => this.MessageReceived(m);
+		chat.RoomsChanged += (_, _) =>
+		{
+			foreach (Chat.RoomInvitation i in chat.Invitations)
+			{
+				if (this.FirstTime("inv:" + i.AccountId + ":" + i.RoomJid + ":" + i.Received.Ticks) && this.Settings.ContactRequests)
+				{
+					this.Raise(new Alert
+					{
+						Id = "inv:" + i.AccountId + ":" + i.RoomJid + ":" + i.Received.Ticks,
+						Kind = AlertKind.RoomInvitation,
+						Title = $"{i.From} invites you to {i.RoomJid.Split('@')[0]}",
+						Detail = i.Reason ?? i.RoomJid,
+						Severity = EventSeverity.Warning,
+						At = this.clock(),
+						AccountId = i.AccountId,
+						Target = i.RoomJid,
+						NeedsYou = true,
+					});
+				}
+			}
+		};
+	}
+
+	/// <summary>A new message arrived. Also used by tests.</summary>
+	internal void MessageReceived(Chat.IncomingMessage m)
+	{
+		Chat.Conversation c = m.Conversation;
+		if (!this.Settings.Messages || c.IsMuted(this.clock()))
+			return;
+
+		// A room only interrupts when it is set to, or when the message names you.
+		if (c.IsRoom && c.Notify != Chat.RoomNotify.All && !m.Message.Mention)
+			return;
+
+		string room = c.BareJid.Split('@')[0];
+		string text = m.Message.Text.Length > 0 ? m.Message.Text : m.Message.Markdown;
+		this.Raise(new Alert
+		{
+			Id = "m:" + m.Message.Id,
+			Group = "m:" + c.AccountId.ToString("N") + "|" + c.BareJid.ToLowerInvariant(),
+			Kind = AlertKind.Message,
+			Title = c.IsRoom ? $"{m.SenderLabel} in {room}" : m.SenderLabel,
+			Detail = text.ReplaceLineEndings(" "),
+			At = this.clock(),
+			AccountId = c.AccountId,
+			Target = c.BareJid,
+			IsRoom = c.IsRoom,
+		});
+	}
+
+	/// <summary>Alerts for new questions from devices.</summary>
+	public void Watch(Devices.DevicesService devices)
+	{
+		devices.QuestionsChanged += (_, _) =>
+		{
+			foreach (Devices.DeviceQuestion q in devices.Questions)
+			{
+				if (!this.FirstTime("q:" + q.Id) || !this.Settings.ContactRequests)
+					continue;
+
+				this.Raise(new Alert
+				{
+					Id = "q:" + q.Id,
+					Kind = AlertKind.DeviceQuestion,
+					Title = q.Kind switch
+					{
+						Devices.DeviceQuestionKind.Friendship => $"{q.RemoteJid} wants to be a contact of a device",
+						Devices.DeviceQuestionKind.Readout => $"{q.RemoteJid} wants to read a device",
+						_ => $"{q.RemoteJid} wants to control a device",
+					},
+					Detail = q.DeviceJid,
+					Severity = EventSeverity.Warning,
+					At = this.clock(),
+					AccountId = q.AccountId,
+					Target = q.Id,
+					NeedsYou = true,
+				});
+			}
+		};
+	}
+
+	/// <summary>Alerts for new requests to see an identity or to sign.</summary>
+	public void Watch(Identity.IdentityService identities)
+	{
+		identities.PetitionsChanged += (_, _) =>
+		{
+			foreach (Identity.IdentityPetition p in identities.Petitions)
+			{
+				if (!this.FirstTime("p:" + p.PetitionId) || !this.Settings.ContactRequests)
+					continue;
+
+				this.Raise(new Alert
+				{
+					Id = "p:" + p.PetitionId,
+					Kind = AlertKind.IdentityRequest,
+					Title = (p.RequestorName ?? p.From) + (p.Kind == "identity" ? " asks to see your identity" : " asks for your signature"),
+					Detail = string.IsNullOrWhiteSpace(p.Purpose) ? p.From : p.Purpose,
+					Severity = EventSeverity.Warning,
+					At = this.clock(),
+					AccountId = p.AccountId,
+					Target = p.PetitionId,
+					NeedsYou = true,
+				});
+			}
+		};
+	}
+
+	private bool FirstTime(string key)
+	{
+		lock (this.sync)
+			return this.seenRequests.Add(key);
 	}
 
 	// ---- Notifications ---------------------------------------------------------------------

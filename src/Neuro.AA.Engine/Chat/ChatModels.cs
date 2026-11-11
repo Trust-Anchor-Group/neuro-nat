@@ -30,7 +30,26 @@ public sealed record ChatMessage
 
 	/// <summary>In a room: the nickname of who wrote it.</summary>
 	public string? Sender { get; init; }
+
+	/// <summary>In a room: the message names this account's nickname.</summary>
+	public bool Mention { get; init; }
 }
+
+/// <summary>What a room may interrupt you for.</summary>
+public enum RoomNotify
+{
+	/// <summary>Only messages that name you. The rest raise the count.</summary>
+	Mentions,
+
+	/// <summary>Every message.</summary>
+	All,
+
+	/// <summary>Nothing, and its count stays out of the totals.</summary>
+	Muted,
+}
+
+/// <summary>A message that just arrived from someone else: news, as opposed to history.</summary>
+public sealed record IncomingMessage(Conversation Conversation, ChatMessage Message, string SenderLabel);
 
 /// <summary>A conversation with one contact through one account.</summary>
 public sealed class Conversation
@@ -57,6 +76,54 @@ public sealed class Conversation
 
 	public int Unread { get; internal set; }
 	public DateTime LastActivity { get; internal set; }
+
+	/// <summary>The first message that has not been read: where the "New" line goes.</summary>
+	public string? FirstUnreadId { get; internal set; }
+
+	/// <summary>For rooms: what may interrupt you.</summary>
+	public RoomNotify Notify { get; internal set; }
+
+	/// <summary>No pop-ups or sounds until then. <see cref="DateTime.MaxValue"/> means until you say otherwise.</summary>
+	public DateTime? MutedUntil { get; internal set; }
+
+	/// <summary>True while the person or room is muted.</summary>
+	public bool IsMuted(DateTime now) => this.Notify == RoomNotify.Muted || (this.MutedUntil is DateTime t && t > now);
+
+	/// <summary>Counts an incoming message as unread, and remembers where reading stopped.</summary>
+	internal void CountUnread(ChatMessage m)
+	{
+		if (this.Unread == 0)
+			this.FirstUnreadId = m.Id;
+		this.Unread++;
+	}
+
+	/// <summary>Marks everything from a message on as unread. Returns false when it is not known.</summary>
+	internal bool MarkUnreadFrom(string id)
+	{
+		lock (this.messages)
+		{
+			int i = this.messages.FindIndex(m => m.Id == id);
+			if (i < 0)
+				return false;
+
+			// Start at the first message from someone else at or after the one picked.
+			while (i < this.messages.Count && this.messages[i].Direction != ChatDirection.In)
+				i++;
+			if (i >= this.messages.Count)
+				return false;
+
+			this.FirstUnreadId = this.messages[i].Id;
+			this.Unread = this.messages.Skip(i).Count(m => m.Direction == ChatDirection.In);
+			return true;
+		}
+	}
+
+	/// <summary>Removes a message. Returns false when it is not known.</summary>
+	internal bool Remove(string id)
+	{
+		lock (this.messages)
+			return this.messages.RemoveAll(m => m.Id == id) > 0;
+	}
 
 	public IReadOnlyList<ChatMessage> Messages
 	{

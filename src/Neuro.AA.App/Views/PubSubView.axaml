@@ -10,18 +10,6 @@
     <Style Selector="Border.listPane">
       <Setter Property="Width" Value="340" />
     </Style>
-    <Style Selector="ToggleButton.seg">
-      <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="Padding" Value="10,4" />
-      <Setter Property="MinHeight" Value="28" />
-      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
-    </Style>
-    <Style Selector="ToggleButton.seg.first">
-      <Setter Property="CornerRadius" Value="6,0,0,6" />
-    </Style>
-    <Style Selector="ToggleButton.seg.last">
-      <Setter Property="CornerRadius" Value="0,6,6,0" />
-    </Style>
     <!-- Window width 1100 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
     <Style Selector=".maxw1100 Border.listPane">
       <Setter Property="Width" Value="270" />

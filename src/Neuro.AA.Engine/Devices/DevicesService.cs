@@ -231,6 +231,15 @@ public sealed class DevicesService : IAsyncDisposable
 		this.QuestionsChanged?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>Adds a question as it is, for previews and UI tests.</summary>
+	internal void Preview(DeviceQuestion q)
+	{
+		lock (this.questions)
+			this.questions.Add(q);
+
+		this.QuestionsChanged?.Invoke(this, EventArgs.Empty);
+	}
+
 	private Task Ask(Guid accountId, DeviceQuestionKind kind, QuestionEventArgs e, NodeQuestionEventArgs? node, IReadOnlyList<string> names)
 	{
 		DeviceQuestion q = new()
