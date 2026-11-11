@@ -211,6 +211,22 @@
 
         <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding FilterText}" PlaceholderText="{Binding FilterHint}" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
 
+        <!-- The groups you put contacts in: one click narrows the list to a group, another shows everyone again -->
+        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding GroupChoices}" IsVisible="{Binding HasGroups}" Margin="0,0,0,4">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:GroupChip">
+              <ToggleButton Classes="chip" Content="{Binding Name}" IsChecked="{Binding IsSelected, Mode=OneWay}" Margin="0,0,6,6"
+                            ToolTip.Tip="Show only the people in this group"
+                            Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).PickGroupCommand}" CommandParameter="{Binding}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
         <Panel>
           <ListBox Classes="rows" ItemsSource="{Binding People}" SelectedItem="{Binding SelectedPerson}"
                    c:ActionMenu.Source="{Binding}" c:ActionMenu.KeepSelection="True">

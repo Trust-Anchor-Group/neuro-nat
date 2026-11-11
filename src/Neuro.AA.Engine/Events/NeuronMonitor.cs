@@ -309,6 +309,7 @@ public sealed class NeuronMonitor : IAsyncDisposable
 	{
 		string? markdown = null;
 		string? replaces = null;
+		string? retracts = ReadRetraction(e.Message);
 		DateTime timestamp = DateTime.Now;
 
 		if (e.Message is XmlElement message)
@@ -341,11 +342,42 @@ public sealed class NeuronMonitor : IAsyncDisposable
 
 		string text = e.Body ?? string.Empty;
 		markdown ??= text;
-		if (string.IsNullOrWhiteSpace(markdown))
+		if (string.IsNullOrWhiteSpace(markdown) && retracts is null)
 			return null;
 
 		return new IncomingNotification(accountId, e.FromBareJID, string.IsNullOrEmpty(e.Id) ? null : e.Id,
-			string.IsNullOrEmpty(replaces) ? null : replaces, timestamp, markdown, text);
+			string.IsNullOrEmpty(replaces) ? null : replaces, timestamp, markdown, text)
+		{
+			Retracts = retracts,
+		};
+	}
+
+	/// <summary>
+	/// The id of the message a stanza takes back, when it does (XEP-0424). Both spellings are
+	/// read: the current one, with the id on the retract element, and the earlier one, where
+	/// the retract element sits inside an "apply-to" element that carries the id.
+	/// </summary>
+	internal static string? ReadRetraction(XmlElement? message)
+	{
+		if (message is null)
+			return null;
+
+		foreach (XmlNode node in message.ChildNodes)
+		{
+			if (node is not XmlElement x)
+				continue;
+
+			if (x.LocalName == "retract" && x.NamespaceURI.StartsWith("urn:xmpp:message-retract:", StringComparison.Ordinal) && x.GetAttribute("id") is { Length: > 0 } id)
+				return id;
+
+			if (x.LocalName == "apply-to" && x.NamespaceURI == "urn:xmpp:fasten:0" && x.GetAttribute("id") is { Length: > 0 } target &&
+				x.ChildNodes.OfType<XmlElement>().Any(c => c.LocalName == "retract" && c.NamespaceURI.StartsWith("urn:xmpp:message-retract:", StringComparison.Ordinal)))
+			{
+				return target;
+			}
+		}
+
+		return null;
 	}
 
 	private Watch GetWatch(string bareJid)

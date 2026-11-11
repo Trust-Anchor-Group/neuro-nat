@@ -102,7 +102,11 @@ public sealed record IncomingNotification(
 	string? Replaces,
 	DateTime Timestamp,
 	string Markdown,
-	string Text);
+	string Text)
+{
+	/// <summary>Set when this message takes an earlier one back (XEP-0424): the id of the message that is gone.</summary>
+	public string? Retracts { get; init; }
+}
 
 /// <summary>One item in the Attention list.</summary>
 public sealed record NeuronNotification

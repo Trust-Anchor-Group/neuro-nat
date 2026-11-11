@@ -33,6 +33,26 @@ public sealed partial class PersonViewModel(Guid accountId, string bareJid) : Ob
 	[ObservableProperty] private string? subject;
 	[ObservableProperty] private int occupantCount;
 
+	/// <summary>The name the contact has in the account's contact list. Empty when it has none.</summary>
+	[ObservableProperty] private string name = string.Empty;
+
+	/// <summary>The groups the contact is in.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasGroups), nameof(GroupsText))]
+	private IReadOnlyList<string> groups = [];
+
+	public bool HasGroups => this.Groups.Count > 0;
+	public string GroupsText => string.Join(", ", this.Groups);
+
+	/// <summary>A conversation with one person inside a room, which goes through the room.</summary>
+	[ObservableProperty] private bool isPrivate;
+
+	/// <summary>A room where you may read but not write.</summary>
+	[ObservableProperty] private bool isReadOnly;
+
+	/// <summary>A person, as opposed to a room, a Neuron or a conversation inside a room: someone who can be a contact.</summary>
+	public bool IsPerson => !this.IsRoom && !this.IsPrivate;
+
 	/// <summary>No pop-ups or sounds from this person or room for now.</summary>
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasCountedUnread))]
@@ -69,10 +89,24 @@ public sealed partial class MessageViewModel(string id) : ObservableObject
 
 	[ObservableProperty] private string markdown = string.Empty;
 	[ObservableProperty] private bool isMine;
-	[ObservableProperty] private string timeText = string.Empty;
-	[ObservableProperty] private bool isCorrected;
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(StampText))]
+	private string timeText = string.Empty;
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(StampText), nameof(ShowStamp))]
+	private bool isCorrected;
+
 	[ObservableProperty] private string? error;
-	[ObservableProperty] private bool startsGroup = true;
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(StampText), nameof(ShowStamp))]
+	private bool startsGroup = true;
+
+	/// <summary>The line under a message: its time on the first of a run, and "edited" on any that was changed.</summary>
+	public string StampText => this.StartsGroup ? this.TimeText + (this.IsCorrected ? " · edited" : string.Empty) : "edited";
+
+	public bool ShowStamp => this.StartsGroup || this.IsCorrected;
 	[ObservableProperty] private bool isEncrypted;
 	[ObservableProperty] private string? sender;
 	[ObservableProperty] private bool showSender;
@@ -82,6 +116,24 @@ public sealed partial class MessageViewModel(string id) : ObservableObject
 
 	/// <summary>In a room: the message names you.</summary>
 	[ObservableProperty] private bool isMention;
+
+	/// <summary>Its writer took it back: a line saying so is left in its place.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(DeletedText))]
+	private bool isDeleted;
+
+	public string DeletedText => this.IsMine ? "You deleted this message" : "This message was deleted";
+
+	/// <summary>One of yours that went out and is still there: it can be changed or taken back.</summary>
+	[ObservableProperty] private bool canChange;
+
+	/// <summary>The one being answered, changed or asked about.</summary>
+	[ObservableProperty] private bool isTarget;
+
+	public bool IsFailed => !string.IsNullOrEmpty(this.Error);
+
+	partial void OnErrorChanged(string? value) => this.OnPropertyChanged(nameof(this.IsFailed));
+	partial void OnIsMineChanged(bool value) => this.OnPropertyChanged(nameof(this.DeletedText));
 }
 
 /// <summary>An account that can be used to add a contact.</summary>
@@ -146,7 +198,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	public ObservableCollection<PersonViewModel> People { get; } = [];
 	public ObservableCollection<SubscriptionRequest> Requests { get; } = [];
 	public ObservableCollection<RoomInvitation> Invitations { get; } = [];
-	public ObservableCollection<RoomOccupant> Occupants { get; } = [];
+	public ObservableCollection<OccupantViewModel> Occupants { get; } = [];
 	public ObservableCollection<MessageViewModel> Messages { get; } = [];
 	public ObservableCollection<AccountChoice> AccountChoices { get; } = [];
 
@@ -215,10 +267,6 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	[ObservableProperty] private string? joinError;
 	[ObservableProperty] private string? joinHint;
 
-	// Room tools
-	[ObservableProperty] private string inviteJid = string.Empty;
-	[ObservableProperty] private string? roomError;
-
 	// Sharing from other workspaces
 	[ObservableProperty] private string? shareTitle;
 	private string? shareMarkdown;
@@ -247,7 +295,6 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	private string draft = string.Empty;
 
 	[ObservableProperty] private string? sendError;
-	[ObservableProperty] private bool removeArmed;
 
 	// Add contact
 	[ObservableProperty] private bool isAddOpen;
@@ -275,10 +322,11 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		if (this.reordering)
 			return;
 
-		this.RemoveArmed = false;
 		this.SendError = null;
-		this.RoomError = null;
 		this.Messages.Clear();
+		this.IsBannedOpen = false;
+		this.RoomForm = null;
+		this.RestoreDraft(value);
 		if (value is not null)
 		{
 			if (value.IsRoom)
@@ -299,16 +347,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		}
 
 		this.RefreshOccupants();
-	}
-
-	private void RefreshOccupants()
-	{
-		this.Occupants.Clear();
-		if (this.SelectedPerson is PersonViewModel p && p.IsRoom && this.chat.Room(p.AccountId, p.BareJid) is RoomInfo room)
-		{
-			foreach (RoomOccupant o in room.Occupants)
-				this.Occupants.Add(o);
-		}
+		this.ApplyPanel();
 	}
 
 	/// <summary>Called by the shell: lets the operator pick who gets the shared text.</summary>
@@ -346,6 +385,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		foreach (PersonViewModel known in this.everyone.Concat(this.People))
 			existing.TryAdd(known.AccountId.ToString("N") + "|" + known.BareJid.ToLowerInvariant(), known);
 		List<PersonViewModel> list = [];
+		HashSet<PersonViewModel> contacts = [];
 
 		PersonViewModel Person(Guid account, string jid)
 		{
@@ -370,7 +410,12 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			foreach (Contact c in this.chat.Contacts(account))
 			{
 				PersonViewModel p = Person(account, c.BareJid);
+				contacts.Add(p);
 				p.Label = c.Label;
+				p.Name = c.Name;
+				string[] groups = [.. c.Groups.Order(StringComparer.CurrentCultureIgnoreCase)];
+				if (!groups.SequenceEqual(p.Groups))
+					p.Groups = groups;
 				p.InRoster = true;
 				p.IsNeuron = c.IsNeuron;
 				p.IsOnline = c.IsOnline;
@@ -405,20 +450,58 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			p.Subject = conv.Subject;
 			p.OccupantCount = room.Occupants.Count;
 			p.IsOnline = room.Joined;
+			p.IsReadOnly = room.Joined && room.Me?.IsVisitor == true;
 			p.PresenceText = room.Joined
 				? (room.Occupants.Count == 1 ? "1 person here" : $"{room.Occupants.Count} people here") + (string.IsNullOrWhiteSpace(conv.Subject) ? string.Empty : " · " + conv.Subject)
 				: room.Error ?? "Not in the room right now";
 			p.LastActivity = conv.LastActivity;
 		}
 
+		// A conversation inside a room, or a contact that is gone, is listed for what was written in it.
+		foreach (Conversation conv in this.chat.Conversations)
+		{
+			if (conv.IsRoom || !profiles.ContainsKey(conv.AccountId))
+				continue;
+			if (conv.Messages.Count == 0 && !this.started.Contains(conv.AccountId.ToString("N") + "|" + conv.BareJid))
+				continue;
+
+			PersonViewModel p = Person(conv.AccountId, conv.BareJid);
+			if (!ChatService.IsPrivate(conv.BareJid))
+				continue;
+
+			// It goes through the room, and lasts while both are in it.
+			string roomJid = conv.BareJid.Split('/')[0];
+			string nick = conv.BareJid[(roomJid.Length + 1)..];
+			RoomInfo? room = this.chat.Room(conv.AccountId, roomJid);
+			bool here = room?.Joined == true && room.Occupants.Any(o => string.Equals(o.NickName, nick, StringComparison.OrdinalIgnoreCase));
+			p.IsPrivate = true;
+			p.Label = ChatService.PrivateLabel(conv.BareJid);
+			p.IsOnline = here;
+			p.PresenceText = here ? "In the room now" : room?.Joined == true ? "Not in the room right now" : "You are not in the room right now";
+			p.IsEncrypted = false;
+			p.SecurityText = "Goes through the room to " + nick + " alone. Not end-to-end encrypted.";
+		}
+
 		// Someone who wrote without being a contact has no presence to show. A Neuron is a
 		// Neuron whether or not it is a contact.
-		foreach (PersonViewModel p in list.Where(p => !p.IsRoom && !p.InRoster && p.PresenceText.Length == 0))
+		foreach (PersonViewModel p in list.Where(p => p.IsPerson && !contacts.Contains(p)))
+		{
+			p.InRoster = false;
+			if (p.Name.Length > 0)
+				p.Label = p.BareJid;
 			p.PresenceText = "Not a contact";
-		foreach (PersonViewModel p in list.Where(p => !p.IsRoom && !p.IsNeuron))
+			p.IsOnline = false;
+			p.IsAway = false;
+			p.Name = string.Empty;
+			p.SubscriptionNote = null;
+			if (p.Groups.Count > 0)
+				p.Groups = [];
+		}
+
+		foreach (PersonViewModel p in list.Where(p => p.IsPerson && !p.IsNeuron))
 			p.IsNeuron = this.chat.IsNeuron(p.AccountId, p.BareJid);
 
-		foreach (PersonViewModel p in list.Where(p => !p.IsRoom))
+		foreach (PersonViewModel p in list.Where(p => p.IsPerson))
 		{
 			ContactSecurity s = this.chat.Security(p.AccountId, p.BareJid);
 			p.IsEncrypted = s.Encrypted;
@@ -429,9 +512,11 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 
 		foreach (Conversation conv in this.chat.Conversations)
 		{
-			if (!profiles.ContainsKey(conv.AccountId) || (conv.Messages.Count == 0 && !conv.IsRoom))
+			if (!profiles.ContainsKey(conv.AccountId))
 				continue;
 			if (conv.IsRoom && this.chat.Room(conv.AccountId, conv.BareJid) is null)
+				continue;
+			if (!conv.IsRoom && conv.Messages.Count == 0 && !this.started.Contains(conv.AccountId.ToString("N") + "|" + conv.BareJid))
 				continue;
 
 			PersonViewModel p = Person(conv.AccountId, conv.BareJid);
@@ -449,11 +534,13 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 					_ => "Tells you when you are mentioned",
 				};
 			p.LastActivity = conv.LastActivity;
-			p.Preview = last is null ? null : (last.Direction == ChatDirection.Out ? "You: " : string.Empty) + OneLine(last.Text.Length > 0 ? last.Text : last.Markdown);
+			p.Preview = last is null ? null : (last.Direction == ChatDirection.Out ? "You: " : string.Empty)
+				+ (last.Deleted is not null ? "Message deleted" : OneLine(WithoutQuote(last.Text.Length > 0 ? last.Text : last.Markdown)));
 			p.TimeText = last is null ? string.Empty : RelativeTime.Format(last.Timestamp, now);
 		}
 
 		this.everyone = list;
+		this.RefreshGroups(list);
 		this.PeopleUnread = list.Where(p => !p.IsRoom && !p.IsMuted).Sum(p => p.Unread);
 		this.RoomsUnread = list.Where(p => p.IsRoom && !p.IsMuted).Sum(p => p.Unread);
 		this.HasPeopleUnread = this.PeopleUnread > 0;
@@ -469,10 +556,15 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		{
 			shown = shown.Where(p => p.Label.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
 				p.BareJid.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-				p.AccountLabel.Contains(filter, StringComparison.OrdinalIgnoreCase));
+				p.AccountLabel.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+				p.Groups.Any(g => g.Contains(filter, StringComparison.CurrentCultureIgnoreCase)));
 		}
 		else
 			shown = shown.Where(p => !p.IsNeuron || p.Unread > 0 || ReferenceEquals(p, open));
+
+		// One group at a time, when one is picked above the list.
+		if (!rooms && this.GroupFilter is string group)
+			shown = shown.Where(p => p.Groups.Contains(group, StringComparer.CurrentCultureIgnoreCase));
 
 		List<PersonViewModel> ordered = [.. shown
 			.OrderByDescending(p => p.Unread > 0)
@@ -526,6 +618,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		this.HasInvitations = this.Invitations.Count > 0;
 
 		this.RefreshOccupants();
+		this.LoadDetails();
 		if (this.SelectedPerson is PersonViewModel sel)
 			this.CanSendFiles = this.chat.CanSendFiles(sel.AccountId);
 
@@ -541,6 +634,14 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		}
 	}
 
+	/// <summary>A reply without the quote it starts with: what was actually said.</summary>
+	private static string WithoutQuote(string s)
+	{
+		string[] lines = s.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+		string said = string.Join('\n', lines.Where(l => !l.TrimStart().StartsWith('>'))).Trim();
+		return said.Length > 0 ? said : s;
+	}
+
 	private static string OneLine(string s)
 	{
 		s = Engine.Attention.NotificationClassifier.Plain(s.Replace('\r', ' ').Replace('\n', ' '));
@@ -550,14 +651,14 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	private void LoadConversation(PersonViewModel p, bool reset)
 	{
 		Conversation? conv = p.IsRoom ? this.chat.GetRoom(p.AccountId, p.BareJid) : this.chat.Find(p.AccountId, p.BareJid);
-		IReadOnlyList<ChatMessage> messages = conv?.Messages ?? [];
-		Dictionary<string, MessageViewModel> shown = this.Messages.ToDictionary(m => m.Id);
+		IReadOnlyList<ChatMessage> all = conv?.Messages ?? [];
 
 		if (reset)
 		{
 			this.Messages.Clear();
 			this.keepUnread = false;
 			this.newLineId = null;
+			this.oldestShownId = null;
 		}
 
 		// The "New" line goes above the first message that arrived while you were not looking.
@@ -565,21 +666,46 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		if (conv is not null && conv.Unread > 0 && conv.FirstUnreadId is string first && (reset || !this.IsWatched))
 			this.newLineId = first;
 
+		// A page from the end, and further back when older ones were asked for.
+		int from = this.FirstShown(all, conv);
+		this.oldestShownId = all.Count > 0 ? all[from].Id : null;
+		this.HasOlder = from > 0;
+
+		// What was deleted from the history goes from the screen too.
+		HashSet<string> wanted = [];
+		for (int i = from; i < all.Count; i++)
+			wanted.Add(all[i].Id);
+
+		for (int i = this.Messages.Count - 1; i >= 0; i--)
+		{
+			if (!wanted.Contains(this.Messages[i].Id))
+			{
+				if (ReferenceEquals(this.Messages[i], this.Target))
+					this.LeaveBanner();
+
+				this.Messages.RemoveAt(i);
+			}
+		}
+
+		Dictionary<string, MessageViewModel> shown = this.Messages.ToDictionary(m => m.Id);
 		ChatMessage? previous = null;
 		int index = 0;
-		foreach (ChatMessage m in messages)
+		for (int i = from; i < all.Count; i++)
 		{
-			if (!shown.TryGetValue(m.Id, out MessageViewModel? vm) || reset)
+			ChatMessage m = all[i];
+			if (!shown.TryGetValue(m.Id, out MessageViewModel? vm))
 			{
 				vm = new MessageViewModel(m.Id);
 				this.Messages.Insert(Math.Min(index, this.Messages.Count), vm);
 			}
 
-			vm.Markdown = m.Markdown;
 			vm.IsMine = m.Direction == ChatDirection.Out;
+			vm.IsDeleted = m.Deleted is not null;
+			vm.Markdown = m.Markdown;
 			vm.TimeText = m.Timestamp.ToString(m.Timestamp.Date == DateTime.Today ? "HH:mm" : "d MMM HH:mm", CultureInfo.CurrentCulture);
-			vm.IsCorrected = m.Corrected is not null;
+			vm.IsCorrected = m.Corrected is not null && m.Deleted is null;
 			vm.Error = m.Error;
+			vm.CanChange = vm.IsMine && m.MessageId is not null && m.Deleted is null && m.Error is null;
 			vm.IsEncrypted = m.Encrypted;
 			vm.Sender = m.Sender;
 			vm.IsMention = m.Mention;
@@ -759,9 +885,31 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 					], "BellOff");
 				}
 
+				if (p.IsRoom)
+					this.RoomActions(list, p);
+				else
+					this.PersonActions(list, p);
+
+				break;
+
+			case OccupantViewModel who:
+				this.OccupantActions(list, who);
+				break;
+
+			case MessageViewModel m when m.IsDeleted:
+				// Nothing is left of it but its place.
+				list.Do("Remove from my history", () => this.Delete(m), icon: "Trash");
 				break;
 
 			case MessageViewModel m:
+				if (m.IsFailed && m.IsMine)
+					list.Do("Send again", () => this.SendAgain(m), icon: "Refresh");
+				else
+					list.Add(new ItemAction("Reply", ActionGroup.Open, () => this.Reply(m)) { Icon = "Reply", Key = "R" });
+
+				if (m.CanChange)
+					list.Add(new ItemAction("Edit", ActionGroup.Open, () => this.Edit(m)) { Icon = "Edit", Key = "E" });
+
 				list.Copy("Copy text", () => m.Markdown, "the message", "Ctrl+C");
 				list.Copy("Copy as a quote", () => Export.Quote(m.Markdown), "the message as a quote", "Ctrl+Shift+C");
 
@@ -777,6 +925,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 					list.Do("Share with someone else…", () => this.BeginShare("Message from " + from, Export.Quote(m.Markdown)), icon: "Share");
 				}
 
+				list.Do(m.CanChange ? "Delete for everyone…" : m.IsMine ? "Remove" : "Remove from my history…", () => this.Delete(m), danger: true, icon: "Trash", key: "Delete");
 				break;
 		}
 
@@ -789,10 +938,40 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		if (this.SelectedPerson is not PersonViewModel p || string.IsNullOrWhiteSpace(this.Draft))
 			return;
 
-		string text = this.Draft.TrimEnd();
+		string text = Emoji.Replace(this.Draft.TrimEnd());
+
+		// Saving a change to a message that was already sent.
+		if (this.Mode == ComposerMode.Edit && this.Target is MessageViewModel changing && this.SelectedConversation is Conversation c)
+		{
+			if (text == changing.Markdown)
+			{
+				this.LeaveBanner();
+				return;
+			}
+
+			try
+			{
+				await this.chat.EditAsync(c, changing.Id, text);
+				this.SendError = null;
+				this.LeaveBanner();
+			}
+			catch (Exception ex)
+			{
+				this.SendError = "The change was not sent: " + ex.Message;
+			}
+
+			this.LoadConversation(p, false);
+			return;
+		}
+
+		if (this.Mode == ComposerMode.Reply && this.Target is MessageViewModel answered)
+			text = this.ReplyQuote(answered) + "\n\n" + text;
+
+		// One that does not go says so itself, with a way to send it again.
+		this.SetMode(ComposerMode.Write, null);
 		this.Draft = string.Empty;
-		ChatMessage m = await this.chat.SendAsync(p.AccountId, p.BareJid, text);
-		this.SendError = m.Error;
+		this.SendError = null;
+		await this.chat.SendAsync(p.AccountId, p.BareJid, text);
 		this.LoadConversation(p, false);
 	}
 
@@ -852,42 +1031,6 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		catch (Exception ex)
 		{
 			this.JoinError = ex.Message;
-		}
-	}
-
-	[RelayCommand]
-	private async Task LeaveRoom()
-	{
-		if (this.SelectedPerson is not PersonViewModel p || !p.IsRoom)
-			return;
-
-		if (!this.RemoveArmed)
-		{
-			this.RemoveArmed = true;
-			return;
-		}
-
-		this.RemoveArmed = false;
-		await this.chat.LeaveRoomAsync(p.AccountId, p.BareJid);
-		this.SelectedPerson = null;
-		this.Refresh();
-	}
-
-	[RelayCommand]
-	private async Task Invite()
-	{
-		if (this.SelectedPerson is not PersonViewModel p || !p.IsRoom || string.IsNullOrWhiteSpace(this.InviteJid))
-			return;
-
-		try
-		{
-			await this.chat.InviteAsync(p.AccountId, p.BareJid, this.InviteJid.Trim());
-			this.RoomError = "Invitation sent to " + this.InviteJid.Trim() + ".";
-			this.InviteJid = string.Empty;
-		}
-		catch (Exception ex)
-		{
-			this.RoomError = ex.Message;
 		}
 	}
 
@@ -968,31 +1111,6 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		catch (Exception ex)
 		{
 			this.AddError = ex.Message;
-		}
-	}
-
-	[RelayCommand]
-	private async Task RemoveContact()
-	{
-		if (this.SelectedPerson is not PersonViewModel p)
-			return;
-
-		if (!this.RemoveArmed)
-		{
-			this.RemoveArmed = true;
-			return;
-		}
-
-		this.RemoveArmed = false;
-		try
-		{
-			await this.chat.RemoveContactAsync(p.AccountId, p.BareJid);
-			this.SelectedPerson = null;
-			this.Refresh();
-		}
-		catch (Exception ex)
-		{
-			this.SendError = ex.Message;
 		}
 	}
 

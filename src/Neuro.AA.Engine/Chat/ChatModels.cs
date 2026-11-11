@@ -33,6 +33,9 @@ public sealed record ChatMessage
 
 	/// <summary>In a room: the message names this account's nickname.</summary>
 	public bool Mention { get; init; }
+
+	/// <summary>When its writer took the message back. The text is gone; the place it had stays.</summary>
+	public DateTime? Deleted { get; init; }
 }
 
 /// <summary>What a room may interrupt you for.</summary>
@@ -72,7 +75,7 @@ public sealed class Conversation
 	public string? Subject { get; internal set; }
 
 	/// <summary>Most messages kept per conversation.</summary>
-	public static int Capacity { get; set; } = 500;
+	public static int Capacity { get; set; } = 2000;
 
 	public int Unread { get; internal set; }
 	public DateTime LastActivity { get; internal set; }
@@ -160,18 +163,45 @@ public sealed class Conversation
 			this.LastActivity = m.Timestamp;
 	}
 
-	/// <summary>Applies a correction. Returns false when the corrected message is not known.</summary>
-	internal bool Correct(string messageId, string markdown, string text, DateTime when)
+	/// <summary>
+	/// Applies a correction. Returns false when the corrected message is not known, is already
+	/// taken back, or (in a room) was written by somebody else than the one correcting it.
+	/// </summary>
+	internal bool Correct(string messageId, string markdown, string text, DateTime when, Func<ChatMessage, bool>? writtenBy = null)
 	{
 		lock (this.messages)
 		{
 			int i = this.messages.FindLastIndex(m => m.MessageId == messageId);
-			if (i < 0)
+			if (i < 0 || this.messages[i].Deleted is not null || (writtenBy is not null && !writtenBy(this.messages[i])))
 				return false;
 
 			this.messages[i] = this.messages[i] with { Markdown = markdown, Text = text, Corrected = when };
 			return true;
 		}
+	}
+
+	/// <summary>
+	/// Takes a message back: its text goes, and a line saying so stays in its place. Returns
+	/// false when the message is not known or (in a room) was written by somebody else.
+	/// </summary>
+	internal bool Retract(string messageId, DateTime when, Func<ChatMessage, bool>? writtenBy = null)
+	{
+		lock (this.messages)
+		{
+			int i = this.messages.FindLastIndex(m => m.MessageId == messageId);
+			if (i < 0 || (writtenBy is not null && !writtenBy(this.messages[i])))
+				return false;
+
+			this.messages[i] = this.messages[i] with { Markdown = string.Empty, Text = string.Empty, Deleted = when, Error = null };
+			return true;
+		}
+	}
+
+	/// <summary>A message by the id it has in this app.</summary>
+	public ChatMessage? Message(string id)
+	{
+		lock (this.messages)
+			return this.messages.Find(m => m.Id == id);
 	}
 
 	internal bool Contains(string messageId)
@@ -225,12 +255,47 @@ public sealed class RoomInfo(Guid accountId, string roomJid, string nickName)
 		}
 	}
 
+	/// <summary>This account in the room, with what it may do there. Null until the room has let it in.</summary>
+	public RoomOccupant? Me
+	{
+		get
+		{
+			lock (this.occupants)
+				return this.occupants.TryGetValue(this.NickName, out RoomOccupant? me) ? me : null;
+		}
+	}
+
 	public string RoomId => this.RoomJid.Split('@')[0];
 	public string Domain => this.RoomJid.Contains('@') ? this.RoomJid[(this.RoomJid.IndexOf('@') + 1)..] : string.Empty;
 }
 
 /// <summary>Someone in a room.</summary>
-public sealed record RoomOccupant(string NickName, string? Role, string? Affiliation, string? RealJid);
+/// <param name="Role">What they may do while they are in: Moderator, Participant or Visitor.</param>
+/// <param name="Affiliation">Their standing with the room, in or out of it: Owner, Admin, Member or None.</param>
+/// <param name="RealJid">Their own address, when the room shows it.</param>
+public sealed record RoomOccupant(string NickName, string? Role, string? Affiliation, string? RealJid)
+{
+	public bool IsModerator => string.Equals(this.Role, "Moderator", StringComparison.OrdinalIgnoreCase);
+	public bool IsVisitor => string.Equals(this.Role, "Visitor", StringComparison.OrdinalIgnoreCase);
+	public bool IsOwner => string.Equals(this.Affiliation, "Owner", StringComparison.OrdinalIgnoreCase);
+	public bool IsAdmin => this.IsOwner || string.Equals(this.Affiliation, "Admin", StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>Their own address without the resource, when the room shows it.</summary>
+	public string? BareJid => string.IsNullOrEmpty(this.RealJid) ? null : this.RealJid.Split('/')[0];
+}
+
+/// <summary>What someone may do while they are in a room.</summary>
+public enum RoomRole
+{
+	/// <summary>May read, not write.</summary>
+	Visitor,
+
+	/// <summary>May read and write.</summary>
+	Participant,
+
+	/// <summary>May also remove people and decide who may write.</summary>
+	Moderator,
+}
 
 /// <summary>An invitation to a room.</summary>
 public sealed record RoomInvitation(Guid AccountId, string RoomJid, string From, string? Reason, DateTime Received)

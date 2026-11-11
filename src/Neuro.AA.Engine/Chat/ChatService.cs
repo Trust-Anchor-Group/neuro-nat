@@ -190,12 +190,74 @@ public sealed partial class ChatService : IAsyncDisposable
 	}
 
 	/// <summary>
+	/// Changes the text of a message you sent (XEP-0308). The other side sees the change when
+	/// their app understands corrections; an app that does not shows it as a new message.
+	/// Returns the message as it is now, or null when it is not one that can be changed.
+	/// Throws when the change could not be sent, and leaves the message as it was.
+	/// </summary>
+	public async Task<ChatMessage?> EditAsync(Conversation c, string id, string markdown)
+	{
+		ChatMessage? m = c.Message(id);
+		if (m is null || m.Direction != ChatDirection.Out || m.MessageId is null || m.Deleted is not null)
+			return null;
+
+		string xml = MarkdownXml(markdown) + "<replace id=\"" + SecurityElement.Escape(m.MessageId) + "\" xmlns=\"urn:xmpp:message-correct:0\"/>";
+		await this.DeliverAsync(c.AccountId, c.BareJid, c.IsRoom, Guid.NewGuid().ToString("N"), xml, markdown);
+		ChatMessage changed = m with { Markdown = markdown, Text = markdown, Corrected = DateTime.Now };
+		c.Replace(changed);
+		this.Touch();
+		this.ConversationChanged?.Invoke(this, c);
+		return changed;
+	}
+
+	/// <summary>What the other side reads in place of a message that was taken back, when their app does not hide it.</summary>
+	public const string DeletedText = "This message was deleted.";
+
+	/// <summary>
+	/// Deletes a message. One you wrote is taken back for everyone (XEP-0424, and as a
+	/// correction for apps that only know those): its text goes, here and there. One somebody
+	/// else wrote is only removed from your own history. Throws when a message of yours could
+	/// not be taken back, and leaves it as it was.
+	/// </summary>
+	public async Task DeleteAsync(Conversation c, string id)
+	{
+		ChatMessage? m = c.Message(id);
+		if (m is null)
+			return;
+
+		if (m.Direction == ChatDirection.Out && m.MessageId is not null && m.Deleted is null && m.Error is null)
+		{
+			string of = SecurityElement.Escape(m.MessageId);
+			string xml = MarkdownXml("*" + DeletedText + "*") +
+				"<replace id=\"" + of + "\" xmlns=\"urn:xmpp:message-correct:0\"/>" +
+				"<retract id=\"" + of + "\" xmlns=\"urn:xmpp:message-retract:1\"/>" +
+				"<fallback xmlns=\"urn:xmpp:fallback:0\" for=\"urn:xmpp:message-retract:1\"/>";
+			await this.DeliverAsync(c.AccountId, c.BareJid, c.IsRoom, Guid.NewGuid().ToString("N"), xml, DeletedText);
+			c.Retract(m.MessageId, DateTime.Now);
+		}
+		else
+			c.Remove(id);
+
+		this.Touch();
+		this.ConversationChanged?.Invoke(this, c);
+	}
+
+	/// <summary>What is about to be sent, for tests that stand in for the connection.</summary>
+	internal sealed record Delivery(Guid AccountId, string Jid, bool Room, string Id, string CustomXml, string Body);
+
+	/// <summary>Set by tests: takes what would be sent in place of the connection. Returns true for "went encrypted".</summary>
+	internal Func<Delivery, Task<bool>>? Deliver { get; set; }
+
+	/// <summary>
 	/// Sends a message to a contact, end-to-end encrypted to every resource that published keys,
 	/// or in the clear to the bare JID when none did; to a room as group chat. Returns true when
 	/// it went encrypted.
 	/// </summary>
 	private async Task<bool> DeliverAsync(Guid accountId, string jid, bool room, string id, string customXml, string body)
 	{
+		if (this.Deliver is Func<Delivery, Task<bool>> stand)
+			return await stand(new Delivery(accountId, jid, room, id, customXml, body));
+
 		AccountChat a = this.ChatOf(accountId) ?? throw new InvalidOperationException("The account is not connected.");
 		XmppClient client = a.Client;
 		if (client.State != XmppState.Connected)
@@ -288,10 +350,52 @@ public sealed partial class ChatService : IAsyncDisposable
 
 	public async Task RenameContactAsync(Guid accountId, string bareJid, string name)
 	{
+		if (this.ChangePreview(accountId, bareJid, c => c with { Name = name.Trim() }))
+			return;
+
 		XmppClient c = this.ClientOf(accountId) ?? throw new InvalidOperationException("The account is not connected.");
 		RosterItem? item = c.GetRosterItem(bareJid);
 		await c.UpdateRosterItem(bareJid, name.Trim(), item?.Groups ?? []);
 		this.RosterChanged?.Invoke(this, accountId);
+	}
+
+	/// <summary>Puts a contact in these groups, and in no others. The groups live in the account's contact list on its Neuron.</summary>
+	public async Task SetGroupsAsync(Guid accountId, string bareJid, IEnumerable<string> groups)
+	{
+		// A group that exists keeps its spelling, so "on call" joins "On call" and does not start a second group.
+		IReadOnlyList<string> known = this.Groups(accountId);
+		string[] clean = [.. groups
+			.Select(g => g.Trim())
+			.Where(g => g.Length > 0)
+			.Select(g => known.FirstOrDefault(k => string.Equals(k, g, StringComparison.CurrentCultureIgnoreCase)) ?? g)
+			.Distinct(StringComparer.CurrentCultureIgnoreCase)];
+		if (this.ChangePreview(accountId, bareJid, c => c with { Groups = clean }))
+			return;
+
+		XmppClient client = this.ClientOf(accountId) ?? throw new InvalidOperationException("The account is not connected.");
+		RosterItem? item = client.GetRosterItem(bareJid);
+		await client.UpdateRosterItem(bareJid, item?.Name ?? string.Empty, clean);
+		this.RosterChanged?.Invoke(this, accountId);
+	}
+
+	/// <summary>The groups the account's contacts are in, in alphabetical order.</summary>
+	public IReadOnlyList<string> Groups(Guid accountId)
+		=> [.. this.Contacts(accountId).SelectMany(c => c.Groups).Distinct(StringComparer.CurrentCultureIgnoreCase).Order(StringComparer.CurrentCultureIgnoreCase)];
+
+	/// <summary>Changes a contact that only exists for previews and UI tests. Returns false when it is a real one.</summary>
+	private bool ChangePreview(Guid accountId, string bareJid, Func<Contact, Contact> change)
+	{
+		lock (this.previewContacts)
+		{
+			int i = this.previewContacts.FindIndex(c => c.AccountId == accountId && string.Equals(c.BareJid, bareJid, StringComparison.OrdinalIgnoreCase));
+			if (i < 0 || this.ClientOf(accountId) is not null)
+				return false;
+
+			this.previewContacts[i] = change(this.previewContacts[i]);
+		}
+
+		this.RosterChanged?.Invoke(this, accountId);
+		return true;
 	}
 
 	// ---- Subscription requests -------------------------------------------------------------
@@ -367,6 +471,7 @@ public sealed partial class ChatService : IAsyncDisposable
 		ChatMessage m = new()
 		{
 			Id = Guid.NewGuid().ToString("N"),
+			MessageId = Guid.NewGuid().ToString("N"),
 			Direction = ChatDirection.In,
 			Timestamp = DateTime.Now,
 			Markdown = text,
@@ -534,23 +639,44 @@ public sealed partial class ChatService : IAsyncDisposable
 			if (n is null)
 				return;
 
+			// Someone in a room writing to you alone: a conversation of its own, beside the room's.
+			bool inRoom = this.Room(accountId, bare) is not null;
+			string peer = inRoom ? e.From : bare;
+			if (inRoom && !peer.Contains('/'))
+				return;
+
 			bool toFull = !string.IsNullOrEmpty(e.To) && e.To.Contains('/');
 
-			if (toFull && this.consoles.TryGetValue(Key(accountId, bare), out ConsoleSession? console) && console.Receive(n, e.ThreadID))
+			if (!inRoom && toFull && this.consoles.TryGetValue(Key(accountId, bare), out ConsoleSession? console) && console.Receive(n, e.ThreadID))
 				return;
 
 			// A Neuron's notifications go to the Attention list.
-			if (!toFull && this.monitors.For(accountId) is NeuronMonitor m && await m.IsNeuronSenderAsync(e.From))
+			if (!inRoom && !toFull && this.monitors.For(accountId) is NeuronMonitor m && await m.IsNeuronSenderAsync(e.From))
 				return;
 
-			Conversation conv = this.Get(accountId, bare);
+			// Taking a message back only ever touches a conversation that is already there.
+			if (n.Retracts is string gone)
+			{
+				if (this.Find(accountId, peer) is Conversation had && had.Retract(gone, n.Timestamp, x => x.Direction == ChatDirection.In))
+				{
+					this.Touch();
+					this.ConversationChanged?.Invoke(this, had);
+				}
+
+				return;
+			}
+
+			Conversation conv = this.Get(accountId, peer);
+			if (inRoom && !string.IsNullOrEmpty(e.Id) && conv.Contains(e.Id))
+				return;
+
 			n = WithOutOfBand(n, e);
 			ChatMessage? fresh = null;
 
 			// Neurons answer Markdown with Markdown only; keep a plain version for previews.
 			string text = string.IsNullOrWhiteSpace(n.Text) ? NotificationClassifier.Plain(n.Markdown) : n.Text;
 
-			if (n.Replaces is string replaces && conv.Correct(replaces, n.Markdown, text, n.Timestamp))
+			if (n.Replaces is string replaces && conv.Correct(replaces, n.Markdown, text, n.Timestamp, x => x.Direction == ChatDirection.In))
 			{
 				// Corrected in place.
 			}
@@ -576,8 +702,9 @@ public sealed partial class ChatService : IAsyncDisposable
 			// Messages that waited on the server while the account was offline are not news any more.
 			if (fresh is not null && fresh.Timestamp > DateTime.Now.AddMinutes(-2))
 			{
-				RosterItem? item = client.GetRosterItem(bare);
-				this.MessageReceived?.Invoke(this, new IncomingMessage(conv, fresh, string.IsNullOrWhiteSpace(item?.Name) ? bare : item!.Name));
+				RosterItem? item = inRoom ? null : client.GetRosterItem(bare);
+				string from = inRoom ? PrivateLabel(peer) : string.IsNullOrWhiteSpace(item?.Name) ? bare : item!.Name;
+				this.MessageReceived?.Invoke(this, new IncomingMessage(conv, fresh, from));
 			}
 		}
 		catch (Exception)
