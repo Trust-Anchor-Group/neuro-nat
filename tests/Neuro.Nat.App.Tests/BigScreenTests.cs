@@ -169,7 +169,7 @@ public class BigScreenTests
 		Assert.Equal("times", socket.CountUnit);
 		Assert.StartsWith("Since ", socket.Since);
 		Assert.Equal("bad", socket.Tone);
-		Assert.True(big.Problems.Count <= BigScreenViewModel.MaxProblems);
+		Assert.True(big.PageProblems.Count <= BigScreenViewModel.ProblemsPerPage);
 
 		// Round again: App numbers is skipped while empty.
 		big.Advance(TimeSpan.FromSeconds(20));
@@ -469,5 +469,316 @@ public class BigScreenTests
 		}
 
 		big.Stop();
+	}
+
+	// ----- Many Neurons, many problems -----
+
+	private static readonly string[] Places = ["Malmo", "Uppsala", "Lund", "Umea", "Kiruna", "Visby", "Orebro", "Vasteras", "Linkoping", "Jonkoping",
+		"Norrkoping", "Gavle", "Sundsvall", "Karlstad", "Vaxjo", "Halmstad", "Kalmar", "Falun", "Lulea", "Helsingborg"];
+
+	private static readonly string[] Roles = ["edge", "lab", "backup", "broker", "store", "gateway"];
+
+	private static readonly string[] Troubles =
+	[
+		"SocketException: Connection reset by peer",
+		"TimeoutException in ConcentratorServer.ReadSensorData",
+		"IOException: There is not enough space on the disk",
+		"UnauthorizedAccessException: Access to the backup folder is denied",
+		"OutOfMemoryException in Waher.Persistence.Files",
+		"InvalidOperationException: The certificate has expired",
+		"HttpRequestException: The remote name could not be resolved",
+		"ArgumentNullException: Value cannot be null in MarketplaceProcessor",
+		"KeyNotFoundException: The contract template was not found",
+		"NotSupportedException: The payment provider does not answer",
+		"TaskCanceledException: The push notification was not delivered",
+		"FormatException: The meter reading is not a number",
+		"ObjectDisposedException: The ledger was closed while writing",
+	];
+
+	private sealed record Board(BigScreenViewModel Big, FleetViewModel Fleet, MonitorService Monitors, EventHub Hub, Guid Account);
+
+	/// <summary>A fleet of its own: <paramref name="count"/> Neurons by place and role. With trouble, some are offline, busy or failing.</summary>
+	private static Board Many(Sample s, int count, int problems = 0, bool trouble = false)
+	{
+		EventHub hub = new();
+		MonitorService monitors = new(s.Manager, hub);
+		FleetService service = new(monitors);
+		DateTime now = DateTime.Now;
+		for (int i = 0; i < count; i++)
+		{
+			string jid = $"n{i:000}.fleet.example";
+			WatchState state = trouble && i % 17 == 5 ? WatchState.Offline : trouble && i % 23 == 7 ? WatchState.Waiting : WatchState.Live;
+			monitors.For(s.Ops)!.Preview(new WatchedNeuron { AccountId = s.Ops, BareJid = jid, Name = $"{Places[i % Places.Length]} {Roles[i / Places.Length % Roles.Length]}", State = state, HistoryState = HistoryState.Loaded });
+			if (state == WatchState.Live)
+			{
+				double cpu = trouble && i % 13 == 3 ? 94 : 6 + (i * 7 % 50);
+				service.Preview(new NeuronHealth
+				{
+					AccountId = s.Ops,
+					NeuronJid = jid,
+					Cpu = new SampleSeries(cpu, [cpu], "%"),
+					AllocatedMemory = new SampleSeries(640, [640], "MB"),
+					FreeMemory = new SampleSeries(5210, [5210], "MB"),
+					FreeDisk = new SampleSeries(182.4, [182.4], "GB"),
+					ReadAt = now.AddSeconds(-20),
+				});
+			}
+		}
+
+		for (int i = 0; i < problems; i++)
+			hub.Add(Error(s.Ops, $"n{i * 7 % count:000}.fleet.example", Troubles[i] + "\n\nModule: Waher.IoTGateway"));
+
+		FleetViewModel fleet = new(service, s.Manager);
+		fleet.Refresh();
+		return new(new BigScreenViewModel(fleet, hub, null, []), fleet, monitors, hub, s.Ops);
+	}
+
+	[AvaloniaFact]
+	public void NoTileIsEverSmallerThanReadsFromAcrossTheRoom()
+	{
+		foreach (Size area in new[] { BigScreenTileLayout.DrawnArea, new Size(802, 280), new Size(802, 1900), new Size(1600, 550) })
+		{
+			for (int n = 1; n <= 300; n++)
+			{
+				BigScreenTileLayout layout = BigScreenTileLayout.For(n, area);
+				Assert.InRange(layout.Columns, 1, BigScreenTileLayout.MaxColumns);
+				Assert.True(layout.Columns * layout.Rows >= layout.PerPage);
+				Assert.True(layout.PerPage * layout.Pages >= n);
+				Assert.True((layout.Pages - 1) * layout.PerPage < n);
+				Assert.True(layout.Scale >= BigScreenTileLayout.MinScale || layout.PerPage == 1, $"{n} Neurons on {area}: {layout}");
+				double width = layout.Small ? BigScreenTileLayout.SmallWidth : BigScreenTileLayout.TileWidth;
+				double height = layout.Small ? BigScreenTileLayout.SmallHeight : BigScreenTileLayout.TileHeight;
+				Assert.True(layout.Columns * width * layout.Scale <= area.Width + 0.5);
+				Assert.True(layout.Rows * height * layout.Scale <= area.Height + 0.5 || layout.PerPage == 1);
+			}
+		}
+
+		// More room side by side, more columns: up to six.
+		Assert.Equal(6, BigScreenTileLayout.For(120, new Size(1600, 550)).Columns);
+	}
+
+	[AvaloniaTheory]
+	[InlineData(3, 1, 3, 2, false)]
+	[InlineData(30, 2, 15, 4, true)]
+	[InlineData(120, 6, 20, 5, true)]
+	public async Task TheNeuronsTakeAsManyPagesAsTheyNeedInOrder(int count, int pages, int perPage, int columns, bool small)
+	{
+		using Sample s = await GettingAroundTests.SampleAsync();
+		Board board = Many(s, count);
+		BigScreenViewModel big = board.Big;
+		big.Start();
+
+		Assert.Equal(count, big.Tiles.Count);
+		Assert.Equal(pages, big.Layout.Pages);
+		Assert.Equal(perPage, big.Layout.PerPage);
+		Assert.Equal(columns, big.Columns);
+		Assert.Equal(small, big.SmallTiles);
+		Assert.True(big.TileScale >= BigScreenTileLayout.MinScale);
+
+		// A page for each part, and a dot for each page.
+		Assert.Equal(Enumerable.Range(0, pages), big.Pages.Where(p => p.Key == BigScreenPages.Neurons).Select(p => p.Part));
+		Assert.Equal(pages, big.Dots.Count);
+		Assert.Equal(pages > 1, big.HasDots);
+
+		// They turn by themselves, every Neuron once, by name as on one page.
+		List<string> seen = [];
+		for (int part = 0; part < pages; part++)
+		{
+			Assert.True(big.IsNeuronsPage);
+			Assert.Equal(part, big.Current.Part);
+			Assert.Equal($"All {count} Neurons reporting", big.Headline);
+			seen.AddRange(big.PageTiles.Select(t => t.Label));
+			big.Advance(big.Dwell);
+		}
+
+		Assert.Equal(big.Tiles.Select(t => t.Label), seen);
+		Assert.Equal(seen.Order(StringComparer.CurrentCultureIgnoreCase), seen);
+		Assert.Equal(0, big.Current.Part);
+
+		// Left from the first goes to the last; Space holds a part like any page.
+		big.Press(Key.Left);
+		Assert.Equal(pages - 1, big.Current.Part);
+		big.Press(Key.Space);
+		big.Advance(TimeSpan.FromMinutes(5));
+		Assert.Equal(pages - 1, big.Current.Part);
+		big.Press(Key.Space);
+		big.Advance(big.Dwell);
+		Assert.Equal(0, big.Current.Part);
+		big.Stop();
+	}
+
+	[AvaloniaFact]
+	public async Task EveryOpenProblemTakesItsTurnFiveToAPage()
+	{
+		using Sample s = await GettingAroundTests.SampleAsync();
+		Board board = Many(s, 5, problems: 12);
+		BigScreenViewModel big = board.Big;
+		big.Start();
+
+		Assert.Equal(12, big.OpenProblems);
+		Assert.Equal(12, big.Problems.Count);
+		Assert.Equal(["neurons", "problems", "problems", "problems"], big.Dots.Select(p => p.Key));
+		Assert.Equal([0, 1, 2], big.Dots.Where(p => p.Key == BigScreenPages.Problems).Select(p => p.Part));
+
+		// Five, five and two: every problem once, in the order of the list.
+		List<BigScreenProblemViewModel> seen = [];
+		foreach (int expected in new[] { 5, 5, 2 })
+		{
+			big.Advance(big.Dwell);
+			Assert.True(big.IsProblemsPage);
+			Assert.Equal("12 open problems", big.Headline);
+			Assert.Equal(expected, big.PageProblems.Count);
+			seen.AddRange(big.PageProblems);
+		}
+
+		Assert.Equal(big.Problems, seen);
+		big.Advance(big.Dwell);
+		Assert.True(big.IsNeuronsPage);
+
+		// On the last part, a new problem opens: the first part, with it at the top, for half as long again.
+		big.Press(Key.Left);
+		Assert.Equal(2, big.Current.Part);
+		board.Hub.Add(Error(board.Account, "n001.fleet.example", Troubles[12] + "\n\nModule: Waher.IoTGateway"));
+		big.Refresh();
+		Assert.True(big.IsProblemsPage);
+		Assert.Equal(0, big.Current.Part);
+		Assert.Equal(big.NewsDwell, big.Left);
+		Assert.True(big.PageProblems[0].IsNew);
+		Assert.StartsWith("ObjectDisposedException", big.PageProblems[0].Title);
+		Assert.Equal(13, big.Problems.Count);
+		Assert.Equal(3, big.Dots.Count(p => p.Key == BigScreenPages.Problems));
+
+		// It stays new while the Problems pages turn, and is seen once they are left.
+		big.Press(Key.Right);
+		Assert.Equal(1, big.Current.Part);
+		Assert.True(big.Problems[0].IsNew);
+		big.Press(Key.Right);
+		big.Press(Key.Right);
+		Assert.True(big.IsNeuronsPage);
+		Assert.All(big.Problems, p => Assert.False(p.IsNew));
+
+		// Problems close: fewer pages, and the one on the screen gives way to the last one left.
+		big.Press(Key.Left);
+		Assert.Equal(2, big.Current.Part);
+		foreach (BigScreenProblemViewModel p in big.Problems.Skip(4).ToList())
+			board.Hub.SetState(p.Fingerprint, IssueState.Resolved);
+		big.Refresh();
+		Assert.True(big.IsProblemsPage);
+		Assert.Equal(0, big.Current.Part);
+		Assert.Equal(4, big.PageProblems.Count);
+		Assert.Equal(["neurons", "problems"], big.Dots.Select(p => p.Key));
+		big.Stop();
+	}
+
+	[AvaloniaFact]
+	public async Task ANeuronThatGoesDownTurnsToThePartWithItsTile()
+	{
+		using Sample s = await GettingAroundTests.SampleAsync();
+		Board board = Many(s, 30);
+		BigScreenViewModel big = board.Big;
+		big.Start();
+		Assert.Equal(2, big.Layout.Pages);
+		Assert.Equal(0, big.Current.Part);
+
+		void Down(BigScreenTileViewModel tile)
+		{
+			board.Monitors.For(board.Account)!.Preview(new WatchedNeuron { AccountId = board.Account, BareJid = tile.BareJid, Name = tile.Label, State = WatchState.Offline });
+			board.Fleet.Refresh();
+		}
+
+		// The 21st by name is on the second part: that part, for half as long again, with its tile red.
+		BigScreenTileViewModel late = big.Tiles[20];
+		big.Advance(TimeSpan.FromSeconds(5));
+		Down(late);
+		Assert.True(big.IsNeuronsPage);
+		Assert.Equal(1, big.Current.Part);
+		Assert.Equal(big.NewsDwell, big.Left);
+		Assert.Contains(late, big.PageTiles);
+		Assert.Equal("bad", late.Tone);
+
+		// The 4th goes down next: back to the first part.
+		BigScreenTileViewModel early = big.Tiles[3];
+		Down(early);
+		Assert.Equal(0, big.Current.Part);
+		Assert.Contains(early, big.PageTiles);
+		Assert.Equal("28 of 30 Neurons reporting", big.Headline);
+		big.Stop();
+	}
+
+	[AvaloniaTheory]
+	[InlineData("Light")]
+	[InlineData("Dark")]
+	public async Task ManyNeuronsAndProblemsReadFromAcrossTheRoom(string theme)
+	{
+		using Sample s = await GettingAroundTests.SampleAsync();
+		Application.Current!.RequestedThemeVariant = theme == "Dark" ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
+		string t = theme.ToLowerInvariant();
+
+		foreach (int count in new[] { 3, 30, 120 })
+		{
+			Board board = Many(s, count, problems: count == 30 ? 12 : 3, trouble: true);
+			BigScreenViewModel big = board.Big;
+			big.Start();
+			foreach ((int width, int height) in new[] { (1920, 1080), (3840, 2160) })
+			{
+				Window window = new() { Width = width, Height = height, Content = new BigScreenView { DataContext = big } };
+				window.Show();
+				Dispatcher.UIThread.RunJobs();
+				BigScreenView view = Assert.IsType<BigScreenView>(window.Content);
+				Assert.Equal(width / 1280.0, view.Factor);
+				Assert.True(big.TileScale >= BigScreenTileLayout.MinScale);
+
+				// On a 16:9 screen, the space for the tiles is the one the layout counts on before the view says.
+				Assert.Equal(BigScreenTileLayout.DrawnArea.Width, big.TileArea.Width, 1.0);
+				Assert.Equal(BigScreenTileLayout.DrawnArea.Height, big.TileArea.Height, 1.0);
+
+				int last = big.Layout.Pages - 1;
+				foreach (int part in last == 0 ? new[] { 0 } : new[] { 0, last })
+				{
+					while (!(big.IsNeuronsPage && big.Current.Part == part))
+						big.Press(Key.Right);
+
+					Dispatcher.UIThread.RunJobs();
+					AllTilesShowWhole(view, big);
+					Capture(window, $"bigscreen-k3-{count}-neurons-{part + 1}-{width}-{t}");
+				}
+
+				if (count == 30)
+				{
+					foreach (int part in new[] { 0, 2 })
+					{
+						while (!(big.IsProblemsPage && big.Current.Part == part))
+							big.Press(Key.Right);
+
+						Dispatcher.UIThread.RunJobs();
+						ItemsControl list = GettingAroundTests.Shown<ItemsControl>(view, "ProblemList");
+						Assert.Equal(big.PageProblems.Count, list.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("bigProblem") && b.IsEffectivelyVisible));
+						Capture(window, $"bigscreen-k3-12-problems-{part + 1}-{width}-{t}");
+					}
+				}
+
+				window.Close();
+			}
+
+			big.Stop();
+		}
+	}
+
+	/// <summary>Every tile on the page is inside the space for the tiles, nothing cut off.</summary>
+	private static void AllTilesShowWhole(BigScreenView view, BigScreenViewModel big)
+	{
+		Control host = GettingAroundTests.Shown<Control>(view, "TileHost");
+		List<Border> tiles = [.. host.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("bigTile") && b.IsEffectivelyVisible)];
+		Assert.Equal(big.PageTiles.Count, tiles.Count);
+		foreach (Border tile in tiles)
+		{
+			Point? end = tile.TranslatePoint(new Point(tile.Bounds.Width, tile.Bounds.Height), host);
+			Assert.NotNull(end);
+			Assert.True(end!.Value.X <= host.Bounds.Width + 1 && end.Value.Y <= host.Bounds.Height + 1, $"A tile ends at {end} in {host.Bounds.Size}");
+
+			// What the tile says fits in it: every tile is as tall as the others, and none cuts its numbers off.
+			StackPanel body = tile.GetVisualDescendants().OfType<StackPanel>().First(p => p.Classes.Contains("tileBody"));
+			Assert.True(body.DesiredSize.Height <= tile.Bounds.Height - 2, $"A tile needs {body.DesiredSize.Height} and has {tile.Bounds.Height}");
+		}
 	}
 }

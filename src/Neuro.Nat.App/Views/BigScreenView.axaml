@@ -36,6 +36,25 @@
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="ClipToBounds" Value="True" />
     </Style>
+    <!-- Many Neurons: small tiles with the name, the state, CPU and errors. Every tile is as tall as the others, so the rows can be counted. -->
+    <Style Selector="ItemsControl Border.bigTile">
+      <Setter Property="Height" Value="224" />
+    </Style>
+    <Style Selector="ItemsControl.small Border.bigTile">
+      <Setter Property="Height" Value="136" />
+    </Style>
+    <Style Selector="ItemsControl.small :is(Control).full">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ItemsControl:not(.small) :is(Control).small">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="StackPanel.tileBody">
+      <Setter Property="Margin" Value="16,13,16,14" />
+    </Style>
+    <Style Selector="ItemsControl.small StackPanel.tileBody">
+      <Setter Property="Margin" Value="14,11,14,12" />
+    </Style>
     <Style Selector="Ellipse.dot">
       <Setter Property="Width" Value="10" />
       <Setter Property="Height" Value="10" />
@@ -67,7 +86,7 @@
 
           <!-- Neurons: every Neuron as a tile, and the latest warnings and errors -->
           <DockPanel x:Name="NeuronsPage" IsVisible="{Binding IsNeuronsPage}">
-            <Border DockPanel.Dock="Right" Width="400" Margin="10,0,0,0" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8">
+            <Border x:Name="LatestPanel" DockPanel.Dock="Right" Width="400" Margin="10,0,0,0" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8">
               <DockPanel Margin="20,16,20,10">
                 <TextBlock DockPanel.Dock="Top" Text="Latest problems" FontSize="19" FontWeight="SemiBold" Margin="0,0,0,10" />
                 <Panel>
@@ -105,9 +124,9 @@
               <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding !HasTiles}" Spacing="8">
                 <TextBlock Text="No Neurons yet" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" />
               </StackPanel>
-              <!-- However many there are, all of them show: with more than fit, the tiles get smaller together. -->
+              <!-- The tiles of this page, drawn as wide as fits and made smaller together, never below the smallest that reads from across a room. More Neurons take more pages. -->
               <Viewbox x:Name="TileBox" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding HasTiles}">
-                <ItemsControl x:Name="TileList" ItemsSource="{Binding Tiles}" Width="802">
+                <ItemsControl x:Name="TileList" ItemsSource="{Binding PageTiles}" Width="{Binding TileListWidth}" Classes.small="{Binding SmallTiles}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <UniformGrid Columns="{Binding Columns}" />
@@ -118,14 +137,26 @@
                       <Border Classes="bigTile">
                         <DockPanel>
                           <Border DockPanel.Dock="Left" Width="6" Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                          <StackPanel Margin="16,13,16,14">
+                          <StackPanel Classes="tileBody">
                             <!-- The whole name, smaller when it is long: a Neuron is never half named. -->
                             <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" Height="25">
                               <TextBlock Text="{Binding Label}" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource Font.Mono}" />
                             </Viewbox>
-                            <TextBlock Text="{Binding StateText}" FontSize="16" Margin="0,3,0,12"
+                            <TextBlock Classes="full" Text="{Binding StateText}" FontSize="16" Margin="0,3,0,12" TextTrimming="CharacterEllipsis"
                                        Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                            <Grid ColumnDefinitions="4*,3*,4*" ColumnSpacing="10">
+                            <TextBlock Classes="small" Text="{Binding ShortState}" FontSize="16" Margin="0,3,0,8" TextTrimming="CharacterEllipsis"
+                                       Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                            <Grid Classes="small" ColumnDefinitions="3*,2*" ColumnSpacing="8">
+                              <StackPanel>
+                                <TextBlock Classes="bigNum" Classes.alarm="{Binding HighCpu}" Text="{Binding Cpu}" />
+                                <TextBlock Classes="bigCap" Text="CPU" />
+                              </StackPanel>
+                              <StackPanel Grid.Column="1">
+                                <TextBlock Classes="bigNum" Classes.alarm="{Binding HasErrors}" Text="{Binding Errors}" />
+                                <TextBlock Classes="bigCap" Text="Errors" />
+                              </StackPanel>
+                            </Grid>
+                            <Grid Classes="full" ColumnDefinitions="4*,3*,4*" ColumnSpacing="10">
                               <StackPanel>
                                 <TextBlock Classes="bigNum" Classes.alarm="{Binding HighCpu}" Text="{Binding Cpu}" />
                                 <TextBlock Classes="bigCap" Text="CPU" />
@@ -139,7 +170,7 @@
                                 <TextBlock Classes="bigCap" Text="Problems" />
                               </StackPanel>
                             </Grid>
-                            <Grid ColumnDefinitions="4*,7*" ColumnSpacing="10" Margin="0,12,0,0">
+                            <Grid Classes="full" ColumnDefinitions="4*,7*" ColumnSpacing="10" Margin="0,12,0,0">
                               <StackPanel>
                                 <TextBlock FontSize="17" FontWeight="Medium" Text="{Binding Memory}" Classes.bigBad="{Binding LowMemory}" />
                                 <TextBlock Classes="bigCap" Text="Memory" />
@@ -149,7 +180,7 @@
                                 <TextBlock Classes="bigCap" Text="Disk free" />
                               </StackPanel>
                             </Grid>
-                            <TextBlock Classes="bigCap" Margin="0,12,0,0" TextTrimming="CharacterEllipsis">
+                            <TextBlock Classes="bigCap full" Margin="0,12,0,0" TextTrimming="CharacterEllipsis">
                               <Run Text="Last event" />
                               <Run Text="{Binding LastEvent}" />
                             </TextBlock>
@@ -165,9 +196,7 @@
 
           <!-- Problems: what, where, since when, and how many times -->
           <DockPanel x:Name="ProblemsPage" IsVisible="{Binding IsProblemsPage}">
-            <TextBlock DockPanel.Dock="Bottom" Text="{Binding MoreProblems}" FontSize="17" Foreground="{DynamicResource Ink.Secondary}"
-                       IsVisible="{Binding MoreProblems, Converter={x:Static conv:EventConverters.HasText}}" Margin="2,2,0,0" />
-            <ItemsControl x:Name="ProblemList" ItemsSource="{Binding Problems}">
+            <ItemsControl x:Name="ProblemList" ItemsSource="{Binding PageProblems}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <c:WholeStack />
@@ -175,7 +204,7 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:BigScreenProblemViewModel">
-                  <Border Margin="0,0,0,10" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                  <Border Classes="bigProblem" Margin="0,0,0,10" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
                     <DockPanel>
                       <Border DockPanel.Dock="Left" Width="6" Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
                       <StackPanel DockPanel.Dock="Left" Width="112" Margin="20,12,0,12" VerticalAlignment="Center">

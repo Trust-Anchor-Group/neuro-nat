@@ -23,12 +23,8 @@ public partial class BigScreenView : UserControl
 		this.InitializeComponent();
 		this.SizeChanged += (_, e) => this.Fit(e.NewSize);
 
-		// The tiles share the width there is; the box around them shrinks them when they are too many to fit.
-		this.TileHost.SizeChanged += (_, e) =>
-		{
-			if (e.NewSize.Width > 0)
-				this.TileList.Width = e.NewSize.Width;
-		};
+		// The space for the tiles decides how many go side by side and how many to a page.
+		this.Pages.SizeChanged += (_, _) => this.FitTiles();
 
 		this.DataContextChanged += (_, _) =>
 		{
@@ -37,7 +33,16 @@ public partial class BigScreenView : UserControl
 			this.vm = this.DataContext as BigScreenViewModel;
 			if (this.vm is not null)
 				this.vm.Turned += this.Vm_Turned;
+			this.FitTiles();
 		};
+	}
+
+	/// <summary>The Neurons page is the pages' space less the latest problems beside the tiles.</summary>
+	private void FitTiles()
+	{
+		Size pages = this.Pages.Bounds.Size;
+		if (this.vm is not null && pages.Width > 0 && pages.Height > 0)
+			this.vm.Fit(new Size(pages.Width - this.LatestPanel.Width - this.LatestPanel.Margin.Left, pages.Height));
 	}
 
 	/// <summary>How much larger than drawn the big screen is on this screen.</summary>

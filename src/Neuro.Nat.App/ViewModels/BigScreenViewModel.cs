@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Avalonia;
 using Avalonia.Input;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -48,11 +49,14 @@ public static class BigScreenPages
 	public static IList<IBigScreenPage> Added { get; } = [];
 }
 
-/// <summary>One page of the big screen, and whether it is shown now.</summary>
-public sealed partial class BigScreenPage(string key, string title, IBigScreenPage? added = null) : ObservableObject
+/// <summary>One page of the big screen, and whether it is shown now. Neurons and Problems take as many pages as they need, one part each.</summary>
+public sealed partial class BigScreenPage(string key, string title, IBigScreenPage? added = null, int part = 0) : ObservableObject
 {
 	public string Key { get; } = key;
 	public string Title { get; } = title;
+
+	/// <summary>Which of the pages with this key: 0 for the first.</summary>
+	public int Part { get; } = part;
 
 	/// <summary>The feature's page, for pages added by a feature.</summary>
 	public IBigScreenPage? Added { get; } = added;
@@ -61,6 +65,67 @@ public sealed partial class BigScreenPage(string key, string title, IBigScreenPa
 	[ObservableProperty] private bool isShown;
 
 	[ObservableProperty] private bool isCurrent;
+}
+
+/// <summary>
+/// How the Neurons page lays out its tiles, in px as the big screen is drawn (1280 wide, gaps
+/// included). A tile never gets smaller than <see cref="MinScale"/> of its drawn size: when the
+/// Neurons do not fit at that, they take more pages.
+/// </summary>
+public readonly record struct BigScreenTileLayout(int Columns, int Rows, int PerPage, int Pages, double Scale, bool Small)
+{
+	/// <summary>A tile with every number: its narrowest, and its height.</summary>
+	public const double TileWidth = 264;
+	public const double TileHeight = 238;
+
+	/// <summary>A small tile, for many Neurons: the name, the state, CPU and errors.</summary>
+	public const double SmallWidth = 186;
+	public const double SmallHeight = 150;
+
+	/// <summary>The smallest a tile is drawn, against its own size: still read from across a room.</summary>
+	public const double MinScale = 0.85;
+
+	public const int MaxColumns = 6;
+
+	/// <summary>The space for the tiles on the Neurons page of a 1280 by 720 big screen.</summary>
+	public static readonly Size DrawnArea = new(802, 552);
+
+	/// <summary>
+	/// Few Neurons get every number and full size, when all of them fit so. More get small tiles,
+	/// side by side as far as the width allows, on as few pages as keep them at least <see cref="MinScale"/>.
+	/// </summary>
+	public static BigScreenTileLayout For(int count, Size area)
+	{
+		if (count <= 0 || area.Width <= 0 || area.Height <= 0)
+			return new(1, 1, Math.Max(count, 0), 1, 1, false);
+
+		(int columns, int rows, double scale) = Best(count, area, TileWidth, TileHeight);
+		if (scale >= 1)
+			return new(columns, rows, count, 1, 1, false);
+
+		for (int pages = 1; ; pages++)
+		{
+			int per = (count + pages - 1) / pages;
+			(columns, rows, scale) = Best(per, area, SmallWidth, SmallHeight);
+			if (scale >= MinScale || per == 1)
+				return new(columns, rows, per, (count + per - 1) / per, scale, true);
+		}
+	}
+
+	/// <summary>The columns that let <paramref name="count"/> tiles be largest. Of equally large, the first as wide as tall.</summary>
+	private static (int Columns, int Rows, double Scale) Best(int count, Size area, double width, double height)
+	{
+		(int Columns, int Rows, double Scale) best = (1, count, -1);
+		for (int columns = 1; columns <= Math.Min(MaxColumns, count); columns++)
+		{
+			int rows = (count + columns - 1) / columns;
+			double scale = Math.Min(1, Math.Min(area.Width / (columns * width), area.Height / (rows * height)));
+			if (scale > best.Scale + 0.0001 || (scale > best.Scale - 0.0001 && best.Columns < best.Rows))
+				best = (columns, rows, scale);
+		}
+
+		return best;
+	}
 }
 
 /// <summary>One Neuron on the big screen: how it is doing, in a few large numbers.</summary>
@@ -75,6 +140,10 @@ public sealed partial class BigScreenTileViewModel(Guid accountId, string bareJi
 	[ObservableProperty] private string tone = "idle";
 
 	[ObservableProperty] private string stateText = string.Empty;
+
+	/// <summary>The state in a word or two, for a small tile.</summary>
+	[ObservableProperty] private string shortState = string.Empty;
+
 	[ObservableProperty] private string cpu = "–";
 	[ObservableProperty] private string memory = "–";
 	[ObservableProperty] private string disk = "–";
@@ -106,6 +175,13 @@ public sealed partial class BigScreenTileViewModel(Guid accountId, string bareJi
 			WatchState.Offline => "Offline",
 			WatchState.Failed => "Could not listen",
 			_ => string.Empty,
+		};
+		this.ShortState = row.State switch
+		{
+			WatchState.Live => row.HasErrors ? "Errors" : row.HighCpu ? "Busy" : row.LowDisk ? "Disk nearly full" : row.LowMemory ? "Low on memory" : "All well",
+			WatchState.Waiting => "Waiting",
+			WatchState.Discovering or WatchState.Subscribing => "Connecting",
+			_ => this.StateText,
 		};
 		this.Cpu = row.CpuText;
 		this.Memory = row.UsedMemory is double mb ? (mb >= 1024 ? $"{mb / 1024:0.0} GB" : $"{mb:0} MB") : "–";
@@ -205,8 +281,8 @@ public sealed partial class BigScreenViewModel : ObservableObject
 {
 	private const int MaxLatest = 8;
 
-	/// <summary>The most problems on the Problems page. More are counted at the top.</summary>
-	public const int MaxProblems = 5;
+	/// <summary>The problems on one Problems page. More take more pages.</summary>
+	public const int ProblemsPerPage = 5;
 
 	private readonly FleetViewModel fleet;
 	private readonly EventHub hub;
@@ -220,6 +296,8 @@ public sealed partial class BigScreenViewModel : ObservableObject
 	private bool running;
 	private bool seen;
 	private TimeSpan left;
+	private Size area = BigScreenTileLayout.DrawnArea;
+	private BigScreenTileLayout layout = BigScreenTileLayout.For(0, BigScreenTileLayout.DrawnArea);
 
 	public BigScreenViewModel(FleetViewModel fleet, EventHub hub, SettingsViewModel? settings = null, IList<IBigScreenPage>? added = null)
 	{
@@ -272,18 +350,39 @@ public sealed partial class BigScreenViewModel : ObservableObject
 
 	// ----- What the pages show -----
 
+	/// <summary>Every Neuron, by name.</summary>
 	public ObservableCollection<BigScreenTileViewModel> Tiles { get; } = [];
+
+	/// <summary>The Neurons on the Neurons page showing now, or the last one shown.</summary>
+	public ObservableCollection<BigScreenTileViewModel> PageTiles { get; } = [];
 
 	/// <summary>The latest warnings and errors, newest first.</summary>
 	public ObservableCollection<BigScreenEventViewModel> Latest { get; } = [];
 
-	/// <summary>The open problems, the ones that opened while the screen showed first, then the latest.</summary>
+	/// <summary>Every open problem, the ones that opened while the screen showed first, then the latest.</summary>
 	public ObservableCollection<BigScreenProblemViewModel> Problems { get; } = [];
+
+	/// <summary>The problems on the Problems page showing now, or the last one shown.</summary>
+	public ObservableCollection<BigScreenProblemViewModel> PageProblems { get; } = [];
 
 	[ObservableProperty] private bool hasTiles;
 
 	/// <summary>How many tiles go side by side: few Neurons get large tiles.</summary>
-	[ObservableProperty] private int columns = 3;
+	[ObservableProperty] private int columns = 1;
+
+	/// <summary>Many Neurons: small tiles, with the name, the state, CPU and errors.</summary>
+	[ObservableProperty] private bool smallTiles;
+
+	/// <summary>How wide the tiles are drawn before they are made <see cref="TileScale"/> as large, to fill the width there is.</summary>
+	[ObservableProperty] private double tileListWidth = BigScreenTileLayout.DrawnArea.Width;
+
+	[ObservableProperty] private double tileScale = 1;
+
+	/// <summary>How the tiles are laid out now.</summary>
+	public BigScreenTileLayout Layout => this.layout;
+
+	/// <summary>The space for the tiles, as the view last told it.</summary>
+	public Size TileArea => this.area;
 	[ObservableProperty] private bool hasLatest;
 	[ObservableProperty] private string clock = string.Empty;
 	[ObservableProperty] private string date = string.Empty;
@@ -301,9 +400,6 @@ public sealed partial class BigScreenViewModel : ObservableObject
 
 	/// <summary>How many problems are open.</summary>
 	[ObservableProperty] private int openProblems;
-
-	/// <summary>"and 3 more" under the list, when not all fit.</summary>
-	[ObservableProperty] private string moreProblems = string.Empty;
 
 	// ----- The top of the page: what it is about -----
 
@@ -386,7 +482,7 @@ public sealed partial class BigScreenViewModel : ObservableObject
 	{
 		this.left = this.Dwell;
 		int count = this.Pages.Count;
-		int at = this.Pages.IndexOf(this.Current);
+		int at = Math.Max(0, this.Pages.IndexOf(this.Current));
 		for (int step = 1; step < count; step++)
 		{
 			BigScreenPage page = this.Pages[((at + direction * step) % count + count) % count];
@@ -423,9 +519,9 @@ public sealed partial class BigScreenViewModel : ObservableObject
 	}
 
 	/// <summary>Something happened that a page shows: that page now, and for longer.</summary>
-	private void News(string key)
+	private void News(string key, int part = 0)
 	{
-		BigScreenPage? page = this.Pages.FirstOrDefault(p => p.Key == key && p.IsShown);
+		BigScreenPage? page = this.Pages.FirstOrDefault(p => p.Key == key && p.Part == part && p.IsShown);
 		if (page is null)
 			return;
 
@@ -440,8 +536,8 @@ public sealed partial class BigScreenViewModel : ObservableObject
 		if (page == this.Current)
 			return;
 
-		// What was new on the Problems page has been seen once it turns away.
-		if (this.Current.Key == BigScreenPages.Problems)
+		// What was new on the Problems pages has been seen once it turns away from them.
+		if (this.Current.Key == BigScreenPages.Problems && page.Key != BigScreenPages.Problems)
 		{
 			this.fresh.Clear();
 			foreach (BigScreenProblemViewModel p in this.Problems)
@@ -451,6 +547,7 @@ public sealed partial class BigScreenViewModel : ObservableObject
 		this.Current.IsCurrent = false;
 		page.IsCurrent = true;
 		this.Current = page;
+		this.FillPage();
 		this.Head();
 		if (direction != 0)
 			this.Turned?.Invoke(this, direction);
@@ -471,13 +568,14 @@ public sealed partial class BigScreenViewModel : ObservableObject
 		this.RefreshLatest(rows, now);
 		bool problemOpened = this.RefreshProblems(rows, now);
 
-		// A Neuron that answered before and now does not.
-		bool neuronDown = false;
-		foreach (FleetRowViewModel row in rows)
+		// A Neuron that answered before and now does not: the first of them by name.
+		int down = -1;
+		for (int i = 0; i < rows.Count; i++)
 		{
+			FleetRowViewModel row = rows[i];
 			(Guid, string) id = (row.AccountId, row.BareJid);
-			if (this.states.TryGetValue(id, out WatchState was) && !IsDown(was) && IsDown(row.State))
-				neuronDown = true;
+			if (down < 0 && this.states.TryGetValue(id, out WatchState was) && !IsDown(was) && IsDown(row.State))
+				down = i;
 			this.states[id] = row.State;
 		}
 
@@ -485,8 +583,8 @@ public sealed partial class BigScreenViewModel : ObservableObject
 
 		if (this.seen)
 		{
-			if (neuronDown)
-				this.News(BigScreenPages.Neurons);
+			if (down >= 0)
+				this.News(BigScreenPages.Neurons, down / Math.Max(1, this.layout.PerPage));
 			else if (problemOpened)
 				this.News(BigScreenPages.Problems);
 		}
@@ -526,12 +624,7 @@ public sealed partial class BigScreenViewModel : ObservableObject
 		}
 
 		this.HasTiles = this.Tiles.Count > 0;
-		this.Columns = this.Tiles.Count switch
-		{
-			<= 1 => 1,
-			<= 4 => 2,
-			_ => 3,
-		};
+		this.Lay();
 
 		int total = rows.Count;
 		int live = rows.Count(r => r.State == WatchState.Live);
@@ -594,8 +687,7 @@ public sealed partial class BigScreenViewModel : ObservableObject
 
 		List<Issue> shown = [.. issues
 			.OrderByDescending(i => this.fresh.Contains(i.Fingerprint))
-			.ThenByDescending(i => i.LastSeen)
-			.Take(MaxProblems)];
+			.ThenByDescending(i => i.LastSeen)];
 
 		for (int i = this.Problems.Count - 1; i >= 0; i--)
 		{
@@ -619,8 +711,33 @@ public sealed partial class BigScreenViewModel : ObservableObject
 		}
 
 		this.OpenProblems = issues.Count;
-		this.MoreProblems = issues.Count > shown.Count ? $"and {issues.Count - shown.Count} more" : string.Empty;
 		return opened;
+	}
+
+	/// <summary>
+	/// The space for the tiles on the Neurons page, in px as the big screen is drawn. The view
+	/// tells it as it is laid out; until then it is that of a 1280 by 720 screen.
+	/// </summary>
+	public void Fit(Size tileArea)
+	{
+		if (tileArea.Width <= 0 || tileArea.Height <= 0 || tileArea == this.area)
+			return;
+
+		this.area = tileArea;
+		this.Lay();
+		this.RefreshPages();
+		if (!this.Current.IsShown)
+			this.Turn(1);
+	}
+
+	/// <summary>How the tiles are laid out, for the Neurons there are and the space there is.</summary>
+	private void Lay()
+	{
+		this.layout = BigScreenTileLayout.For(this.Tiles.Count, this.area);
+		this.Columns = this.layout.Columns;
+		this.SmallTiles = this.layout.Small;
+		this.TileScale = this.layout.Scale;
+		this.TileListWidth = Math.Floor(this.area.Width / this.layout.Scale);
 	}
 
 	/// <summary>Which pages there are, which are on, and which have something to show.</summary>
@@ -632,11 +749,14 @@ public sealed partial class BigScreenViewModel : ObservableObject
 				this.Pages.Add(new BigScreenPage(page.Key, page.Title, page));
 		}
 
-		for (int i = this.Pages.Count - 1; i >= 2; i--)
+		for (int i = this.Pages.Count - 1; i >= 0; i--)
 		{
 			if (this.Pages[i].Added is IBigScreenPage gone && !this.added.Contains(gone))
 				this.Pages.RemoveAt(i);
 		}
+
+		this.Parts(BigScreenPages.Neurons, this.layout.Pages);
+		this.Parts(BigScreenPages.Problems, Math.Max(1, (this.OpenProblems + ProblemsPerPage - 1) / ProblemsPerPage));
 
 		foreach (BigScreenPage page in this.Pages)
 		{
@@ -658,6 +778,52 @@ public sealed partial class BigScreenViewModel : ObservableObject
 		}
 
 		this.HasDots = dots.Count > 1;
+		this.FillPage();
+	}
+
+	/// <summary>As many pages with <paramref name="key"/> as it takes, side by side. The one on the screen, if it goes, gives way to the last one left.</summary>
+	private void Parts(string key, int count)
+	{
+		List<BigScreenPage> have = [.. this.Pages.Where(p => p.Key == key)];
+		int first = this.Pages.IndexOf(have[0]);
+		while (have.Count < count)
+		{
+			BigScreenPage page = new(key, have[0].Title, part: have.Count);
+			this.Pages.Insert(first + have.Count, page);
+			have.Add(page);
+		}
+
+		while (have.Count > count)
+		{
+			BigScreenPage gone = have[^1];
+			have.RemoveAt(have.Count - 1);
+			if (gone == this.Current)
+				this.Show(have[^1], 0);
+			this.Pages.Remove(gone);
+		}
+	}
+
+	/// <summary>The Neurons or the problems on the page showing now.</summary>
+	private void FillPage()
+	{
+		if (this.Current.Key == BigScreenPages.Neurons)
+		{
+			int per = Math.Max(1, this.layout.PerPage);
+			Fill(this.PageTiles, this.Tiles.Skip(this.Current.Part * per).Take(per));
+		}
+		else if (this.Current.Key == BigScreenPages.Problems)
+			Fill(this.PageProblems, this.Problems.Skip(this.Current.Part * ProblemsPerPage).Take(ProblemsPerPage));
+	}
+
+	private static void Fill<T>(ObservableCollection<T> shown, IEnumerable<T> items)
+	{
+		List<T> wanted = [.. items];
+		if (wanted.SequenceEqual(shown))
+			return;
+
+		shown.Clear();
+		foreach (T item in wanted)
+			shown.Add(item);
 	}
 
 	/// <summary>The top of the page: what it is about, in a few words.</summary>
