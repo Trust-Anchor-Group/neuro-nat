@@ -15,7 +15,7 @@ namespace Neuro.Nat.App.Tests;
 
 /// <summary>
 /// Sizes and windows: the text size, compact rows, the lines between panes, the order of the
-/// Neurons list, screens in windows of their own that come back at start, and the Wall view.
+/// Neurons list, screens in windows of their own that come back at start.
 /// Renders frames for review.
 /// </summary>
 public class SizesAndWindowsTests
@@ -479,109 +479,6 @@ public class SizesAndWindowsTests
 		Assert.Equal(WindowState.Maximized, tiny.WindowState);
 	}
 
-	// ----- The Wall view -----
-
-	[AvaloniaTheory]
-	[InlineData("Light")]
-	[InlineData("Dark")]
-	public async Task TheWallShowsTheNeuronsLargeWithNoControls(string theme)
-	{
-		using Sample s = await GettingAroundTests.SampleAsync();
-		MainWindowViewModel vm = s.Vm;
-		Application.Current!.RequestedThemeVariant = theme == "Dark" ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
-		WallViewModel wall = vm.Wall;
-		wall.Now = () => new DateTime(2026, 11, 11, 14, 32, 0);
-		wall.Start();
-
-		Assert.Equal("14:32", wall.Clock);
-		Assert.Equal("4 of 5 Neurons reporting", wall.Summary);
-		Assert.Equal("busy", wall.SummaryTone);
-		Assert.True(wall.HasErrors);
-
-		// Every Neuron is a tile, by name, with its state in a word.
-		Assert.Equal(["Backup", "Gothenburg edge", "Lab", "Production", "Stockholm edge"], wall.Tiles.Select(x => x.Label));
-		WallTileViewModel backup = wall.Tiles[0];
-		Assert.Equal("bad", backup.Tone);
-		Assert.Equal("Offline", backup.StateText);
-		WallTileViewModel gbg = wall.Tiles[1];
-		Assert.Equal("busy", gbg.Tone);
-		Assert.True(gbg.HighCpu);
-		Assert.True(gbg.HasErrors);
-		Assert.Equal("Errors in the last hour", gbg.StateText);
-		Assert.Equal("ok", wall.Tiles[4].Tone);
-		Assert.Equal("All well", wall.Tiles[4].StateText);
-
-		// The latest warnings and errors, newest first, with the Neuron's name.
-		Assert.Equal(8, wall.Latest.Count);
-		Assert.Equal("Gothenburg edge", wall.Latest[0].Neuron);
-		Assert.Equal("bad", wall.Latest[0].Tone);
-		Assert.True(wall.Latest.Zip(wall.Latest.Skip(1)).All(p => p.First.Event.Timestamp >= p.Second.Event.Timestamp));
-
-		Window window = new() { Width = 1920, Height = 1080, Content = new WallView { DataContext = wall } };
-		window.Show();
-		Dispatcher.UIThread.RunJobs();
-		WallView view = Assert.IsType<WallView>(window.Content);
-		Assert.Equal(1.5, view.Factor);
-		Assert.Empty(view.GetVisualDescendants().OfType<Button>());
-		Assert.Empty(view.GetVisualDescendants().OfType<TextBox>());
-		GettingAroundTests.Capture(window, $"wall-{theme.ToLowerInvariant()}");
-
-		// A new error comes in: it is on top the next second.
-		if (SniffedEventParser.Parse(new Neuro.Nat.Engine.Sniffing.SnifferLine(0, DateTime.Now, Neuro.Nat.Engine.Sniffing.SnifferDirection.Error,
-			"OutOfMemoryException in Waher.Persistence.Files\n\nModule: Waher.Persistence"), new EventSource(s.Admin, Prod)) is NeuronEvent e)
-			s.Monitors.Hub.Add(e);
-		wall.Refresh();
-		Assert.Equal("Production", wall.Latest[0].Neuron);
-		Assert.StartsWith("OutOfMemoryException", wall.Latest[0].Title);
-		Assert.Equal(8, wall.Latest.Count);
-
-		// A smaller screen: the same wall, smaller.
-		window.Width = 1280;
-		window.Height = 720;
-		Dispatcher.UIThread.RunJobs();
-		Assert.Equal(1, view.Factor);
-		GettingAroundTests.Capture(window, $"wall-1280-{theme.ToLowerInvariant()}");
-
-		window.Close();
-		wall.Stop();
-
-		// Nothing at all yet: it says so instead of showing an empty board.
-		WallViewModel empty = new(new FleetViewModel(new FleetService(new MonitorService(s.Manager, new EventHub())), s.Manager), new EventHub());
-		empty.Refresh();
-		Assert.False(empty.HasTiles);
-		Assert.False(empty.HasLatest);
-		Assert.Equal("No Neurons yet", empty.Summary);
-	}
-
-	[AvaloniaFact]
-	public async Task F11OpensTheWallAndClosesItAgain()
-	{
-		using Sample s = await GettingAroundTests.SampleAsync();
-		MainWindow window = GettingAroundTests.Window(s, "Light");
-		ShellWindows.Attach(window, s.Vm, () => Another(s));
-
-		s.Vm.OpenWallCommand.Execute(null);
-		Dispatcher.UIThread.RunJobs();
-		Window wall = Assert.IsAssignableFrom<Window>(ShellWindows.Wall);
-		Assert.Equal(WindowState.FullScreen, wall.WindowState);
-		Assert.IsType<WallView>(wall.Content);
-		Assert.Equal(5, s.Vm.Wall.Tiles.Count);
-
-		// The same key, or the same command, closes it.
-		s.Vm.OpenWallCommand.Execute(null);
-		Dispatcher.UIThread.RunJobs();
-		Assert.Null(ShellWindows.Wall);
-
-		// It is found from the search box too, as is a new window.
-		s.Vm.Search.Open();
-		s.Vm.Search.Query = "wall";
-		Assert.Equal("Wall view", s.Vm.Search.Results[0].Title);
-		s.Vm.Search.Query = "new window";
-		Assert.Equal("New window", s.Vm.Search.Results[0].Title);
-		s.Vm.Search.Close();
-		window.Close();
-	}
-
 	// ----- Small and large -----
 
 	[AvaloniaFact]
@@ -592,7 +489,7 @@ public class SizesAndWindowsTests
 		vm.ShowFleetCommand.Execute(null);
 		MainWindow window = GettingAroundTests.Window(s, "Light", 760, 600);
 
-		// Small: the new-window button and the Wall tab make room; both stay reachable by key and from the search box.
+		// Small: the new-window button and the Big screen tab make room; both stay reachable by key and from the search box.
 		Assert.False(window.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "NewWindowButton").IsEffectivelyVisible);
 		GettingAroundTests.Capture(window, "sizes-small-neurons");
 		vm.ShowAttentionCommand.Execute(null);

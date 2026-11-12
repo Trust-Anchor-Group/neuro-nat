@@ -156,14 +156,14 @@ public sealed partial class MainWindowViewModel
 	[RelayCommand]
 	private void NewWindow() => Ui.NewWindow?.Invoke(this.Address);
 
-	/// <summary>F11: the Neurons and their latest problems, large, for a big screen.</summary>
+	/// <summary>F11: the Neurons and the open problems, page by page, large, for a big screen.</summary>
 	[RelayCommand]
-	private void OpenWall() => Ui.OpenWall?.Invoke();
+	private void OpenBigScreen() => Ui.OpenBigScreen?.Invoke();
 
-	/// <summary>What the Wall view shows. One for the app: the main window's.</summary>
-	public WallViewModel Wall => this.primary?.Wall ?? (this.wall ??= new WallViewModel(this.Fleet, this.fleet.Monitors.Hub));
+	/// <summary>What the big screen shows. One for the app: the main window's.</summary>
+	public BigScreenViewModel BigScreen => this.primary?.BigScreen ?? (this.bigScreen ??= new BigScreenViewModel(this.Fleet, this.fleet.Monitors.Hub, this.Settings));
 
-	private WallViewModel? wall;
+	private BigScreenViewModel? bigScreen;
 
 	/// <summary>A Neuron's page in a window of its own.</summary>
 	public void OpenNeuronWindow(string neuronJid, Guid? accountId)

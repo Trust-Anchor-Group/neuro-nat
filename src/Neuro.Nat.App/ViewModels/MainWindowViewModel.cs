@@ -607,7 +607,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			Icon(this.Settings.IsDoNotDisturb ? "Bell" : "BellOff"), () => this.Settings.SetStatus(this.Settings.IsDoNotDisturb ? OwnStatus.Available : OwnStatus.DoNotDisturb)) { Kind = "Do" };
 		yield return new SearchItem(this.IsDark ? "Light look" : "Dark look", "Switch between light and dark", Icon(this.IsDark ? "Sun" : "Moon"), this.ToggleTheme) { Kind = "Do" };
 		yield return new SearchItem("New window", "Open what is showing in a window of its own", Icon("Window"), () => this.NewWindowCommand.Execute(null)) { Kind = "Do", Words = "second monitor screen" };
-		yield return new SearchItem("Wall view", "Large, for a big screen", Icon("Fleet"), () => this.OpenWallCommand.Execute(null)) { Kind = "Do", Words = "full screen monitor tv dashboard" };
+		yield return new SearchItem("Big screen", "The Neurons and open problems, large", Icon("Fleet"), () => this.OpenBigScreenCommand.Execute(null)) { Kind = "Do", Words = "full screen monitor tv dashboard pages" };
 		yield return new SearchItem("Larger text", "One text size up", Icon("Settings"), () => this.Settings.StepTextSize(1)) { Kind = "Do", Words = "zoom font size bigger" };
 		yield return new SearchItem("Smaller text", "One text size down", Icon("Settings"), () => this.Settings.StepTextSize(-1)) { Kind = "Do", Words = "zoom font size" };
 		if (this.CanGoBack)

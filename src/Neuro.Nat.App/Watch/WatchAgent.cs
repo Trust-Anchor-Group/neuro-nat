@@ -194,8 +194,8 @@ public sealed class WatchAgent : IDisposable
 			this.window.Icon = icon;
 			foreach (Window w in Views.ShellWindows.Extras)
 				w.Icon = icon;
-			if (Views.ShellWindows.Wall is Window wall)
-				wall.Icon = icon;
+			if (Views.ShellWindows.BigScreen is Window big)
+				big.Icon = icon;
 		}
 
 		List<string> parts = [];

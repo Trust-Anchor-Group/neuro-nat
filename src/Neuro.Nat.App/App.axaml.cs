@@ -98,7 +98,7 @@ public partial class App : Application
 				Controls.Motion.Set(systemAllowsMotion && !vm.Settings.LessMotion);
 				vm.Settings.Changed += (_, _) => Controls.Motion.Set(systemAllowsMotion && !vm.Settings.LessMotion);
 
-				// Windows of their own, where they were, and the Wall view.
+				// Windows of their own, where they were, and the big screen.
 				ShellWindows.Attach(window, vm, () => new MainWindowViewModel(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub, primary: vm));
 
 				Watch.WatchAgent watch = new(desktop, window, vm, alerts, services.Updates);

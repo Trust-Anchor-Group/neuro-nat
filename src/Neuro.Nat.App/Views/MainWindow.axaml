@@ -180,7 +180,7 @@
       <Setter Property="PlaceholderText" Value="Search…" />
       <Setter Property="Padding" Value="32,5,10,5" />
     </Style>
-    <Style Selector=".maxw780 Button.newWindow, .maxw780 Button.wallTab">
+    <Style Selector=".maxw780 Button.newWindow, .maxw780 Button.bigScreenTab">
       <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector=".maxw960 Border.searchKey">
@@ -375,8 +375,8 @@
                   ToolTip.Tip="Neurons" />
           <Button Classes="tab" Classes.current="{Binding IsTopology}" Command="{Binding ShowTopologyCommand}" Content="Map"
                   ToolTip.Tip="Map" />
-          <Button x:Name="WallButton" Classes="tab wallTab" Command="{Binding OpenWallCommand}" Content="Wall"
-                  ToolTip.Tip="Wall view (F11)" />
+          <Button x:Name="BigScreenButton" Classes="tab bigScreenTab" Command="{Binding OpenBigScreenCommand}" Content="Big screen"
+                  ToolTip.Tip="Big screen (F11)" />
         </StackPanel>
 
         <!-- The Neuron filter: one button, and a list to tick Neurons in -->

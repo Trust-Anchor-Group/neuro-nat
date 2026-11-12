@@ -8,7 +8,7 @@ using Neuro.Nat.App.ViewModels;
 namespace Neuro.Nat.App.Views;
 
 /// <summary>
-/// The windows beside the main one: any screen in a window of its own, and the Wall view.
+/// The windows beside the main one: any screen in a window of its own, and the big screen.
 /// Each of these windows is a whole shell, so everything works there as it does in the main
 /// window. Where the windows were, how large, and what each showed is remembered, and they
 /// come back at start.
@@ -21,15 +21,15 @@ public static class ShellWindows
 	private static MainWindow? main;
 	private static MainWindowViewModel? mainVm;
 	private static Func<MainWindowViewModel>? make;
-	private static Window? wall;
+	private static Window? bigScreen;
 	private static bool quitting;
 	private static bool restored;
 
 	/// <summary>The windows open beside the main one.</summary>
 	public static IReadOnlyList<MainWindow> Extras => extras;
 
-	/// <summary>The Wall view's window, while it is open.</summary>
-	public static Window? Wall => wall;
+	/// <summary>The big screen's window, while it is open.</summary>
+	public static Window? BigScreen => bigScreen;
 
 	/// <summary>
 	/// Plugs the windows in. <paramref name="makeShell"/> makes the view model of one more
@@ -47,7 +47,7 @@ public static class ShellWindows
 		normal.Clear();
 
 		Ui.NewWindow = address => Open(address, null);
-		Ui.OpenWall = ToggleWall;
+		Ui.OpenBigScreen = ToggleBigScreen;
 		vm.IsLookedAtElsewhere = alert => extras.Any(w => w.DataContext is MainWindowViewModel x && x.LooksAt(alert));
 		vm.IsAnotherWindowInFront = () => extras.Any(w => w.IsActive);
 
@@ -62,7 +62,7 @@ public static class ShellWindows
 			quitting = true;
 			foreach (Window w in extras.ToList())
 				w.Close();
-			wall?.Close();
+			bigScreen?.Close();
 		};
 
 		if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -156,31 +156,31 @@ public static class ShellWindows
 		}
 	}
 
-	/// <summary>F11: opens the Wall view, or closes it when it is open.</summary>
-	public static void ToggleWall()
+	/// <summary>F11: opens the big screen, or closes it when it is open.</summary>
+	public static void ToggleBigScreen()
 	{
-		if (wall is not null)
+		if (bigScreen is not null)
 		{
-			wall.Close();
+			bigScreen.Close();
 			return;
 		}
 
 		if (main is null || mainVm is null)
 			return;
 
-		WallViewModel vm = mainVm.Wall;
+		BigScreenViewModel vm = mainVm.BigScreen;
 		Window window = new()
 		{
-			Title = "Wall - NAT",
+			Title = "Big screen - NAT",
 			Icon = main.Icon,
 			Width = 1280,
 			Height = 720,
 			MinWidth = 640,
 			MinHeight = 400,
-			Content = new WallView { DataContext = vm },
+			Content = new BigScreenView { DataContext = vm },
 		};
 
-		// On the screen the app is on, all of it. A wall has no title bar and no controls.
+		// On the screen the app is on, all of it. The big screen has no title bar and no controls.
 		Window from = extras.FirstOrDefault(w => w.IsActive) ?? (Window)main;
 		if (from.IsVisible)
 		{
@@ -196,15 +196,17 @@ public static class ShellWindows
 				window.Close();
 				e.Handled = true;
 			}
+			else if (e.KeyModifiers == KeyModifiers.None)
+				e.Handled = vm.Press(e.Key);
 		};
 		window.Opened += (_, _) => vm.Start();
 		window.Closed += (_, _) =>
 		{
 			vm.Stop();
-			wall = null;
+			bigScreen = null;
 		};
 
-		wall = window;
+		bigScreen = window;
 		window.Show();
 	}
 

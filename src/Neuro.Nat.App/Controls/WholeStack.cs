@@ -5,7 +5,7 @@ namespace Neuro.Nat.App.Controls;
 
 /// <summary>
 /// Stacks its children like a list, and shows only those that fit whole: where nothing can be
-/// scrolled, as on the Wall view, half a row at the bottom is worse than none.
+/// scrolled, as on the big screen, half a row at the bottom is worse than none.
 /// </summary>
 public sealed class WholeStack : Panel
 {

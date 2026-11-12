@@ -233,6 +233,41 @@
         </StackPanel>
       </Border>
 
+      <!-- The big screen: which pages, and how long each stays -->
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="section" Text="Big screen" />
+          <CheckBox IsChecked="True" IsEnabled="False" Content="Neurons" />
+          <ItemsControl x:Name="BigScreenPagesList" ItemsSource="{Binding BigScreenChoices}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="10" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:BigScreenPageChoice">
+                <CheckBox IsChecked="{Binding IsOn}" Content="{Binding Title}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Classes="label" Text="Each page" />
+          <WrapPanel Orientation="Horizontal">
+            <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsBigScreen10, Mode=OneWay}" Command="{Binding SetBigScreenSecondsCommand}" Content="10 s">
+              <ToggleButton.CommandParameter><x:Int32>10</x:Int32></ToggleButton.CommandParameter>
+            </ToggleButton>
+            <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsBigScreen20, Mode=OneWay}" Command="{Binding SetBigScreenSecondsCommand}" Content="20 s">
+              <ToggleButton.CommandParameter><x:Int32>20</x:Int32></ToggleButton.CommandParameter>
+            </ToggleButton>
+            <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsBigScreen30, Mode=OneWay}" Command="{Binding SetBigScreenSecondsCommand}" Content="30 s">
+              <ToggleButton.CommandParameter><x:Int32>30</x:Int32></ToggleButton.CommandParameter>
+            </ToggleButton>
+            <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsBigScreen60, Mode=OneWay}" Command="{Binding SetBigScreenSecondsCommand}" Content="1 min">
+              <ToggleButton.CommandParameter><x:Int32>60</x:Int32></ToggleButton.CommandParameter>
+            </ToggleButton>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
       <!-- The app -->
       <Border Classes="card">
         <StackPanel Spacing="10">

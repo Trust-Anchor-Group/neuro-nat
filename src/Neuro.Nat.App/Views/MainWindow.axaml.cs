@@ -91,7 +91,7 @@ public partial class MainWindow : Window
 			e.Handled = true;
 		}
 
-		// Ctrl+Shift+N: what is showing, in a window of its own. F11: the Wall view.
+		// Ctrl+Shift+N: what is showing, in a window of its own. F11: the big screen.
 		else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.N)
 		{
 			vm.NewWindowCommand.Execute(null);
@@ -99,7 +99,7 @@ public partial class MainWindow : Window
 		}
 		else if (e.KeyModifiers == KeyModifiers.None && e.Key == Key.F11)
 		{
-			vm.OpenWallCommand.Execute(null);
+			vm.OpenBigScreenCommand.Execute(null);
 			e.Handled = true;
 		}
 

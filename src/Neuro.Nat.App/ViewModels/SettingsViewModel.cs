@@ -58,6 +58,12 @@ public sealed record UiSettings
 
 	/// <summary>The other windows that were open.</summary>
 	public List<WindowPlace> MoreWindows { get; init; } = [];
+
+	/// <summary>The big screen's pages that are turned off, by their keys. Pages not named here are on.</summary>
+	public List<string> BigScreenOff { get; init; } = [];
+
+	/// <summary>How many seconds the big screen stays on a page.</summary>
+	public int BigScreenSeconds { get; init; } = 20;
 }
 
 /// <summary>Keeps <see cref="UiSettings"/> between runs.</summary>
@@ -159,8 +165,14 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 			new ShortcutRow("Ctrl+plus, Ctrl+minus", "Larger and smaller text"),
 			new ShortcutRow("Ctrl+0", "Text back to its normal size"),
 			new ShortcutRow("Ctrl+Shift+N", "Open the screen in front in a window of its own"),
-			new ShortcutRow("F11", "Wall view: the Neurons and their latest problems, for a big screen"),
+			new ShortcutRow("F11", "Big screen: the Neurons and open problems, large, page by page"),
 			new ShortcutRow("Drag the line between two panes", "Make one wider. Double-click it to put it back."),
+		]),
+		new ShortcutGroup("Big screen",
+		[
+			new ShortcutRow("Left, Right", "The page before or after"),
+			new ShortcutRow("Space", "Stay on this page, or go on turning"),
+			new ShortcutRow("Escape, F11", "Leave the big screen"),
 		]),
 		new ShortcutGroup("In any list",
 		[

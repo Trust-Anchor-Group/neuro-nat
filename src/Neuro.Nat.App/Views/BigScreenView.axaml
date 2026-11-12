@@ -1,0 +1,238 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             x:Class="Neuro.Nat.App.Views.BigScreenView"
+             x:DataType="vm:BigScreenViewModel"
+             Background="{DynamicResource Surface.Ground}">
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.bigNum">
+      <Setter Property="FontSize" Value="28" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontFeatures" Value="tnum" />
+    </Style>
+    <Style Selector="TextBlock.bigNum.alarm">
+      <Setter Property="Foreground" Value="{DynamicResource State.Bad}" />
+    </Style>
+    <Style Selector="TextBlock.bigCap">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Tertiary}" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+    <Style Selector="TextBlock.bigSub">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
+    </Style>
+    <Style Selector="TextBlock.bigBad">
+      <Setter Property="Foreground" Value="{DynamicResource State.Bad}" />
+    </Style>
+    <Style Selector="Border.bigTile">
+      <Setter Property="Margin" Value="0,0,14,14" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Background" Value="{DynamicResource Surface.Panel}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Ellipse.dot">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
+      <Setter Property="Margin" Value="6,0" />
+      <Setter Property="Fill" Value="{DynamicResource Line.Strong}" />
+    </Style>
+    <Style Selector="Ellipse.dot.current">
+      <Setter Property="Fill" Value="{DynamicResource Ink.Primary}" />
+    </Style>
+  </UserControl.Styles>
+
+  <!-- The big screen is drawn for a 1280 px wide screen and scaled to the one it is on, so it is as large as the screen allows. -->
+  <LayoutTransformControl x:Name="Scale">
+    <Grid x:Name="Stage" Margin="34,26,34,18" RowDefinitions="*,Auto">
+
+      <!-- The page: what it is about at the top, and what it shows. It slides when it turns, unless motion is off. -->
+      <DockPanel x:Name="Turnable">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,260,24" VerticalAlignment="Center" MinHeight="72">
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <Ellipse Width="18" Height="18" VerticalAlignment="Center" IsVisible="{Binding HasHeadDot}"
+                     Fill="{Binding HeadTone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+            <TextBlock x:Name="HeadlineText" Text="{Binding Headline}" FontSize="36" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <TextBlock x:Name="SublineText" Text="{Binding Subline}" FontSize="19" Margin="32,6,0,0"
+                     Classes="bigSub" Classes.bigBad="{Binding IsSublineBad}" />
+        </StackPanel>
+
+        <Panel x:Name="Pages">
+
+          <!-- Neurons: every Neuron as a tile, and the latest warnings and errors -->
+          <DockPanel x:Name="NeuronsPage" IsVisible="{Binding IsNeuronsPage}">
+            <Border DockPanel.Dock="Right" Width="400" Margin="10,0,0,0" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8">
+              <DockPanel Margin="20,16,20,10">
+                <TextBlock DockPanel.Dock="Top" Text="Latest problems" FontSize="19" FontWeight="SemiBold" Margin="0,0,0,10" />
+                <Panel>
+                  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding !HasLatest}" Spacing="6">
+                    <TextBlock Text="All quiet" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource State.Ok}" />
+                  </StackPanel>
+                  <ItemsControl x:Name="LatestList" ItemsSource="{Binding Latest}" IsVisible="{Binding HasLatest}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <c:WholeStack />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:BigScreenEventViewModel">
+                        <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,9">
+                          <DockPanel>
+                            <Border DockPanel.Dock="Left" Width="4" CornerRadius="2" Margin="0,2,12,2"
+                                    Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                            <DockPanel DockPanel.Dock="Top">
+                              <TextBlock DockPanel.Dock="Right" Text="{Binding Time}" FontSize="15" Foreground="{DynamicResource Ink.Tertiary}" Margin="10,0,0,0" />
+                              <TextBlock Text="{Binding Neuron}" FontSize="15" FontWeight="SemiBold" FontFamily="{StaticResource Font.Mono}"
+                                         Foreground="{DynamicResource Ink.Secondary}" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding Title}" FontSize="17" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                          </DockPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Panel>
+              </DockPanel>
+            </Border>
+
+            <Panel x:Name="TileHost">
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding !HasTiles}" Spacing="8">
+                <TextBlock Text="No Neurons yet" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" />
+              </StackPanel>
+              <!-- However many there are, all of them show: with more than fit, the tiles get smaller together. -->
+              <Viewbox x:Name="TileBox" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding HasTiles}">
+                <ItemsControl x:Name="TileList" ItemsSource="{Binding Tiles}" Width="802">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <UniformGrid Columns="{Binding Columns}" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BigScreenTileViewModel">
+                      <Border Classes="bigTile">
+                        <DockPanel>
+                          <Border DockPanel.Dock="Left" Width="6" Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                          <StackPanel Margin="16,13,16,14">
+                            <TextBlock Text="{Binding Label}" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource Font.Mono}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding StateText}" FontSize="16" Margin="0,3,0,12"
+                                       Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                            <Grid ColumnDefinitions="4*,3*,4*" ColumnSpacing="10">
+                              <StackPanel>
+                                <TextBlock Classes="bigNum" Classes.alarm="{Binding HighCpu}" Text="{Binding Cpu}" />
+                                <TextBlock Classes="bigCap" Text="CPU" />
+                              </StackPanel>
+                              <StackPanel Grid.Column="1">
+                                <TextBlock Classes="bigNum" Classes.alarm="{Binding HasErrors}" Text="{Binding Errors}" />
+                                <TextBlock Classes="bigCap" Text="Errors" />
+                              </StackPanel>
+                              <StackPanel Grid.Column="2">
+                                <TextBlock Classes="bigNum" Text="{Binding Issues}" />
+                                <TextBlock Classes="bigCap" Text="Problems" />
+                              </StackPanel>
+                            </Grid>
+                            <Grid ColumnDefinitions="4*,7*" ColumnSpacing="10" Margin="0,12,0,0">
+                              <StackPanel>
+                                <TextBlock FontSize="17" FontWeight="Medium" Text="{Binding Memory}" Classes.bigBad="{Binding LowMemory}" />
+                                <TextBlock Classes="bigCap" Text="Memory" />
+                              </StackPanel>
+                              <StackPanel Grid.Column="1">
+                                <TextBlock FontSize="17" FontWeight="Medium" Text="{Binding Disk}" Classes.bigBad="{Binding LowDisk}" />
+                                <TextBlock Classes="bigCap" Text="Disk free" />
+                              </StackPanel>
+                            </Grid>
+                            <TextBlock Classes="bigCap" Margin="0,12,0,0" TextTrimming="CharacterEllipsis">
+                              <Run Text="Last event" />
+                              <Run Text="{Binding LastEvent}" />
+                            </TextBlock>
+                          </StackPanel>
+                        </DockPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Viewbox>
+            </Panel>
+          </DockPanel>
+
+          <!-- Problems: what, where, since when, and how many times -->
+          <DockPanel x:Name="ProblemsPage" IsVisible="{Binding IsProblemsPage}">
+            <TextBlock DockPanel.Dock="Bottom" Text="{Binding MoreProblems}" FontSize="17" Foreground="{DynamicResource Ink.Secondary}"
+                       IsVisible="{Binding MoreProblems, Converter={x:Static conv:EventConverters.HasText}}" Margin="2,2,0,0" />
+            <ItemsControl x:Name="ProblemList" ItemsSource="{Binding Problems}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <c:WholeStack />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BigScreenProblemViewModel">
+                  <Border Margin="0,0,0,10" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                    <DockPanel>
+                      <Border DockPanel.Dock="Left" Width="6" Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                      <StackPanel DockPanel.Dock="Left" Width="112" Margin="20,12,0,12" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Count}" FontSize="46" FontWeight="SemiBold" FontFeatures="tnum" LineHeight="50"
+                                   Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                        <TextBlock Text="{Binding CountUnit}" FontSize="17" Foreground="{DynamicResource Ink.Tertiary}" />
+                      </StackPanel>
+                      <StackPanel Margin="8,14,22,14" VerticalAlignment="Center" Spacing="6">
+                        <DockPanel>
+                          <Border DockPanel.Dock="Right" IsVisible="{Binding IsNew}" Background="{DynamicResource Accent.Subtle}"
+                                  CornerRadius="{StaticResource Radius.Pill}" Padding="12,3" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="New" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" />
+                          </Border>
+                          <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                        <DockPanel>
+                          <TextBlock DockPanel.Dock="Right" FontSize="20" Foreground="{DynamicResource Ink.Tertiary}" Margin="16,0,0,0">
+                            <Run Text="{Binding Since}" /><Run Text=", " /><Run Text="{Binding Last}" />
+                          </TextBlock>
+                          <TextBlock Text="{Binding Where}" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource Font.Mono}"
+                                     Foreground="{DynamicResource Ink.Secondary}" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </DockPanel>
+
+          <!-- A page a feature added -->
+          <ContentControl x:Name="AddedPage" IsVisible="{Binding IsAddedPage}" Content="{Binding AddedContent}" />
+        </Panel>
+      </DockPanel>
+
+      <!-- The time stays where it is while the pages turn -->
+      <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top">
+        <TextBlock x:Name="ClockText" Text="{Binding Clock}" FontSize="48" FontWeight="SemiBold" FontFeatures="tnum" HorizontalAlignment="Right" LineHeight="50" />
+        <TextBlock Text="{Binding Date}" FontSize="17" Foreground="{DynamicResource Ink.Secondary}" HorizontalAlignment="Right" />
+      </StackPanel>
+
+      <!-- Which page this is, and how to leave -->
+      <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*" Margin="0,10,0,0">
+        <ItemsControl Grid.Column="1" x:Name="DotList" ItemsSource="{Binding Dots}" IsVisible="{Binding HasDots}" VerticalAlignment="Center">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:BigScreenPage">
+              <Ellipse Classes="dot" Classes.current="{Binding IsCurrent}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <TextBlock x:Name="HeldText" Text="Held" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Ink.Secondary}" IsVisible="{Binding Held}" />
+          <TextBlock x:Name="LeaveHint" Text="Esc or F11 to leave" FontSize="14" Foreground="{DynamicResource Ink.Tertiary}" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </LayoutTransformControl>
+</UserControl>

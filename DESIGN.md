@@ -342,7 +342,7 @@ Cool neutrals, one cobalt accent, a state set, a severity ramp and the account h
 
 **The places:**
 - **Inbox**: everything that waits for you in one list (messages, requests, notifications from Neurons), with the thing open beside it so it can be answered there.
-- **Neurons**: List, Map and Wall. A Neuron opens as a page with Overview, Events, Sources, Console, Software and Identity.
+- **Neurons**: List, Map and Big screen. A Neuron opens as a page with Overview, Events, Sources, Console, Software and Identity.
 - **Events**: problems on the left (events grouped by what went wrong), all events on the right.
 - **Chat**: people and rooms, the conversation, and the person's details as a third column when there is room.
 - **Console**: tick one or several Neurons, run a command, read the answers side by side.
@@ -362,7 +362,7 @@ Cool neutrals, one cobalt accent, a state set, a severity ramp and the account h
 
 **More than one window.** Ctrl+Shift+N opens the screen in front in a window of its own; a Neuron and a conversation have "Open in a new window" on their menus. Windows come back where they were, on a screen that still exists, showing what they showed. The app itself opens on the screen it was closed on.
 
-**The Wall** (F11, `Views/WallView.axaml`): the Neurons as large tiles and the latest problems, with no controls, for a screen on the wall. It is drawn for 1280 px and scaled to the window, so it reads from across a room.
+**The big screen** (F11, `Views/BigScreenView.axaml`): for a screen across the room, one page at a time in large text with no controls. Neurons (the Neurons as large tiles and the latest problems) is always there; Problems (each open problem: what, where, since when, how many times) only while one is open; after them come the pages features add through `IBigScreenPage` in `BigScreenPages.Added` (App numbers will be one). It turns by itself, 20 seconds a page, and skips pages with nothing to show; small dots at the bottom say which page is showing. When a Neuron goes down or a new problem opens, it turns to that page and stays half as long again; a new problem is marked New. Left and Right turn, Space holds, Esc or F11 leaves. Settings choose the pages and the time. Pages slide in as they turn, and simply change with less motion. It is drawn for 1280 px and scaled to the window, so it reads the same at 3840.
 
 **Spacing:** steps of 2, 4, 6, 8, 10, 12, 14, 16, 20 px. 6 between an icon and its label, 8 between sibling controls, 14 inside a panel, 20 at the edge of a screen. `compact` on the root (Settings, "Compact rows") makes list rows less tall.
 
@@ -410,7 +410,7 @@ Anything you can point at has a link that reads plainly: `neuro-nat://neuron/<do
 `Ui.Say("Copied 3 events")` shows a short note in the status bar for 2.4 seconds (class `flash`), in the window in front. `Ui.Say(note, undo)` adds an Undo button and keeps the note for 7 seconds; Ctrl+Z does the same while it shows. Use the second form for anything that takes one click and is easy to do to the wrong row: acknowledge, mute, mark fixed, reopen. What cannot be taken back asks first instead.
 
 ### Pop-ups
-A message or an alert shows as a card in the bottom right corner of the window, or of the screen when the window is behind others or in the tray (`Views/NoticeCard.axaml`). It can be answered or dismissed from the card. Settings start with four plain choices (What needs me, Everything, Nothing, My own choice); the table of switches for each kind only shows for "My own choice". Settings never open on a wall of tick boxes.
+A message or an alert shows as a card in the bottom right corner of the window, or of the screen when the window is behind others or in the tray (`Views/NoticeCard.axaml`). It can be answered or dismissed from the card. Settings start with four plain choices (What needs me, Everything, Nothing, My own choice); the table of switches for each kind only shows for "My own choice". Settings never open on a long list of tick boxes.
 
 ### Empty and loading
 - **Empty:** a 24 px icon in `Ink.Tertiary` and one short semi-bold line saying what is missing. A `meta` line under it only when the way to fill it is not plain from the screen. Centred, at most about 380 px wide, with a side margin so it wraps in a narrow pane.
@@ -439,7 +439,7 @@ These are the habits of the tools this app replaces. Check every new screen agai
 3. **No piles of tabs.** A place has a few tabs at most, and a thing opens in place, not in a tab of its own.
 4. **No flat lists.** Every list can be filtered, and Ctrl+K searches everything.
 5. **No page per thing** when a pane beside the list will do.
-6. **No wall of tick boxes.** A few plain choices first, the detail behind one of them.
+6. **No long lists of tick boxes.** A few plain choices first, the detail behind one of them.
 
 ## Do and don't
 
