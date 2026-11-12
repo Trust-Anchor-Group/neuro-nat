@@ -2,7 +2,7 @@
 
 NAT keeps its data in `%AppData%\Neuro.Nat`. Everything it remembers is in one encrypted database
 (`database\`): accounts, sign-ins, chat history and room passwords, Inbox items, settings, and the
-signing keys of legal identities. Only three things are outside it:
+signing keys of legal identities, and runbooks with the records of their runs. Only three things are outside it:
 
 - `secrets\database.key`, the key to the database, protected by Windows for the signed-in user;
 - `logs\nat.log`, the log, which never holds message texts, passwords, tokens or sign-ins;

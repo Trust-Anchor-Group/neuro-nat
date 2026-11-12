@@ -71,7 +71,7 @@ public class StorageTests(ITestOutputHelper output) : IDisposable
 
 		// Collection names are written into the files: they must not change either.
 		Assert.Equal(
-			["Accounts", "AppSettings", "ChatConversations", "ChatMessages", "ChatRooms", "InboxItems", "KnownNeurons", "NeuronCopies", "SignIns"],
+			["Accounts", "AppSettings", "ChatConversations", "ChatMessages", "ChatRooms", "InboxItems", "KnownNeurons", "NeuronCopies", "RunbookRuns", "Runbooks", "SignIns"],
 			stored.Select(t => t.GetCustomAttribute<CollectionNameAttribute>()!.Name).Order(StringComparer.Ordinal));
 	}
 

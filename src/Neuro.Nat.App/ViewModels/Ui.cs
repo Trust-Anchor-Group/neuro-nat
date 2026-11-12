@@ -16,6 +16,9 @@ public static class Ui
 	/// <summary>Asks where to save, writes the chosen format, and returns the file's name, or null when cancelled.</summary>
 	public static Func<string, IReadOnlyList<SaveFormat>, Task<string?>>? SaveFile { get; set; }
 
+	/// <summary>Asks for a text file to open, given the name of its kind. Returns its name and text, or null when cancelled.</summary>
+	public static Func<string, Task<(string Name, string Text)?>>? OpenTextFile { get; set; }
+
 	/// <summary>Opens something in a window of its own. Given the view model; the window knows which view fits.</summary>
 	public static Action<object>? OpenWindow { get; set; }
 

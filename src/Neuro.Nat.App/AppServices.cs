@@ -28,6 +28,8 @@ public sealed record AppServices(AccountManager Accounts, MonitorService Monitor
 
 	/// <summary>Copies of what comparisons read. In memory unless the host gives a store.</summary>
 	public Engine.Storage.INeuronCopyStore NeuronCopies { get; init; } = new Engine.Storage.MemoryNeuronCopyStore();
+	/// <summary>Where runbooks and the records of their runs are kept. In memory unless the host gives a store.</summary>
+	public Engine.Storage.IRunbookStore Runbooks { get; init; } = new Engine.Storage.InMemoryRunbookStore();
 
 	/// <summary>False where there is no encrypted database yet (macOS and Linux): nothing is kept between runs.</summary>
 	public bool KeepsData { get; init; }

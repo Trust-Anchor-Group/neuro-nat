@@ -124,6 +124,7 @@ internal static class Program
 				UiSettings = stores.UiSettings,
 				KeepsData = stores.KeepsData,
 				NeuronCopies = stores.NeuronCopies,
+				Runbooks = stores.Runbooks,
 			};
 			if (startHidden)
 				AppLog.Info("Started in the tray.");
@@ -157,6 +158,8 @@ internal static class Program
 	{
 		/// <summary>Copies of what comparisons read.</summary>
 		public INeuronCopyStore NeuronCopies { get; init; } = new MemoryNeuronCopyStore();
+		/// <summary>Runbooks and the records of their runs.</summary>
+		public IRunbookStore Runbooks { get; init; } = new InMemoryRunbookStore();
 	}
 
 	/// <summary>
@@ -237,6 +240,7 @@ internal static class Program
 			new Engine.Alerts.DatabaseAlertSettingsStore(settings), new App.ViewModels.DatabaseUiSettingsStore(settings), new DatabaseKnownNeuronStore(db), KeepsData: true)
 		{
 			NeuronCopies = new DatabaseNeuronCopyStore(db),
+			Runbooks = new DatabaseRunbookStore(db),
 		};
 	}
 

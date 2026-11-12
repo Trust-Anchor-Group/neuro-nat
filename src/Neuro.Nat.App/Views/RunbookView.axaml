@@ -1,0 +1,300 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             x:Class="Neuro.Nat.App.Views.RunbookView"
+             x:DataType="vm:RunbooksViewModel">
+
+  <!-- A runbook in the Console: its steps and blanks, its editor, and its runs with each Neuron's answer under each step. -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.prompt">
+      <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.stepNo">
+      <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Tertiary}" />
+      <Setter Property="MinWidth" Value="18" />
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
+    <Style Selector="Border.result">
+      <Setter Property="Background" Value="{DynamicResource Surface.Panel}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="Margin" Value="0,0,10,10" />
+    </Style>
+    <!-- A step a Neuron has not come to (yet) -->
+    <Style Selector="Border.result.pending">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+    <Style Selector="Border.marked">
+      <Setter Property="Background" Value="{DynamicResource State.Bad.Subtle}" />
+    </Style>
+    <Style Selector="Border.marked TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource State.Bad}" />
+    </Style>
+    <!-- "Ask first" on a step that does not ask yet shows only when the pointer is on the step -->
+    <Style Selector="Grid.stepRow Button.markOff">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Grid.stepRow:pointerover Button.markOff, Grid.stepRow Button.markOff:focus">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <!-- Making or changing one -->
+    <DockPanel IsVisible="{Binding IsEditing}">
+      <Border DockPanel.Dock="Top" Padding="24,12" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="ghost" Content="Cancel" Command="{Binding CancelEditCommand}" Margin="8,0,0,0" />
+          <Button DockPanel.Dock="Right" Classes="primary" Content="Save runbook" Command="{Binding SaveEditCommand}" />
+          <TextBlock Classes="section" Text="Runbook" VerticalAlignment="Center" />
+        </DockPanel>
+      </Border>
+      <ScrollViewer>
+        <StackPanel Margin="24,16" Spacing="6" MaxWidth="760" HorizontalAlignment="Left">
+          <TextBlock Classes="label" Text="Name" />
+          <TextBox x:Name="EditTitleBox" Text="{Binding EditTitle}" PlaceholderText="Restart and check" />
+          <TextBlock Classes="label" Text="Steps, one per line" Margin="0,10,0,0" />
+          <TextBox Text="{Binding EditText}" AcceptsReturn="True" TextWrapping="NoWrap" FontFamily="{StaticResource Font.Mono}"
+                   MinHeight="220" Padding="10,8" PlaceholderText="Versions" />
+          <TextBlock Classes="meta" Text="! asks first, wait 30 seconds or wait until back waits, and {name} is a blank asked for at run time." TextWrapping="Wrap" />
+          <TextBlock Classes="error" Text="{Binding EditError}" IsVisible="{Binding EditError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+
+    <!-- The open runbook -->
+    <DockPanel IsVisible="{Binding !IsEditing}">
+      <Border DockPanel.Dock="Top" Padding="24,12" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="ghost" Padding="7" Command="{Binding CloseCommand}" ToolTip.Tip="Back to the transcript" Margin="4,0,0,0">
+            <c:LineIcon Data="{StaticResource Icon.Close}" Width="15" Height="15" />
+          </Button>
+          <Button DockPanel.Dock="Right" Classes="ghost danger" Command="{Binding DeleteCommand}" ToolTip.Tip="Delete"
+                  IsVisible="{Binding !IsReadyMade}">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Trash}" />
+              <TextBlock Classes="btnLabel" Text="Delete" />
+            </StackPanel>
+          </Button>
+          <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding SaveToFileCommand}" ToolTip.Tip="Save as a file">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+              <TextBlock Classes="btnLabel" Text="Save" />
+            </StackPanel>
+          </Button>
+          <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding EditCommand}" ToolTip.Tip="Edit">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Edit}" />
+              <TextBlock Classes="btnLabel" Text="Edit" />
+            </StackPanel>
+          </Button>
+          <StackPanel Spacing="2">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Classes="section" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+              <Border Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding IsReadyMade}">
+                <TextBlock Text="Ready-made" Foreground="{DynamicResource Ink.Secondary}" />
+              </Border>
+            </StackPanel>
+            <TextBlock Classes="meta" Text="{Binding StepSummary}" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <!-- Opened from a file: shown, not kept, nothing sent -->
+      <Border DockPanel.Dock="Top" Padding="24,10" Background="{DynamicResource Surface.Header}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1"
+              IsVisible="{Binding !IsKept}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Keep" Command="{Binding KeepCommand}" />
+          <TextBlock Text="From a file. Not kept yet." VerticalAlignment="Center" FontWeight="SemiBold" />
+        </DockPanel>
+      </Border>
+
+      <!-- Run, and what a marked step asks -->
+      <Border DockPanel.Dock="Bottom" Padding="24,10,24,16" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+        <StackPanel Spacing="8">
+          <Border Classes="panel" Padding="12,10" Background="{DynamicResource State.Bad.Subtle}" BorderThickness="0" IsVisible="{Binding IsAsking}">
+            <Grid ColumnDefinitions="*,200,Auto,Auto" ColumnSpacing="8">
+              <TextBlock Text="{Binding AskPrompt}" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="SemiBold" />
+              <TextBox x:Name="AskBox" Grid.Column="1" Text="{Binding AskText}" PlaceholderText="Type to confirm" />
+              <Button Grid.Column="2" Classes="danger armed" Content="Go ahead" Command="{Binding ConfirmCommand}" />
+              <Button Grid.Column="3" Classes="ghost" Content="Stop here" Command="{Binding DeclineCommand}" />
+            </Grid>
+          </Border>
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Classes="meta" Text="{Binding TargetSummary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding TargetSummary}" />
+            <Button Grid.Column="1" Command="{Binding DryRunCommand}" ToolTip.Tip="Show what goes where, send nothing">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Eye}" />
+                <TextBlock Classes="btnLabel" Text="Dry run" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Classes="primary" Command="{Binding RunRunbookCommand}" IsVisible="{Binding !IsRunning}">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Play}" />
+                <TextBlock Classes="btnLabel" Text="Run" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Classes="danger" Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />
+                <TextBlock Classes="btnLabel" Text="Stop" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Panel>
+        <!-- Steps, blanks and earlier runs -->
+        <ScrollViewer IsVisible="{Binding !HasRun}" Padding="24,14">
+          <StackPanel Spacing="16" MaxWidth="900" HorizontalAlignment="Left">
+            <StackPanel Spacing="6" IsVisible="{Binding HasBlanks}">
+              <TextBlock Classes="label" Text="Blanks" />
+              <ItemsControl ItemsSource="{Binding Blanks}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RunbookBlankViewModel">
+                    <Grid ColumnDefinitions="140,*" ColumnSpacing="10" Margin="0,0,0,6" MaxWidth="520" HorizontalAlignment="Left">
+                      <TextBlock Classes="mono" Text="{Binding Label}" VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBox Grid.Column="1" Text="{Binding Value}" MinWidth="220" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Spacing="2">
+              <TextBlock Classes="label" Text="Steps" Margin="0,0,0,4" />
+              <ItemsControl ItemsSource="{Binding Steps}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RunbookStepViewModel">
+                    <Grid Classes="stepRow" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="10" MinHeight="30" Background="Transparent">
+                      <TextBlock Classes="stepNo" Text="{Binding Number}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Classes="prompt" Text="&gt;" VerticalAlignment="Center" IsVisible="{Binding IsCommand}" />
+                      <c:LineIcon Grid.Column="1" Data="{StaticResource Icon.Pause}" Width="13" Height="13" Foreground="{DynamicResource Ink.Tertiary}"
+                                  VerticalAlignment="Center" IsVisible="{Binding IsWait}" />
+                      <SelectableTextBlock Grid.Column="2" Classes="mono" Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                           FontWeight="SemiBold" IsVisible="{Binding IsCommand}" />
+                      <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" IsVisible="{Binding IsWait}" />
+                      <Button Grid.Column="3" Classes="ghost small" Padding="2" Command="{Binding $parent[UserControl].((vm:RunbooksViewModel)DataContext).ToggleMarkCommand}"
+                              CommandParameter="{Binding}" IsVisible="{Binding IsMarked}" IsHitTestVisible="{Binding CanMark}" ToolTip.Tip="{Binding MarkTip}">
+                        <Border Classes="pill marked">
+                          <TextBlock Text="Asks first" />
+                        </Border>
+                      </Button>
+                      <Button Grid.Column="3" Classes="ghost small markOff" Content="Ask first" Command="{Binding $parent[UserControl].((vm:RunbooksViewModel)DataContext).ToggleMarkCommand}"
+                              CommandParameter="{Binding}" ToolTip.Tip="{Binding MarkTip}">
+                        <Button.IsVisible>
+                          <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="!IsMarked" />
+                            <Binding Path="CanMark" />
+                          </MultiBinding>
+                        </Button.IsVisible>
+                      </Button>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Spacing="2" IsVisible="{Binding HasRecords}">
+              <TextBlock Classes="label" Text="Earlier runs" Margin="0,0,0,4" />
+              <ItemsControl ItemsSource="{Binding Records}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RunbookRecordItemViewModel">
+                    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="6,4"
+                            Command="{Binding $parent[UserControl].((vm:RunbooksViewModel)DataContext).ShowRecordCommand}" CommandParameter="{Binding}">
+                      <Grid ColumnDefinitions="110,*,Auto" ColumnSpacing="10">
+                        <TextBlock Classes="mono" Text="{Binding When}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Summary}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Accounts}" />
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- A run: each step, with each Neuron's answer under it, and how it ended -->
+        <ScrollViewer x:Name="RunScroll" IsVisible="{Binding HasRun}" Padding="24,14">
+          <StackPanel Spacing="14">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Classes="ghost small" Content="Back to steps" Command="{Binding CloseRunCommand}" IsVisible="{Binding !IsRunning}" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="section" Text="{Binding Run.Title, FallbackValue=''}" />
+                <TextBlock Classes="meta" Text="{Binding Run.Summary, FallbackValue=''}" VerticalAlignment="Bottom" Margin="0,0,0,1" />
+              </StackPanel>
+            </DockPanel>
+
+            <ItemsControl ItemsSource="{Binding Run.Steps, FallbackValue={x:Null}}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:RunbookRunStepViewModel">
+                  <StackPanel Spacing="8" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="10">
+                      <TextBlock Classes="stepNo" Text="{Binding Number}" />
+                      <TextBlock Grid.Column="1" Classes="prompt" Text="&gt;" IsVisible="{Binding !IsWait}" />
+                      <c:LineIcon Grid.Column="1" Data="{StaticResource Icon.Pause}" Width="13" Height="13" Foreground="{DynamicResource Ink.Tertiary}" IsVisible="{Binding IsWait}" />
+                      <SelectableTextBlock Grid.Column="2" Classes="mono" Text="{Binding Text}" TextWrapping="Wrap" FontWeight="SemiBold" MaxWidth="760" />
+                      <Border Grid.Column="3" Classes="pill marked" IsVisible="{Binding IsMarked}">
+                        <TextBlock Text="Asks first" />
+                      </Border>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Cells}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <UniformGrid Columns="{Binding Columns}" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RunbookCellViewModel">
+                          <Border Classes="result" Classes.pending="{Binding IsPending}">
+                            <StackPanel Spacing="6">
+                              <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Classes="meta" Text="{Binding Status}" Classes.error="{Binding HasError}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320" ToolTip.Tip="{Binding Status}" />
+                                <TextBlock Classes="mono" Text="{Binding NeuronLabel}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
+                              </DockPanel>
+                              <SelectableTextBlock Classes="mono" Text="{Binding Command}" TextWrapping="Wrap" IsVisible="{Binding IsDry}" />
+                              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MaxHeight="10000" IsVisible="{Binding HasAnswer}">
+                                <c:MarkdownView Markdown="{Binding Markdown}" />
+                              </ScrollViewer>
+                            </StackPanel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Classes="panel" Padding="14,10" IsVisible="{Binding Run.ShowOutcomes, FallbackValue=False}">
+              <StackPanel Spacing="6">
+                <TextBlock Classes="label" Text="How it ended" />
+                <ItemsControl ItemsSource="{Binding Run.Outcomes, FallbackValue={x:Null}}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RunbookOutcomeViewModel">
+                      <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8" Margin="0,2">
+                        <Ellipse Width="8" Height="8" VerticalAlignment="Center" Fill="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                        <TextBlock Grid.Column="1" Classes="mono" Text="{Binding NeuronLabel}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="2" Text="{Binding Text}" TextWrapping="Wrap" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </Panel>
+    </DockPanel>
+  </Panel>
+</UserControl>

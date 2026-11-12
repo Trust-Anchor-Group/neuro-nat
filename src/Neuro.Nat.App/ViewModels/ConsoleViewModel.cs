@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.Chat;
 using Neuro.Nat.Engine.Events;
+using Neuro.Nat.Engine.Runbooks;
 
 namespace Neuro.Nat.App.ViewModels;
 
@@ -58,13 +59,16 @@ public sealed partial class ConsoleResultViewModel(ConsoleEntry entry, string ne
 }
 
 /// <summary>A command as run: once, on one or several Neurons.</summary>
-public sealed class ConsoleRunViewModel(string command, DateTime time)
+public sealed partial class ConsoleRunViewModel(string command, DateTime time) : ObservableObject
 {
 	public string Command { get; } = command;
 	public string Time { get; } = time.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
 	public ObservableCollection<ConsoleResultViewModel> Results { get; } = [];
 	public bool IsFanOut => this.Results.Count > 1;
 	public int Columns => Math.Clamp(this.Results.Count, 1, 3);
+
+	/// <summary>Ticked to go into a runbook ("Save as runbook").</summary>
+	[ObservableProperty] private bool isPicked;
 }
 
 /// <summary>
@@ -99,11 +103,30 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 			}
 			this.TargetsChanged();
 		};
+		this.Runs.CollectionChanged += (_, e) =>
+		{
+			foreach (ConsoleRunViewModel r in e.NewItems?.OfType<ConsoleRunViewModel>() ?? [])
+			{
+				r.PropertyChanged += (_, p) =>
+				{
+					if (p.PropertyName == nameof(ConsoleRunViewModel.IsPicked) && this.IsPicking)
+						this.UpdatePickSummary();
+				};
+			}
+		};
+		this.Runbooks = new RunbooksViewModel(this.RunbookTargets, new ConsoleRunbookSender(chat));
 		this.timer = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, (_, _) => this.Tick());
 		this.timer.Start();
 	}
 
 	public ObservableCollection<ConsoleTargetViewModel> Targets { get; } = [];
+
+	/// <summary>The runbooks, listed beside the Neurons they run on.</summary>
+	public RunbooksViewModel Runbooks { get; }
+
+	/// <summary>The ticked Neurons, as a runbook runs on them.</summary>
+	private IReadOnlyList<RunbookTarget> RunbookTargets()
+		=> [.. this.Checked.Select(t => new RunbookTarget(t.AccountId, t.BareJid, t.Label, t.AccountLabel))];
 	public ObservableCollection<ConsoleRunViewModel> Runs { get; } = [];
 	public ObservableCollection<string> Suggestions { get; } = [];
 
@@ -128,7 +151,9 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 
 	[ObservableProperty] private string targetSummary = "Pick a Neuron";
 	[ObservableProperty] private bool hasTargets;
-	[ObservableProperty] private bool hasRuns;
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(CanSaveAsRunbook))]
+	private bool hasRuns;
 	[ObservableProperty] private bool hasSuggestions;
 
 	/// <summary>Set while a command that changes the Neuron waits for its typed confirmation.</summary>
@@ -142,7 +167,9 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 	partial void OnConfirmPromptChanged(string? value) => this.OnPropertyChanged(nameof(this.IsConfirming));
 
 	/// <summary>True for the console on a Neuron's page, which talks to that Neuron only.</summary>
-	[ObservableProperty] private bool isPinned;
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(CanSaveAsRunbook))]
+	private bool isPinned;
 
 	private (Guid Account, string Jid)? pinned;
 
@@ -249,6 +276,12 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 				list.Copy("Copy command and answers", () => Transcript(run), "the command and its answers");
 				list.Do("Run again", () => this.RunAgain(run.Command, null), icon: "Refresh");
 				list.Do("Put the command back in the box", () => this.CommandText = run.Command, icon: "Edit");
+				if (!this.IsPinned)
+					list.Do("Save as runbook�", () => this.Pick(run), icon: "Save");
+				break;
+
+			case RunbookItemViewModel runbook:
+				list.AddRange(this.Runbooks.ActionsFor(runbook));
 				break;
 
 			case ConsoleTargetViewModel target:
@@ -318,6 +351,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 
 		this.RunCommand.NotifyCanExecuteChanged();
 		this.UpdateSuggestions();
+		this.Runbooks?.TargetsChanged(this.TargetSummary);
 	}
 
 	private void Session_CommandsLoaded(object? sender, EventArgs e) => Dispatcher.UIThread.Post(this.UpdateSuggestions);
@@ -441,9 +475,62 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 		this.ConfirmText = string.Empty;
 	}
 
+// ----- Save as runbook -----
+
+	/// <summary>True while commands in the transcript are being ticked to make a runbook of them.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(CanSaveAsRunbook))]
+	private bool isPicking;
+
+	/// <summary>"Save as runbook" shows when there is a transcript, beside the runbook list (not on a Neuron's page).</summary>
+	public bool CanSaveAsRunbook => this.HasRuns && !this.IsPinned && !this.IsPicking;
+	[ObservableProperty] private string pickTitle = string.Empty;
+	[ObservableProperty] private string pickSummary = string.Empty;
+
+	/// <summary>"Save as runbook": every command in the transcript ticked, to untick what should not go in.</summary>
+	[RelayCommand]
+	private void StartPicking() => this.Pick(null);
+
+	/// <summary>Starts ticking commands for a runbook: all of them, or only <paramref name="only"/>.</summary>
+	public void Pick(ConsoleRunViewModel? only)
+	{
+		foreach (ConsoleRunViewModel r in this.Runs)
+			r.IsPicked = only is null || ReferenceEquals(r, only);
+		this.PickTitle = string.Empty;
+		this.IsPicking = true;
+		this.UpdatePickSummary();
+	}
+
+	private void UpdatePickSummary()
+	{
+		this.PickSummary = Ui.Count(this.Runs.Count(r => r.IsPicked), "command") + " ticked";
+		this.SavePickedCommand.NotifyCanExecuteChanged();
+	}
+
+	private bool CanSavePicked() => this.Runs.Any(r => r.IsPicked);
+
+	[RelayCommand(CanExecute = nameof(CanSavePicked))]
+	private async Task SavePicked()
+	{
+		string[] commands = [.. this.Runs.Where(r => r.IsPicked).Select(r => r.Command)];
+		string title = this.PickTitle;
+		this.CancelPicking();
+		if (commands.Length > 0)
+			await this.Runbooks.SaveFromHistoryAsync(title, commands);
+	}
+
+	[RelayCommand]
+	private void CancelPicking()
+	{
+		this.IsPicking = false;
+		foreach (ConsoleRunViewModel r in this.Runs)
+			r.IsPicked = false;
+	}
+
 	[RelayCommand]
 	private void Clear()
 	{
+		this.CancelPicking();
 		this.Runs.Clear();
 		this.HasRuns = false;
 	}

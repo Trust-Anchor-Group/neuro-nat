@@ -50,6 +50,24 @@ public static class UiHost
 			return file.Name;
 		};
 
+		Ui.OpenTextFile = async kind =>
+		{
+			IStorageProvider storage = (Active() ?? main).StorageProvider;
+			IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+			{
+				Title = "Open",
+				AllowMultiple = false,
+				FileTypeFilter = [new FilePickerFileType(kind) { Patterns = ["*.txt"] }, FilePickerFileTypes.All],
+			});
+
+			if (files.Count == 0)
+				return null;
+
+			await using Stream stream = await files[0].OpenReadAsync();
+			using StreamReader reader = new(stream);
+			return (files[0].Name, await reader.ReadToEndAsync());
+		};
+
 		Ui.OpenWindow = vm => Open(main, vm);
 		main.Closed += (_, _) =>
 		{

@@ -74,6 +74,7 @@ public partial class App : Application
 				MainWindowViewModel vm = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub);
 				vm.Compare.Store = services.NeuronCopies;
 				MainWindow window = new() { DataContext = vm };
+				_ = vm.Console.Runbooks.UseAsync(services.Runbooks);
 				UiHost.Attach(window);
 
 				// Started with Windows: watch from the tray, and show the window only when asked.
@@ -100,7 +101,12 @@ public partial class App : Application
 				vm.Settings.Changed += (_, _) => Controls.Motion.Set(systemAllowsMotion && !vm.Settings.LessMotion);
 
 				// Windows of their own, where they were, and the big screen.
-				ShellWindows.Attach(window, vm, () => new MainWindowViewModel(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub, primary: vm));
+				ShellWindows.Attach(window, vm, () =>
+				{
+					MainWindowViewModel extra = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub, primary: vm);
+					_ = extra.Console.Runbooks.UseAsync(services.Runbooks);
+					return extra;
+				});
 
 				Watch.WatchAgent watch = new(desktop, window, vm, alerts, services.Updates);
 				showMainWindow = watch.ShowWindow;
