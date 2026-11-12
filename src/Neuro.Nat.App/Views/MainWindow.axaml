@@ -1,0 +1,854 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Neuro.Nat.App.ViewModels"
+        xmlns:conv="using:Neuro.Nat.App.Converters"
+        xmlns:c="using:Neuro.Nat.App.Controls"
+        xmlns:sn="using:Neuro.Nat.Engine.Sniffing"
+        xmlns:views="using:Neuro.Nat.App.Views"
+        x:Class="Neuro.Nat.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding WindowTitle}"
+        Width="1440" Height="900" MinWidth="720" MinHeight="480">
+
+  <Window.Styles>
+    <!-- Rail items: icon over label; the current workspace is accent-tinted. -->
+    <Style Selector="Button.rail">
+      <Setter Property="Width" Value="60" />
+      <Setter Property="Padding" Value="0,8,0,7" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="ToolTip.ShowOnDisabled" Value="True" />
+    </Style>
+    <Style Selector="Button.rail:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Surface.Hover}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Primary}" />
+    </Style>
+    <Style Selector="Button.rail.current /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+    </Style>
+    <Style Selector="Button.rail:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Tertiary}" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <!-- Count of open Attention items, on the rail icon's corner -->
+    <Style Selector="Border.badge">
+      <Setter Property="Background" Value="{DynamicResource State.Bad}" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="MinWidth" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0,-6,-12,0" />
+    </Style>
+    <Style Selector="Border.badge TextBlock">
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.rail c|LineIcon">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Account avatar: initial on a tint of the account hue -->
+    <Style Selector="Border.avatar">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    </Style>
+    <Style Selector="Border.avatar TextBlock">
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Ellipse.dot.ringed">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
+      <Setter Property="StrokeThickness" Value="2" />
+      <Setter Property="Stroke" Value="{DynamicResource Surface.Panel}" />
+    </Style>
+
+    <!-- Search box in the top bar -->
+    <Style Selector="TextBox.search">
+      <Setter Property="Width" Value="280" />
+      <Setter Property="PlaceholderText" Value="Search, or go to…" />
+      <Setter Property="Background" Value="{DynamicResource Surface.Ground}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+    </Style>
+    <Style Selector="ListBox.search ListBoxItem">
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Focusable" Value="False" />
+    </Style>
+    <!-- Status strip: a quiet, small button -->
+    <Style Selector="Button.strip">
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="Padding" Value="8,1" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Sniffer direction tags -->
+    <Style Selector="TextBlock.dir">
+      <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="Border.rail">
+      <Setter Property="Width" Value="76" />
+    </Style>
+    <Style Selector="TextBlock.pageTitle">
+      <Setter Property="MaxWidth" Value="420" />
+    </Style>
+    <Style Selector="Border.searchFloat">
+      <Setter Property="Width" Value="520" />
+    </Style>
+    <Style Selector=".maxw780 Border.searchFloat">
+      <Setter Property="Width" Value="420" />
+    </Style>
+    <Style Selector="TextBlock.searchTitle.danger">
+      <Setter Property="Foreground" Value="{DynamicResource State.Bad}" />
+    </Style>
+    <Style Selector="TextBlock.searchKind">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Tertiary}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+    </Style>
+    <Style Selector="Button.nav">
+      <Setter Property="Padding" Value="6" />
+      <Setter Property="MinWidth" Value="0" />
+    </Style>
+    <Style Selector="StackPanel.crumb Button.link">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Body}" />
+    </Style>
+    <Style Selector="Border.accountList">
+      <Setter Property="Width" Value="340" />
+    </Style>
+
+    <Style Selector="TextBlock.tsShort, TextBlock.summaryShort">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+
+    <!-- Responsive: the layout tightens as the window narrows. -->
+    <!-- Window width 1180 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw1180 Border.accountList">
+      <Setter Property="Width" Value="300" />
+    </Style>
+    
+    <!-- Window width 960 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw960 TextBlock.railLabel">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw960 Button.rail">
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Padding" Value="0,10" />
+    </Style>
+    <Style Selector=".maxw960 Border.rail">
+      <Setter Property="Width" Value="56" />
+    </Style>
+    <!-- A Neuron's page: its name gets shorter as the window narrows, and its tabs sit closer. -->
+    <Style Selector=".maxw960 TextBlock.pageTitle">
+      <Setter Property="MaxWidth" Value="260" />
+    </Style>
+    <Style Selector=".maxw780 TextBlock.pageTitle">
+      <Setter Property="MaxWidth" Value="200" />
+    </Style>
+    <Style Selector=".maxw780 Button.tab.pageTab">
+      <Setter Property="Padding" Value="8,2,8,0" />
+    </Style>
+    <Style Selector=".maxw1100 TextBox.search">
+      <Setter Property="Width" Value="200" />
+      <Setter Property="PlaceholderText" Value="Search…" />
+    </Style>
+    <Style Selector=".maxw960 TextBox.search">
+      <Setter Property="Width" Value="150" />
+      <Setter Property="PlaceholderText" Value="Search…" />
+      <Setter Property="Padding" Value="32,5,10,5" />
+    </Style>
+    <Style Selector=".maxw780 Button.newWindow, .maxw780 Button.wallTab">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw960 Border.searchKey">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw960 Border.accountList">
+      <Setter Property="Width" Value="260" />
+    </Style>
+    <Style Selector=".maxw960 TextBlock.addLabel, .maxw960 TextBlock.endpoint">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    
+    <!-- Window width 780 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw780 TextBlock.btnLabel">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw780 Border.accountList">
+      <Setter Property="Width" Value="220" />
+    </Style>
+    <Style Selector=".maxw780 TextBlock.trafficHint, .maxw780 TextBlock.endpoint">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw780 TextBlock.ts">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw780 TextBlock.tsShort">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector=".maxw780 TextBlock.summaryLong">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw780 TextBlock.summaryShort">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <!-- The armed Remove keeps its words at every width: the confirmation must be readable. -->
+    <Style Selector=".maxw780 Button.danger.armed TextBlock.btnLabel">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    
+  </Window.Styles>
+
+  <!-- Everything scales with the text size chosen in Settings -->
+  <LayoutTransformControl x:Name="Zoom">
+  <Grid x:Name="Root" ColumnDefinitions="Auto,*" RowDefinitions="48,Auto,*,Auto">
+
+    <!-- Rail: five places, with Accounts and the look at the bottom -->
+    <Border Grid.RowSpan="4" Classes="rail" Background="{DynamicResource Surface.Rail}"
+            BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="0,10,0,12">
+        <TextBlock DockPanel.Dock="Top" Text="NAT" HorizontalAlignment="Center" FontWeight="Bold" FontSize="13"
+                   LetterSpacing="0.4" Margin="0,4,0,16" />
+
+        <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center">
+          <Button Classes="rail" Classes.current="{Binding IsPlaceAccounts}" Command="{Binding ShowAccountsPlaceCommand}"
+                  ToolTip.Tip="Your accounts, their connections and your devices" AutomationProperties.Name="Accounts">
+            <StackPanel Spacing="4">
+              <Panel HorizontalAlignment="Center">
+                <c:LineIcon Data="{StaticResource Icon.Accounts}" />
+                <Ellipse Classes="dot bad ringed" IsVisible="{Binding HasFailedAccount}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                         Margin="0,-3,-5,0" ToolTip.Tip="An account could not sign in" />
+              </Panel>
+              <TextBlock Classes="railLabel" Text="Accounts" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="rail" Classes.current="{Binding IsSettings}" Command="{Binding ShowSettingsCommand}"
+                  ToolTip.Tip="Your status, pop-ups and sounds, and the look" AutomationProperties.Name="Settings">
+            <StackPanel Spacing="4">
+              <c:LineIcon Data="{StaticResource Icon.Settings}" />
+              <TextBlock Classes="railLabel" Text="Settings" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+
+        <StackPanel HorizontalAlignment="Center">
+          <Button Classes="rail" Classes.current="{Binding IsPlaceInbox}" Command="{Binding ShowAttentionCommand}"
+                  ToolTip.Tip="Everything that waits for you: messages, requests and what your Neurons need" AutomationProperties.Name="Inbox">
+            <StackPanel Spacing="4">
+              <Panel HorizontalAlignment="Center">
+                <c:LineIcon Data="{StaticResource Icon.Inbox}" />
+                <Border Classes="badge" IsVisible="{Binding Inbox.HasWaiting}" ToolTip.Tip="{Binding Inbox.Summary}">
+                  <TextBlock Text="{Binding Inbox.Badge}" />
+                </Border>
+              </Panel>
+              <TextBlock Classes="railLabel" Text="Inbox" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="rail" Classes.current="{Binding IsPlaceNeurons}" Command="{Binding ShowNeuronsCommand}"
+                  ToolTip.Tip="Every Neuron: health, map, sources, software and identities" AutomationProperties.Name="Neurons">
+            <StackPanel Spacing="4">
+              <Panel HorizontalAlignment="Center">
+                <c:LineIcon Data="{StaticResource Icon.Fleet}" />
+              </Panel>
+              <TextBlock Classes="railLabel" Text="Neurons" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="rail" Classes.current="{Binding IsEvents}" Command="{Binding ShowEventsCommand}"
+                  ToolTip.Tip="Problems, and events as they come, from all your Neurons" AutomationProperties.Name="Events">
+            <StackPanel Spacing="4">
+              <c:LineIcon Data="{StaticResource Icon.Events}" />
+              <TextBlock Classes="railLabel" Text="Events" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="rail" Classes.current="{Binding IsChat}" Command="{Binding ShowChatCommand}"
+                  ToolTip.Tip="People and rooms from all your accounts" AutomationProperties.Name="Chat">
+            <StackPanel Spacing="4">
+              <Panel HorizontalAlignment="Center">
+                <c:LineIcon Data="{StaticResource Icon.Chat}" />
+                <Border Classes="badge" Background="{DynamicResource Accent}" IsVisible="{Binding HasUnreadChat}" ToolTip.Tip="Unread messages and contact requests">
+                  <TextBlock Text="{Binding ChatBadge}" />
+                </Border>
+              </Panel>
+              <TextBlock Classes="railLabel" Text="Chat" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="rail" Classes.current="{Binding IsConsole}" Command="{Binding ShowConsoleCommand}"
+                  ToolTip.Tip="Send commands to one Neuron or several at once" AutomationProperties.Name="Console">
+            <StackPanel Spacing="4">
+              <c:LineIcon Data="{StaticResource Icon.Console}" />
+              <TextBlock Classes="railLabel" Text="Console" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Top bar: the place, its screens, the Neuron chips and the search box -->
+    <Border Grid.Column="1" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <DockPanel Margin="20,0,16,0">
+        <!-- Back and forward through where you have been. Right-click for the list. -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="-10,0,10,0">
+          <Button x:Name="BackButton" Classes="ghost nav" Command="{Binding GoBackCommand}" ToolTip.Tip="{Binding BackTip}" AutomationProperties.Name="Back"
+                  c:ActionMenu.Source="{Binding}" c:ActionMenu.Item="{x:Static vm:HistoryMenu.Back}">
+            <c:LineIcon Data="{StaticResource Icon.Back}" Width="16" Height="16" />
+          </Button>
+          <Button x:Name="ForwardButton" Classes="ghost nav" Command="{Binding GoForwardCommand}" ToolTip.Tip="{Binding ForwardTip}" AutomationProperties.Name="Forward"
+                  c:ActionMenu.Source="{Binding}" c:ActionMenu.Item="{x:Static vm:HistoryMenu.Forward}">
+            <c:LineIcon Data="{StaticResource Icon.Forward}" Width="16" Height="16" />
+          </Button>
+        </StackPanel>
+
+        <!-- On a Neuron's page: the way up to all Neurons, and how the Neuron is doing -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding IsNeuronPage}" Classes="crumb">
+          <Button Classes="link" Command="{Binding BackToNeuronsCommand}" Content="Neurons" VerticalAlignment="Center"
+                  ToolTip.Tip="Up to all Neurons" AutomationProperties.Name="Up to all Neurons" />
+          <c:LineIcon Data="{StaticResource Icon.ChevronRight}" Width="12" Height="12" Margin="6,1,8,0" Foreground="{DynamicResource Ink.Tertiary}" VerticalAlignment="Center" />
+        </StackPanel>
+        <Ellipse DockPanel.Dock="Left" Classes="dot" VerticalAlignment="Center" Margin="0,0,9,0" IsVisible="{Binding IsNeuronPage}"
+                 Classes.ok="{Binding Page.IsOk}" Classes.busy="{Binding Page.IsBusy}" Classes.bad="{Binding Page.IsBad}" ToolTip.Tip="{Binding Page.StateText}" />
+        <TextBlock DockPanel.Dock="Left" Classes="title" Classes.pageTitle="{Binding IsNeuronPage}" Text="{Binding WorkspaceTitle}" VerticalAlignment="Center" Margin="0,0,16,0"
+                   TextTrimming="CharacterEllipsis" />
+
+        <!-- Search: Ctrl+K from anywhere -->
+        <Panel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0">
+          <TextBox x:Name="SearchBox" Classes="search" Text="{Binding Search.Query}"
+                   MinHeight="30" Padding="32,5,58,5" AutomationProperties.Name="Search for a screen, a Neuron, a person, a problem or something to do" />
+          <c:LineIcon Data="{StaticResource Icon.Search}" Width="15" Height="15" Foreground="{DynamicResource Ink.Tertiary}"
+                      HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False" />
+          <Border Classes="kbd searchKey" HorizontalAlignment="Right" Margin="0,0,7,0" IsHitTestVisible="False">
+            <TextBlock Text="Ctrl K" />
+          </Border>
+        </Panel>
+
+        <!-- What is showing, in a window of its own -->
+        <Button x:Name="NewWindowButton" DockPanel.Dock="Right" Classes="ghost nav newWindow" Command="{Binding NewWindowCommand}" VerticalAlignment="Center" Margin="6,0,-4,0"
+                ToolTip.Tip="Open this in a window of its own (Ctrl+Shift+N)" AutomationProperties.Name="Open this in a window of its own">
+          <c:LineIcon Data="{StaticResource Icon.Window}" Width="16" Height="16" />
+        </Button>
+
+        <!-- What you reach for most on a Neuron's page -->
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" IsVisible="{Binding IsNeuronPage}">
+          <Button Classes="ghost" Command="{Binding WatchPageTrafficCommand}" ToolTip.Tip="Open the traffic of the account that reaches this Neuron, at the lines that mention it">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Sniffer}" />
+              <TextBlock Classes="btnLabel pageAction" Text="Watch traffic" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Command="{Binding CheckPageUpdatesCommand}" ToolTip.Tip="Ask this Neuron whether newer software is waiting">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Updates}" />
+              <TextBlock Classes="btnLabel pageAction" Text="Check for updates" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Padding="7,5" c:ActionMenu.Source="{Binding}" c:ActionMenu.Item="{Binding Page}" c:ActionMenu.OnClick="True"
+                  ToolTip.Tip="Everything else you can do with this Neuron" AutomationProperties.Name="More">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
+          </Button>
+        </StackPanel>
+
+        <!-- All Neurons: as a list or as a map -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" IsVisible="{Binding IsNeuronBoard}">
+          <Button Classes="tab" Classes.current="{Binding IsFleet}" Command="{Binding ShowFleetCommand}" Content="List"
+                  ToolTip.Tip="Every Neuron: version, health and errors" />
+          <Button Classes="tab" Classes.current="{Binding IsTopology}" Command="{Binding ShowTopologyCommand}" Content="Map"
+                  ToolTip.Tip="How your Neurons connect: parents, federation and groups" />
+          <Button x:Name="WallButton" Classes="tab wallTab" Command="{Binding OpenWallCommand}" Content="Wall"
+                  ToolTip.Tip="The Neurons and their latest problems, large, for a big screen (F11)" />
+        </StackPanel>
+
+        <!-- Neuron chips: click one to show only that Neuron -->
+        <ScrollViewer IsVisible="{Binding IsLensVisible}" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasNeuronChips}">
+            <ToggleButton Classes="chip" Content="All Neurons" IsChecked="{Binding IsAllNeurons, Mode=OneWay}" Command="{Binding ShowAllNeuronsCommand}"
+                          ToolTip.Tip="Show every Neuron" />
+            <ItemsControl ItemsSource="{Binding NeuronChips}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="6" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NeuronChipViewModel">
+                  <ToggleButton Classes="chip" IsChecked="{Binding IsSelected, Mode=OneWay}" ToolTip.Tip="{Binding Tip}"
+                                c:ActionMenu.Source="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleNeuronCommand}" CommandParameter="{Binding}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <Ellipse Classes="dot" VerticalAlignment="Center" Classes.ok="{Binding IsOk}" Classes.busy="{Binding IsBusy}" Classes.bad="{Binding IsBad}" />
+                      <TextBlock Classes="chipLabel" FontFamily="{StaticResource Font.Mono}" Text="{Binding Label}" VerticalAlignment="Center" />
+                      <TextBlock Classes="num" Text="{Binding ErrorsLastHour}" IsVisible="{Binding HasErrors}" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource State.Bad}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </ToggleButton>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- One Neuron: the tabs of its page, in a row of their own so that all of them fit in a small window -->
+    <Border Grid.Row="1" Grid.Column="1" Height="38" Padding="9,0" IsVisible="{Binding IsNeuronPage}"
+            Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="tab pageTab" Classes.current="{Binding IsNeuronOverview}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Neuron}"
+                  ToolTip.Tip="How it is doing, what is wrong and what waits for you">
+            <TextBlock Text="Overview" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsNeuronEvents}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronEvents}"
+                  ToolTip.Tip="This Neuron's problems, and its events as they come">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Events" VerticalAlignment="Center" />
+              <Border Classes="count alert" IsVisible="{Binding Page.HasErrors}" ToolTip.Tip="Errors in the last hour">
+                <TextBlock Text="{Binding Page.ErrorsLastHour}" />
+              </Border>
+            </StackPanel>
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsSources}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Sources}"
+                  ToolTip.Tip="Its data sources and nodes">
+            <TextBlock Text="Sources" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsNeuronConsole}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronConsole}"
+                  ToolTip.Tip="Send commands to this Neuron">
+            <TextBlock Text="Console" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsUpdates}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Updates}"
+                  ToolTip.Tip="Its version, packages and updates">
+            <TextBlock Text="Software" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsPubSub}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.PubSub}"
+                  ToolTip.Tip="The nodes of its publish/subscribe service" IsVisible="{Binding Page.HostsAccount}">
+            <TextBlock Text="Publish/subscribe" VerticalAlignment="Center" />
+          </Button>
+          <Button Classes="tab pageTab" Classes.current="{Binding IsIdentities}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Identities}"
+                  ToolTip.Tip="Its own legal identity, and applications waiting for review">
+            <TextBlock Text="Identity" VerticalAlignment="Center" />
+          </Button>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <!-- Status strip: always says how the Neurons and the accounts are doing -->
+    <Border Grid.Row="3" Grid.Column="1" Height="28" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+      <DockPanel Margin="20,0,10,0">
+        <Button DockPanel.Dock="Right" Classes="ghost strip" Margin="2,0,0,0" ToolTip.Tip="Your status: what contacts see, and whether pop-ups and sounds reach you"
+                AutomationProperties.Name="Your status">
+          <Button.Flyout>
+            <MenuFlyout Placement="TopEdgeAlignedRight">
+              <MenuItem Header="Available" ToggleType="Radio" IsChecked="{Binding Settings.IsAvailable, Mode=OneWay}"
+                        Command="{Binding Settings.SetStatusCommand}" CommandParameter="{x:Static vm:OwnStatus.Available}" />
+              <MenuItem Header="Away" ToggleType="Radio" IsChecked="{Binding Settings.IsAway, Mode=OneWay}"
+                        Command="{Binding Settings.SetStatusCommand}" CommandParameter="{x:Static vm:OwnStatus.Away}" />
+              <MenuItem Header="Do not disturb" ToggleType="Radio" IsChecked="{Binding Settings.IsDoNotDisturb, Mode=OneWay}"
+                        Command="{Binding Settings.SetStatusCommand}" CommandParameter="{x:Static vm:OwnStatus.DoNotDisturb}" />
+              <Separator />
+              <MenuItem Header="Pop-ups and sounds…" Command="{Binding ShowSettingsCommand}" />
+            </MenuFlyout>
+          </Button.Flyout>
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Ellipse Classes="dot" VerticalAlignment="Center" Classes.ok="{Binding Settings.IsAvailable}" Classes.busy="{Binding Settings.IsAway}" Classes.bad="{Binding Settings.IsDoNotDisturb}" />
+            <TextBlock Text="{Binding Settings.StatusText}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button DockPanel.Dock="Right" Classes="ghost strip" Command="{Binding ShowAccountsCommand}" ToolTip.Tip="Open Accounts">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Ellipse Classes="dot bad" VerticalAlignment="Center" IsVisible="{Binding HasFailedAccount}" />
+            <Panel VerticalAlignment="Center">
+              <TextBlock Classes="summaryLong" Text="{Binding AccountSummary}" />
+              <TextBlock Classes="summaryShort" Text="{Binding AccountSummaryShort}" />
+            </Panel>
+          </StackPanel>
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Ellipse Classes="dot" VerticalAlignment="Center" Classes.ok="{Binding StatusOk}" Classes.busy="{Binding StatusBusy}" Classes.bad="{Binding StatusBad}" />
+          <TextBlock Classes="meta" Text="{Binding StatusNeurons}" Foreground="{DynamicResource Ink.Primary}" FontWeight="Medium" />
+          <TextBlock Classes="meta tertiary" Text="·" />
+          <TextBlock Classes="meta" Text="{Binding StatusLastEvent}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Search results: floats under the search box -->
+    <Border x:Name="SearchFloat" Grid.Row="2" Grid.Column="1" Classes="float searchFloat" ZIndex="20" HorizontalAlignment="Right" VerticalAlignment="Top"
+            Margin="0,6,16,0" Padding="4" IsVisible="{Binding Search.IsOpen}">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Bottom" Classes="meta" Text="{Binding Search.MoreText}" Margin="10,6,10,6" IsVisible="{Binding Search.HasMore}" />
+        <Panel>
+          <ListBox x:Name="SearchResults" Classes="rows search" ItemsSource="{Binding Search.Results}" SelectedItem="{Binding Search.Selected}"
+                   Focusable="False" IsVisible="{Binding Search.HasResults}" MaxHeight="430">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SearchItem">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="10">
+                  <c:LineIcon Data="{Binding Icon}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
+                  <TextBlock Grid.Column="1" Classes="searchTitle" Classes.danger="{Binding IsDanger}" Text="{Binding Title}" FontWeight="Medium" VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis" MaxWidth="250" />
+                  <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="3" Classes="meta searchKind" Text="{Binding Kind}" VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock Classes="meta" Text="Nothing matches. Try a Neuron, a person, a problem, or something to do, like reboot." Margin="10,8" TextWrapping="Wrap"
+                     IsVisible="{Binding !Search.HasResults}" />
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- The short note that confirms what just happened: "Copied 3 events". It sits in the
+         status bar, where no list and no selection bar is in its way. -->
+    <Border Grid.Row="3" Grid.Column="1" ZIndex="40" Classes="flash" IsVisible="{Binding HasFlash}" HorizontalAlignment="Center" VerticalAlignment="Center"
+            IsHitTestVisible="{Binding HasFlashUndo}">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <TextBlock x:Name="FlashText" Text="{Binding Flash}" VerticalAlignment="Center" />
+        <Button x:Name="FlashUndoButton" Classes="flashUndo" Content="Undo" Command="{Binding UndoFlashCommand}" IsVisible="{Binding HasFlashUndo}"
+                ToolTip.Tip="Take it back (Ctrl+Z)" />
+      </StackPanel>
+    </Border>
+
+    <!-- Pop-ups: bottom right, above everything else in the window -->
+    <ItemsControl Grid.Row="2" Grid.Column="1" ZIndex="30" ItemsSource="{Binding Notices}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,12">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:NoticeViewModel">
+          <views:NoticeCard Width="360" Margin="0,10,0,0" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- The screens -->
+    <views:InboxView Grid.Row="2" Grid.Column="1" DataContext="{Binding Inbox}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAttention}" />
+    <views:SettingsView Grid.Row="2" Grid.Column="1" DataContext="{Binding Settings}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettings}" />
+    <views:ChatView Grid.Row="2" Grid.Column="1" DataContext="{Binding Chat}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsChat}" />
+    <views:ConsoleView Grid.Row="2" Grid.Column="1" DataContext="{Binding Console}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsConsole}" />
+    <views:PubSubView Grid.Row="2" Grid.Column="1" DataContext="{Binding PubSub}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPubSub}" />
+    <views:UpdatesView Grid.Row="2" Grid.Column="1" DataContext="{Binding Updates}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsUpdates}" />
+    <views:TopologyView Grid.Row="2" Grid.Column="1" DataContext="{Binding Topology}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsTopology}" />
+    <views:IdentitiesView Grid.Row="2" Grid.Column="1" DataContext="{Binding Identities}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsIdentities}" />
+    <views:SourcesView Grid.Row="2" Grid.Column="1" DataContext="{Binding Sources}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSources}" />
+    <views:FleetView Grid.Row="2" Grid.Column="1" DataContext="{Binding Fleet}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFleet}" />
+
+    <!-- Events workspace -->
+    <views:EventsView Grid.Row="2" Grid.Column="1" DataContext="{Binding Events}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsEvents}" />
+
+    <!-- A Neuron's page: its Overview, and its own Events and Console. Its other tabs are the screens above. -->
+    <views:NeuronOverviewView Grid.Row="2" Grid.Column="1" IsVisible="{Binding IsNeuronOverview}" />
+    <views:EventsView Grid.Row="2" Grid.Column="1" DataContext="{Binding NeuronEvents}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNeuronEvents}" />
+    <views:ConsoleView Grid.Row="2" Grid.Column="1" DataContext="{Binding PageConsole}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNeuronConsole}" />
+
+    <!-- Accounts workspace -->
+    <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="Auto,*" IsVisible="{Binding IsPlaceAccounts}">
+
+      <!-- Account list with the inline add form -->
+      <Border Classes="accountList" c:Pane.Key="accounts" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+        <DockPanel Margin="12,14,12,12">
+          <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
+            <Button DockPanel.Dock="Right" Classes="primary" Margin="8,0,0,0" Command="{Binding ToggleAddFormCommand}"
+                    IsVisible="{Binding !IsAddFormOpen}" ToolTip.Tip="Add an XMPP account">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Plus}" />
+                <TextBlock Classes="btnLabel addLabel" Text="Add account" />
+              </StackPanel>
+            </Button>
+            <Panel VerticalAlignment="Center">
+              <TextBlock Classes="section summaryLong" Text="{Binding AccountSummary}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="section summaryShort" Text="{Binding AccountSummaryShort}" />
+            </Panel>
+          </DockPanel>
+
+          <Border DockPanel.Dock="Top" Classes="panel" Padding="14" Margin="0,0,0,10" IsVisible="{Binding IsAddFormOpen}">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="section" Text="{Binding AddFormTitle}" />
+              <Grid ColumnDefinitions="*,84" ColumnSpacing="8">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Host" />
+                  <TextBox Text="{Binding NewHost}" PlaceholderText="localhost" />
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Classes="label" Text="Port" />
+                  <TextBox Text="{Binding NewPort}" />
+                </StackPanel>
+              </Grid>
+              <StackPanel>
+                <TextBlock Classes="label" Text="Domain (only if it differs from the host)" />
+                <TextBox Text="{Binding NewDomain}" PlaceholderText="example.org" />
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Classes="label" Text="User name" />
+                <TextBox Text="{Binding NewUserName}" />
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Classes="label" Text="Password" />
+                <TextBox Text="{Binding NewPassword}" PasswordChar="•" />
+              </StackPanel>
+              <CheckBox Content="Trust the server certificate" IsChecked="{Binding NewTrustCertificate}"
+                        ToolTip.Tip="Needed for local Neurons with self-signed certificates" />
+              <CheckBox Content="Create a new account on the Neuron" IsChecked="{Binding NewCreate}"
+                        ToolTip.Tip="Needs an API key and secret from the Neuron's operators" />
+              <StackPanel Spacing="10" IsVisible="{Binding NewCreate}">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="API key" />
+                  <TextBox Text="{Binding NewApiKey}" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Classes="label" Text="API secret" />
+                  <TextBox Text="{Binding NewApiSecret}" PasswordChar="•" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Classes="label" Text="E-mail (optional)" />
+                  <TextBox Text="{Binding NewEMail}" PlaceholderText="name@example.com" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Classes="label" Text="Phone (optional)" />
+                  <TextBox Text="{Binding NewPhone}" PlaceholderText="+46…" />
+                </StackPanel>
+                <TextBlock Classes="meta" TextWrapping="Wrap"
+                           Text="The account is created with the user name and password above. The key and secret are only used now, and are not kept." />
+              </StackPanel>
+              <TextBlock Classes="error" Text="{Binding FormError}"
+                         IsVisible="{Binding FormError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <Button Classes="ghost" Content="Cancel" Command="{Binding ToggleAddFormCommand}" />
+                <Button Grid.Column="1" Classes="primary" Content="{Binding AddButtonText}" Command="{Binding AddAccountCommand}"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" IsDefault="{Binding IsAddFormOpen}" />
+              </Grid>
+              <TextBlock Classes="meta" TextWrapping="Wrap"
+                         Text="After the first login only the password hash the server negotiates is kept, encrypted for your user account." />
+            </StackPanel>
+          </Border>
+
+          <ListBox Classes="rows" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" c:ActionMenu.Source="{Binding}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:AccountItemViewModel">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                  <Panel VerticalAlignment="Top">
+                    <Border Classes="avatar" Background="{Binding ColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
+                      <TextBlock Text="{Binding Label, Converter={x:Static conv:InitialConverter.Instance}}"
+                                 Foreground="{Binding ColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+                    </Border>
+                    <Ellipse Classes="dot ringed" Classes.ok="{Binding IsOnline}" Classes.busy="{Binding IsBusy}" Classes.bad="{Binding IsFailed}"
+                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3" />
+                  </Panel>
+                  <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Label}" />
+                    <TextBlock Classes="meta" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <!-- Selected account -->
+      <DockPanel Grid.Column="1" IsVisible="{Binding SelectedAccount, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <DockPanel DataContext="{Binding SelectedAccount}" x:DataType="vm:AccountItemViewModel">
+
+          <!-- Header -->
+          <Border DockPanel.Dock="Top" Padding="20,14" Background="{DynamicResource Surface.Panel}"
+                  BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Classes="primary" Command="{Binding ConnectCommand}" IsVisible="{Binding ShowConnect}"
+                        ToolTip.Tip="Connect this account">
+                  <StackPanel Classes="btn">
+                    <c:LineIcon Classes="btn" Data="{StaticResource Icon.Plug}" />
+                    <TextBlock Classes="btnLabel" Text="Connect" />
+                  </StackPanel>
+                </Button>
+                <Button Command="{Binding DisconnectCommand}" IsVisible="{Binding !ShowConnect}"
+                        ToolTip.Tip="Go offline and stop reconnecting">
+                  <StackPanel Classes="btn">
+                    <c:LineIcon Classes="btn" Data="{StaticResource Icon.Unplug}" />
+                    <TextBlock Classes="btnLabel" Text="Disconnect" />
+                  </StackPanel>
+                </Button>
+                <!-- Destructive action set apart, two clicks to confirm -->
+                <Button Classes="ghost danger" Classes.armed="{Binding IsRemoveArmed}" Command="{Binding RemoveCommand}"
+                        Margin="20,0,0,0" ToolTip.Tip="Remove this account and its stored password">
+                  <StackPanel Classes="btn">
+                    <c:LineIcon Classes="btn" Data="{StaticResource Icon.Trash}" />
+                    <TextBlock Classes="btnLabel" Text="{Binding RemoveText}" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" ClipToBounds="True">
+                <Border Classes="avatar" Width="36" Height="36"
+                        Background="{Binding ColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
+                  <TextBlock Text="{Binding Label, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="15"
+                             Foreground="{Binding ColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <SelectableTextBlock Text="{Binding Label}" FontSize="{StaticResource Type.Section}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Ellipse Classes="dot" Classes.ok="{Binding IsOnline}" Classes.busy="{Binding IsBusy}" Classes.bad="{Binding IsFailed}" VerticalAlignment="Center" />
+                    <TextBlock Classes="meta" Text="{Binding StatusText}" />
+                    <TextBlock Classes="meta tertiary endpoint" Text="·" />
+                    <TextBlock Classes="mono tertiary endpoint" Text="{Binding Endpoint}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </StackPanel>
+              </Grid>
+            </DockPanel>
+          </Border>
+
+          <!-- The tabs of the account's page -->
+          <Border DockPanel.Dock="Top" Height="38" Padding="9,0" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+              <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccounts}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
+                      CommandParameter="{x:Static vm:WorkspaceKind.Accounts}" ToolTip.Tip="How it signs in, and everything it sends and receives">
+                <TextBlock Text="Connection" VerticalAlignment="Center" />
+              </Button>
+              <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDevices}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
+                      CommandParameter="{x:Static vm:WorkspaceKind.Devices}" ToolTip.Tip="Devices this account owns, the thing registry, and questions only an owner can answer">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="Devices" VerticalAlignment="Center" />
+                  <Border Classes="count alert" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Devices.HasQuestions}" ToolTip.Tip="Questions from devices, on all your accounts">
+                    <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Devices.QuestionCount}" />
+                  </Border>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountIdentities}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
+                      CommandParameter="{x:Static vm:WorkspaceKind.AccountIdentities}" ToolTip.Tip="This account's legal identities, and requests to see or sign with them">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="Identities" VerticalAlignment="Center" />
+                  <Border Classes="count alert" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Identities.HasPetitions}" ToolTip.Tip="Requests waiting, on all your accounts">
+                    <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Identities.PetitionCount}" />
+                  </Border>
+                </StackPanel>
+              </Button>
+              <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountStorage}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
+                      CommandParameter="{x:Static vm:WorkspaceKind.AccountStorage}" ToolTip.Tip="What this account keeps on its Neuron: avatar, nickname, keys and other personal nodes">
+                <TextBlock Text="Storage" VerticalAlignment="Center" />
+              </Button>
+            </StackPanel>
+          </Border>
+
+          <Panel>
+            <!-- Connection -->
+            <DockPanel IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccounts}">
+    <!-- Why it is not connected, and how to fix it here -->
+              <Border DockPanel.Dock="Top" Margin="20,14,20,0" Padding="12,10" CornerRadius="{StaticResource Radius}"
+                      Background="{DynamicResource State.Bad.Subtle}"
+                      IsVisible="{Binding LastError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <c:LineIcon Data="{StaticResource Icon.Alert}" Width="16" Height="16" Foreground="{DynamicResource State.Bad}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                    <SelectableTextBlock Grid.Column="1" Text="{Binding LastError}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Content="Enter password" Command="{Binding OpenPasswordPromptCommand}" VerticalAlignment="Center"
+                            IsVisible="{Binding CanEnterPassword}" IsEnabled="{Binding !IsPasswordPromptOpen}" />
+                  </Grid>
+                  <TextBlock Classes="meta" Margin="26,0,0,0" TextWrapping="Wrap" Text="{Binding RecoveryHint}"
+                             IsVisible="{Binding RecoveryHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="26,0,0,0" IsVisible="{Binding IsPasswordPromptOpen}">
+                    <TextBox Text="{Binding NewPassword}" PasswordChar="•" PlaceholderText="Password for this account" />
+                    <Button Grid.Column="1" Classes="ghost" Content="Cancel" Command="{Binding CancelPasswordPromptCommand}" />
+                    <Button Grid.Column="2" Classes="primary" Content="Save and connect" Command="{Binding SavePasswordCommand}"
+                            IsDefault="{Binding IsPasswordPromptOpen}" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <!-- How it signs in, and the way to change the password -->
+              <Border DockPanel.Dock="Top" Classes="panel" Margin="20,14,20,0" Padding="14,10">
+                <StackPanel Spacing="10">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Change password" Command="{Binding OpenChangePasswordCommand}" IsVisible="{Binding !IsChangingPassword}" VerticalAlignment="Center"
+                            ToolTip.Tip="Change the password on the Neuron and in the saved login, in one go" />
+                    <StackPanel Spacing="2" VerticalAlignment="Center">
+                      <TextBlock Text="Sign-in" FontWeight="SemiBold" />
+                      <TextBlock Classes="meta" Text="{Binding SignInText}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </DockPanel>
+                  <Grid ColumnDefinitions="*,*,Auto,Auto" ColumnSpacing="8" IsVisible="{Binding IsChangingPassword}">
+                    <TextBox Text="{Binding ChangedPassword}" PasswordChar="•" PlaceholderText="New password" />
+                    <TextBox Grid.Column="1" Text="{Binding ChangedPasswordAgain}" PasswordChar="•" PlaceholderText="The new password again" />
+                    <Button Grid.Column="2" Classes="ghost" Content="Cancel" Command="{Binding CancelChangePasswordCommand}" />
+                    <Button Grid.Column="3" Classes="primary" Content="Change password" Command="{Binding ChangePasswordCommand}" IsDefault="{Binding IsChangingPassword}" />
+                  </Grid>
+                  <TextBlock Classes="error" Text="{Binding PasswordError}" TextWrapping="Wrap"
+                             IsVisible="{Binding PasswordError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <TextBlock Classes="meta" Text="{Binding PasswordNote}" TextWrapping="Wrap"
+                             IsVisible="{Binding PasswordNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+              </Border>
+
+              <!-- Traffic -->
+              <DockPanel DockPanel.Dock="Top" Margin="20,16,16,8">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                  <ToggleButton Classes="ghost" IsChecked="{Binding IsRawOpen, Mode=OneWay}" Command="{Binding ToggleRawCommand}" ToolTip.Tip="Send an XMPP stanza by hand">
+                    <StackPanel Classes="btn">
+                      <c:LineIcon Classes="btn" Data="{StaticResource Icon.Console}" />
+                      <TextBlock Classes="btnLabel" Text="Send XML" />
+                    </StackPanel>
+                  </ToggleButton>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                  <TextBlock Classes="section" Text="Traffic" />
+                  <TextBlock Classes="meta trafficHint" Text="Everything this account sends and receives" VerticalAlignment="Center" />
+                </StackPanel>
+              </DockPanel>
+
+              <!-- Raw stanza console -->
+              <Border DockPanel.Dock="Top" Classes="panel" Margin="20,0,20,10" Padding="14,12" IsVisible="{Binding IsRawOpen}">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                      <ComboBox ItemsSource="{x:Static vm:AccountItemViewModel.RawKinds}" SelectedItem="{Binding RawKind}" MinWidth="110" />
+                      <TextBox Grid.Column="1" Text="{Binding RawTo}" PlaceholderText="To: a JID" FontFamily="{StaticResource Font.Mono}" />
+                      <Button Grid.Column="2" Classes="primary" Content="Send" Command="{Binding SendRawCommand}" />
+                    </Grid>
+                    <TextBox Text="{Binding RawXml}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" MaxHeight="200"
+                             FontFamily="{StaticResource Font.Mono}" PlaceholderText="The stanza's payload, such as &lt;query xmlns='jabber:iq:version'/&gt;" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Classes="panel" Background="{DynamicResource Surface.Code}" Padding="10,8" MaxHeight="240">
+                    <ScrollViewer>
+                      <SelectableTextBlock Classes="mono" Text="{Binding RawResult}" TextWrapping="Wrap" />
+                    </ScrollViewer>
+                  </Border>
+                </Grid>
+              </Border>
+
+              <views:TrafficView DataContext="{Binding Sniffer}" Margin="20,0,20,20" />
+            </DockPanel>
+
+            <views:DevicesView DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Devices}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDevices}" />
+            <views:IdentitiesView DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Identities}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountIdentities}" />
+            <views:PubSubView DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PubSub}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountStorage}" />
+          </Panel>
+        </DockPanel>
+      </DockPanel>
+
+      <!-- First run -->
+      <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="440" Spacing="8"
+                  IsVisible="{Binding !HasAccounts}">
+        <TextBlock Classes="title" Text="Connect your first Neuron" />
+        <TextBlock Classes="meta" TextWrapping="Wrap" LineHeight="19"
+                   Text="Add an XMPP account on a Neuron to begin. Accounts that are administrators there (a notification address, or a user with the Admin privilege) will also see the Neuron's events, reports and chat admin console as those workspaces arrive." />
+      </StackPanel>
+    </Grid>
+  </Grid>
+  </LayoutTransformControl>
+</Window>

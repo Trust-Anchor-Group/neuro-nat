@@ -1,3 +1,5 @@
+> Neuro.AA is now called NAT (Neuro Administration Tool), since 2026-11-12. The text below is the record of the overhaul under the old name.
+
 # Neuro.AA — plan for an internal Neuron admin app
 
 Status: reviewed by Mille 2026-11-09, decisions in section 10. Phases 0 to 5 built by 2026-11-10 (remote desktop left out: nothing to connect to yet); Phase 6 (bold ideas) is next.

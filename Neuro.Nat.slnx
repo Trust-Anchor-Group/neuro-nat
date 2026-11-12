@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Neuro.Nat.Engine/Neuro.Nat.Engine.csproj" />
+    <Project Path="src/Neuro.Nat.App/Neuro.Nat.App.csproj" />
+    <Project Path="src/Neuro.Nat.Desktop/Neuro.Nat.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Neuro.Nat.Engine.Tests/Neuro.Nat.Engine.Tests.csproj" />
+    <Project Path="tests/Neuro.Nat.App.Tests/Neuro.Nat.App.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="PLAN.md" />
+    <File Path="PRODUCT.md" />
+  </Folder>
+</Solution>

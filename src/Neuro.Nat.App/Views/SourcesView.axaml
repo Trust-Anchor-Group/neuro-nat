@@ -1,0 +1,486 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             xmlns:views="using:Neuro.Nat.App.Views"
+             xmlns:sn="using:Neuro.Nat.Engine.Sniffing"
+             x:Class="Neuro.Nat.App.Views.SourcesView"
+             x:DataType="vm:SourcesViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.treePane">
+      <Setter Property="Width" Value="360" />
+    </Style>
+    <!-- A very wide window (1800 px and up): the list gets some of the room, instead of the rest stretching -->
+    <Style Selector=".wide Border.treePane">
+      <Setter Property="Width" Value="460" />
+    </Style>
+    <!-- Window width 1180 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <!-- A watched value that is not what it was a moment ago -->
+    <Style Selector="TextBlock.changed">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+    </Style>
+    <Style Selector=".maxw1180 Border.treePane">
+      <Setter Property="Width" Value="300" />
+    </Style>
+    
+    <!-- Window width 900 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw900 Border.treePane">
+      <Setter Property="Width" Value="250" />
+    </Style>
+    <Style Selector=".maxw900 TextBlock.btnLabel.wideOnly">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    
+
+    <Style Selector="TreeView">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TreeViewItem">
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="2,0" />
+    </Style>
+    <!-- Selection matches the list rows elsewhere: a tint, not a solid accent bar. -->
+    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+    </Style>
+    <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot">
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Ellipse.node">
+      <Setter Property="Width" Value="7" />
+      <Setter Property="Height" Value="7" />
+      <Setter Property="Fill" Value="{DynamicResource Ink.Tertiary}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="3,0,3,0" />
+    </Style>
+    <Style Selector="Ellipse.node.warn">
+      <Setter Property="Fill" Value="{DynamicResource Severity.Warning}" />
+    </Style>
+    <Style Selector="Ellipse.node.bad">
+      <Setter Property="Fill" Value="{DynamicResource Severity.Error}" />
+    </Style>
+    <Style Selector="Border.pill">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.pill TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="ListBox.snifferTabs ListBoxItem">
+      <Setter Property="Padding" Value="10,4,4,4" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="ListBox.snifferTabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+    </Style>
+    <Style Selector="Button.cmd">
+      <Setter Property="Margin" Value="0,0,8,8" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="Auto,*">
+
+    <!-- Neuron, sources and nodes -->
+    <Border Classes="treePane" c:Pane.Key="sources" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="12,14,8,12">
+        <DockPanel DockPanel.Dock="Top" Margin="6,0,4,10">
+          <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding LoadTreeCommand}" ToolTip.Tip="Read the sources again" IsVisible="{Binding HasNeuron}">
+            <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <TextBlock Classes="section" Text="Sources" VerticalAlignment="Center" />
+        </DockPanel>
+
+        <DockPanel DockPanel.Dock="Top" Margin="6,0,4,10" IsVisible="{Binding HasNeuron}">
+          <Button DockPanel.Dock="Right" Classes="ghost" Margin="6,0,0,0" Command="{Binding ClearSearchCommand}" IsVisible="{Binding HasSearchResults}"
+                  ToolTip.Tip="Back to the tree">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Close}" />
+          </Button>
+          <TextBox Classes="find" Text="{Binding SearchText}" PlaceholderText="Find nodes in every source…" MinHeight="30" Padding="10,5"
+                   ToolTip.Tip="Find nodes by name (Ctrl+F). Enter searches.">
+            <TextBox.KeyBindings>
+              <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+              <KeyBinding Gesture="Escape" Command="{Binding ClearSearchCommand}" />
+            </TextBox.KeyBindings>
+          </TextBox>
+        </DockPanel>
+
+        <Panel>
+          <!-- Search results replace the tree until cleared -->
+          <DockPanel IsVisible="{Binding HasSearchResults}" Background="{DynamicResource Surface.Ground}" ZIndex="1">
+            <TextBlock DockPanel.Dock="Top" Classes="meta" Margin="8,0,8,8" Text="{Binding SearchSummary}" TextWrapping="Wrap" />
+            <ListBox Classes="rows" ItemsSource="{Binding SearchResults}" SelectedItem="{Binding SearchSelection}" c:ActionMenu.Source="{Binding}">
+              <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+              </ListBox.ItemsPanel>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:NodeItemViewModel">
+                  <StackPanel Spacing="2">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Ellipse Classes="node" Classes.warn="{Binding HasWarning}" Classes.bad="{Binding HasProblem}" />
+                      <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Classes="meta" Text="{Binding Meta}" Margin="19,0,0,0" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+
+          <TreeView ItemsSource="{Binding Roots}" SelectedItem="{Binding TreeSelection, Mode=TwoWay}" c:ActionMenu.Source="{Binding}">
+            <TreeView.Styles>
+              <Style Selector="TreeViewItem" x:DataType="vm:TreeItemViewModel">
+                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+              </Style>
+            </TreeView.Styles>
+            <TreeView.ItemTemplate>
+              <TreeDataTemplate x:DataType="vm:TreeItemViewModel" ItemsSource="{Binding Children}">
+                <StackPanel Orientation="Horizontal" Spacing="6" ToolTip.Tip="{Binding Meta}">
+                  <c:LineIcon Data="{StaticResource Icon.Sources}" Width="14" Height="14" IsVisible="{Binding IsSource}"
+                              Foreground="{DynamicResource Ink.Secondary}" VerticalAlignment="Center" />
+                  <Ellipse Classes="node" Classes.warn="{Binding HasWarning}" Classes.bad="{Binding HasProblem}"
+                           IsVisible="{Binding !IsSource}" />
+                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                             Classes.meta="{Binding IsPlaceholder}" />
+                </StackPanel>
+              </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
+
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="260" Spacing="6" IsVisible="{Binding HasPinnedNote}">
+            <c:LineIcon Data="{StaticResource Icon.Sources}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+            <TextBlock Text="Not online" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="{Binding PinnedNote}" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding IsLoadingTree}" Margin="8,4" VerticalAlignment="Top" Spacing="6">
+            <TextBlock Classes="meta" Text="Reading the sources…" />
+            <c:Placeholder Rows="5" RowHeight="28" />
+          </StackPanel>
+          <TextBlock Classes="error" Text="{Binding TreeError}" TextWrapping="Wrap" Margin="8,4" VerticalAlignment="Top"
+                     IsVisible="{Binding TreeError, Converter={x:Static conv:EventConverters.HasText}}" />
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- Inspector, with running sniffers docked below -->
+    <Grid Grid.Column="1" x:Name="InspectorGrid" RowDefinitions="*,Auto,0">
+    <Panel>
+
+      <!-- A node -->
+      <DockPanel IsVisible="{Binding HasNode}" Margin="24,16,24,20">
+
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,12">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="title" Text="{Binding NodeTitle}" TextTrimming="CharacterEllipsis" />
+            <Border Classes="pill" Background="{DynamicResource State.Bad.Subtle}" IsVisible="{Binding NodeHasProblem}">
+              <TextBlock Text="Error" Foreground="{DynamicResource Severity.Error}" />
+            </Border>
+            <Border Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding NodeHasWarning}">
+              <TextBlock Text="Warning" Foreground="{DynamicResource Severity.Warning}" />
+            </Border>
+          </StackPanel>
+          <TextBlock Classes="meta" TextTrimming="CharacterEllipsis">
+            <Run Text="{Binding NodeType}" /><Run Text=" · " /><Run Text="{Binding NodeWhere}" /><Run Text="  " /><Run Text="{Binding NodeChanged}" />
+          </TextBlock>
+        </StackPanel>
+
+        <!-- Toolbar: only while looking at the node -->
+        <WrapPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10" IsVisible="{Binding IsDetails}">
+          <Button Classes="ghost" Command="{Binding EditCommand}" ToolTip.Tip="Edit the node's parameters" Margin="0,0,6,6">
+            <TextBlock Text="Edit" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding LoadAddableCommand}" ToolTip.Tip="Add a node under this one" Margin="0,0,6,6">
+            <Button.Flyout>
+              <MenuFlyout ItemsSource="{Binding AddableTypes}" Placement="BottomEdgeAlignedLeft">
+                <MenuFlyout.ItemContainerTheme>
+                  <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:AddableType">
+                    <Setter Property="Header" Value="{Binding Name}" />
+                    <Setter Property="Command" Value="{Binding AddCommand}" />
+                    <Setter Property="CommandParameter" Value="{Binding}" />
+                  </ControlTheme>
+                </MenuFlyout.ItemContainerTheme>
+              </MenuFlyout>
+            </Button.Flyout>
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Plus}" />
+              <TextBlock Classes="btnLabel" Text="Add" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Command="{Binding MoveUpCommand}" IsVisible="{Binding CanMove}" ToolTip.Tip="Move up among its siblings" Margin="0,0,6,6">
+            <TextBlock Text="Move up" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding MoveDownCommand}" IsVisible="{Binding CanMove}" ToolTip.Tip="Move down among its siblings" Margin="0,0,6,6">
+            <TextBlock Text="Move down" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding ReadCommand}" CommandParameter="momentary" IsVisible="{Binding CanRead}" Margin="0,0,6,6"
+                  ToolTip.Tip="Read the node's sensor data now">
+            <TextBlock Text="Read" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding ReadCommand}" CommandParameter="all" IsVisible="{Binding CanRead}" Margin="0,0,6,6"
+                  ToolTip.Tip="Read all sensor data, including history">
+            <TextBlock Text="Read history" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding ControlCommand}" IsVisible="{Binding CanControl}" Margin="0,0,6,6"
+                  ToolTip.Tip="Set the node's control parameters">
+            <TextBlock Text="Control" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding CopyCommand}" Margin="0,0,6,6"
+                  ToolTip.Tip="Copy this node and everything under it, to paste here or on another Neuron">
+            <TextBlock Text="Copy" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding PasteCommand}" IsVisible="{Binding HasClipboard}" Margin="0,0,6,6"
+                  ToolTip.Tip="{Binding PasteTip}">
+            <TextBlock Text="Paste" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding SniffCommand}" IsVisible="{Binding CanSniff}" Margin="0,0,6,6"
+                  ToolTip.Tip="Watch this node's traffic live. Only the Neuron's administrators may do this.">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Sniffer}" />
+              <TextBlock Classes="btnLabel" Text="Watch traffic" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Command="{Binding ShareCommand}" ToolTip.Tip="Send this node's details to a coworker or a room" Margin="0,0,6,6">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
+              <TextBlock Classes="btnLabel" Text="Share" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Command="{Binding RefreshNodeCommand}" ToolTip.Tip="Read the node again" Margin="0,0,6,6">
+            <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+          <Button Classes="danger" Classes.armed="{Binding DeleteArmed}" Command="{Binding DeleteCommand}" Margin="0,0,6,6"
+                  ToolTip.Tip="Delete the node and everything under it. Asks once more first.">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Trash}" />
+              <TextBlock Classes="btnLabel" Text="Delete" />
+            </StackPanel>
+          </Button>
+        </WrapPanel>
+
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Notice}" TextWrapping="Wrap" Margin="0,0,0,10"
+                   Classes.error="{Binding NoticeIsError}" Classes.meta="{Binding !NoticeIsError}"
+                   IsVisible="{Binding Notice, Converter={x:Static conv:EventConverters.HasText}}" />
+
+        <Panel>
+          <!-- Details: commands, parameters, messages -->
+          <ScrollViewer IsVisible="{Binding IsDetails}">
+            <StackPanel Spacing="18" Margin="0,0,8,0">
+              <StackPanel Spacing="8" IsVisible="{Binding HasCommands}">
+                <TextBlock Classes="label" Text="Commands" />
+                <ItemsControl ItemsSource="{Binding Commands}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CommandRow">
+                      <Button Classes="cmd" ToolTip.Tip="{Binding Kind}"
+                              Command="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext).RunCommand}" CommandParameter="{Binding}">
+                        <TextBlock Text="{Binding Name}" FontSize="{StaticResource Type.Meta}" />
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+              <StackPanel IsVisible="{Binding IsLoadingCommands}" Spacing="6">
+                <TextBlock Classes="meta" Text="Reading commands…" />
+                <c:Placeholder Rows="2" RowHeight="26" />
+              </StackPanel>
+
+              <StackPanel Spacing="6" IsVisible="{Binding HasParameters}">
+                <TextBlock Classes="label" Text="Parameters" />
+                <Border Classes="panel" Padding="14,6" Background="{DynamicResource Surface.Panel}">
+                  <Panel>
+                    <ItemsControl ItemsSource="{Binding Parameters}" Grid.IsSharedSizeScope="True">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ParameterRow">
+                          <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,6" Background="Transparent"
+                                  c:ActionMenu.Source="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext)}">
+                            <Grid ColumnSpacing="16">
+                              <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="ParamName" MinWidth="120" />
+                                <ColumnDefinition Width="*" />
+                              </Grid.ColumnDefinitions>
+                              <TextBlock Foreground="{DynamicResource Ink.Secondary}" Text="{Binding Name}" />
+                              <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" ContextFlyout="{x:Null}" />
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Panel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Spacing="6" IsVisible="{Binding HasMessages}">
+                <TextBlock Classes="label" Text="Messages" />
+                <ItemsControl ItemsSource="{Binding Messages}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:NodeMessageRow">
+                      <Grid ColumnDefinitions="150,*" Margin="0,0,0,6" Background="Transparent"
+                            c:ActionMenu.Source="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext)}">
+                        <TextBlock Classes="mono tertiary" Text="{Binding Time}" />
+                        <SelectableTextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" ContextFlyout="{x:Null}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- A form from the Neuron: edit, add, or command parameters -->
+          <DockPanel IsVisible="{Binding IsForm}">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                <Button Content="Cancel" Command="{Binding BackToNodeCommand}" />
+                <Button Classes="primary" Content="{Binding SubmitLabel}" Command="{Binding SubmitFormCommand}" IsEnabled="{Binding !IsBusy}" />
+              </StackPanel>
+              <StackPanel Spacing="2" Margin="0,0,12,0">
+                <TextBlock Classes="section" Text="{Binding FormTitle}" TextWrapping="Wrap" />
+                <TextBlock Classes="meta" Text="{Binding FormSubtitle}" />
+              </StackPanel>
+            </DockPanel>
+            <TextBlock DockPanel.Dock="Top" Classes="error" Text="{Binding FormError}" TextWrapping="Wrap" Margin="0,0,0,10"
+                       IsVisible="{Binding FormError, Converter={x:Static conv:EventConverters.HasText}}" />
+            <Border Classes="panel" Background="{DynamicResource Surface.Panel}">
+              <ScrollViewer Padding="18,14">
+                <c:DataFormView Form="{Binding Form}" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+
+          <!-- Sensor data -->
+          <DockPanel IsVisible="{Binding IsReadout}">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                <Button Classes="ghost" Command="{Binding CopyReadoutCommand}" ToolTip.Tip="Copy all readings, ready to paste into a spreadsheet">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+                </Button>
+                <Button Classes="ghost" Command="{Binding SaveReadoutCommand}" ToolTip.Tip="Save all readings to a file">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+                </Button>
+                <ToggleButton Classes="ghost" IsChecked="{Binding IsWatching}" ToolTip.Tip="Read these values again every 5 seconds and mark the ones that change">
+                  <StackPanel Classes="btn">
+                    <c:LineIcon Classes="btn" Data="{StaticResource Icon.Eye}" />
+                    <TextBlock Classes="btnLabel" Text="Watch" />
+                  </StackPanel>
+                </ToggleButton>
+                <Button Content="Read again" Command="{Binding ReadCommand}" CommandParameter="momentary" />
+                <Button Content="Back to node" Command="{Binding BackToNodeCommand}" />
+              </StackPanel>
+              <StackPanel Spacing="2" Margin="0,0,12,0">
+                <TextBlock Classes="section" Text="{Binding ReadoutTitle}" />
+                <TextBlock Classes="meta" Text="{Binding ReadoutStatus}" TextWrapping="Wrap" />
+              </StackPanel>
+            </DockPanel>
+            <c:ActionBar x:Name="ReadoutBar" DockPanel.Dock="Bottom" Noun="reading" Margin="0,8,0,0" />
+            <Border Classes="panel" Background="{DynamicResource Surface.Panel}" Padding="14,6">
+              <ListBox Classes="stream" ItemsSource="{Binding ReadoutRows}" Background="Transparent" SelectionMode="Multiple"
+                       c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #ReadoutBar}">
+                <ListBox.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                  </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ReadoutRow">
+                    <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,6">
+                      <Grid ColumnDefinitions="2*,3*,1.4*,1.4*" ColumnSpacing="14">
+                        <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Ink.Secondary}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Classes.error="{Binding IsProblem}" Classes.changed="{Binding IsChanged}" />
+                        <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Kind}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="3" Classes="mono tertiary" Text="{Binding Time}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Border>
+          </DockPanel>
+
+          <!-- Report results -->
+          <DockPanel IsVisible="{Binding IsReport}">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                <Button Classes="ghost" Command="{Binding CopyReportCommand}" ToolTip.Tip="Copy the report's tables, ready to paste into a spreadsheet">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+                </Button>
+                <Button Classes="ghost" Command="{Binding SaveReportCommand}" ToolTip.Tip="Save the report's tables to a file">
+                  <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+                </Button>
+                <Button Content="Change values" Command="{Binding CloseReportCommand}" />
+                <Button Content="Back to node" Command="{Binding BackToNodeCommand}" />
+              </StackPanel>
+              <StackPanel Spacing="2" Margin="0,0,12,0">
+                <TextBlock Classes="section" Text="{Binding ReportTitle}" TextWrapping="Wrap" />
+                <TextBlock Classes="meta" Text="{Binding ReportStatus}" />
+              </StackPanel>
+            </DockPanel>
+            <Border Classes="panel" Background="{DynamicResource Surface.Panel}">
+              <ScrollViewer Padding="18,14">
+                <c:ReportView Run="{Binding Report}" />
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+        </Panel>
+      </DockPanel>
+
+      <!-- A data source -->
+      <StackPanel IsVisible="{Binding !HasNode}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400" Spacing="6">
+        <TextBlock Text="Pick a node" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                   Text="Open a data source on the left to see its nodes. A node shows its parameters, messages and commands here, and you can edit it, add nodes under it or delete it with the Neuron's own forms." />
+      </StackPanel>
+    </Panel>
+
+    <GridSplitter Grid.Row="1" Height="6" ResizeDirection="Rows" Background="Transparent" IsVisible="{Binding HasSniffers}" />
+
+    <Border Grid.Row="2" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Background="{DynamicResource Surface.Panel}">
+      <DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="14,8,12,4">
+          <TextBlock DockPanel.Dock="Right" Classes="meta" Margin="12,0,4,0" Text="{Binding SelectedSniffer.StateText}" TextTrimming="CharacterEllipsis"
+                     VerticalAlignment="Center" MaxWidth="320" />
+          <ListBox Classes="snifferTabs" ItemsSource="{Binding Sniffers}" SelectedItem="{Binding SelectedSniffer}" Background="Transparent">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="4" />
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:NodeSnifferViewModel">
+                <StackPanel Orientation="Horizontal" Spacing="7" ToolTip.Tip="{Binding StateText}" Background="Transparent"
+                            c:ActionMenu.Source="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext)}">
+                  <Ellipse Classes="dot" Classes.ok="{Binding IsLive}" Classes.bad="{Binding HasProblem}" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding NodeLabel}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                  <TextBlock Classes="meta" Text="{Binding NeuronLabel}" VerticalAlignment="Center" />
+                  <Button Classes="ghost" Padding="3" MinHeight="0" VerticalAlignment="Center" ToolTip.Tip="Stop watching this node's traffic"
+                          Command="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext).CloseSnifferCommand}" CommandParameter="{Binding}">
+                    <c:LineIcon Data="{StaticResource Icon.Close}" Width="12" Height="12" />
+                  </Button>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+
+        <views:TrafficView DataContext="{Binding SelectedSniffer.Lines}" Margin="14,2,14,12" />
+      </DockPanel>
+    </Border>
+    </Grid>
+  </Grid>
+</UserControl>

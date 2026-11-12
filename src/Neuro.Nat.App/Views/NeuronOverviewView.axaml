@@ -1,0 +1,339 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:ev="using:Neuro.Nat.Engine.Events"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             x:Class="Neuro.Nat.App.Views.NeuronOverviewView"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- The first tab of a Neuron's page: how it is doing, what is wrong on it, what waits for you
+       there and what it is connected to. Everything on it leads to the tab that has the rest. -->
+  <UserControl.Styles>
+    <Style Selector="Border.sev">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.sev TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Padding" Value="16,12,14,12" />
+    </Style>
+    <Style Selector="TextBlock.big">
+      <Setter Property="FontSize" Value="{StaticResource Type.Number}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LetterSpacing" Value="-0.3" />
+    </Style>
+    <Style Selector="TextBlock.big.warn">
+      <Setter Property="Foreground" Value="{DynamicResource State.Busy}" />
+    </Style>
+    <Style Selector="TextBlock.big.bad">
+      <Setter Property="Foreground" Value="{DynamicResource State.Bad}" />
+    </Style>
+    <Style Selector="Button.row">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="14,8" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="Button.row:pressed">
+      <Setter Property="RenderTransform" Value="none" />
+    </Style>
+    <Style Selector="Border.head">
+      <Setter Property="Padding" Value="14,10,8,8" />
+    </Style>
+
+    <Style Selector="UniformGrid.cards">
+      <Setter Property="Columns" Value="4" />
+    </Style>
+    <Style Selector="StackPanel.sideCol">
+      <Setter Property="(Grid.Column)" Value="1" />
+    </Style>
+
+    <!-- Narrow: two cards per row, and the side column goes under the main one. -->
+    <Style Selector=".maxw1100 UniformGrid.cards">
+      <Setter Property="Columns" Value="2" />
+    </Style>
+    <Style Selector=".maxw1100 StackPanel.mainCol">
+      <Setter Property="(Grid.ColumnSpan)" Value="2" />
+    </Style>
+    <Style Selector=".maxw1100 StackPanel.sideCol">
+      <Setter Property="(Grid.Column)" Value="0" />
+      <Setter Property="(Grid.Row)" Value="1" />
+      <Setter Property="(Grid.ColumnSpan)" Value="2" />
+    </Style>
+    <!-- A small window: when the health was read is in the tip of the button beside it -->
+    <Style Selector=".maxw860 TextBlock.healthAge">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer>
+    <StackPanel Margin="20,16,20,20" Spacing="14" MaxWidth="1600" HorizontalAlignment="Stretch">
+
+      <!-- Who it is -->
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding ReadPageHealthCommand}" VerticalAlignment="Center" ToolTip.Tip="Read its health again now (F5)">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Refresh}" />
+            <TextBlock Classes="btnLabel" Text="Read again" />
+          </StackPanel>
+        </Button>
+        <TextBlock DockPanel.Dock="Right" Classes="meta tertiary healthAge" Text="{Binding Page.HealthAge}" VerticalAlignment="Center" Margin="0,0,6,0" />
+        <StackPanel Spacing="4">
+          <SelectableTextBlock FontFamily="{StaticResource Font.Mono}" FontSize="{StaticResource Type.Section}" FontWeight="SemiBold" Text="{Binding Page.BareJid}" />
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Classes="meta" Text="{Binding Page.StateText}" />
+            <TextBlock Classes="meta tertiary" Text="·" />
+            <TextBlock Classes="meta" Text="through" />
+            <Border Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center"
+                    Background="{Binding Page.AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
+              <TextBlock Text="{Binding Page.AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="9" FontWeight="SemiBold"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Foreground="{Binding Page.AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+            </Border>
+            <TextBlock Classes="meta" Text="{Binding Page.AccountLabel}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="meta tertiary" Text="·" />
+            <TextBlock Classes="meta" Text="{Binding Page.Software}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </StackPanel>
+      </DockPanel>
+
+      <!-- Why something is missing, in the Neuron's own words -->
+      <Border Padding="12,9" CornerRadius="{StaticResource Radius}" Background="{DynamicResource State.Busy.Subtle}"
+              IsVisible="{Binding Page.Note, Converter={x:Static conv:EventConverters.HasText}}">
+        <SelectableTextBlock Text="{Binding Page.Note}" TextWrapping="Wrap" />
+      </Border>
+
+      <!-- Four numbers -->
+      <UniformGrid Classes="cards" ColumnSpacing="12" RowSpacing="12">
+        <Border Classes="panel card">
+          <DockPanel>
+            <c:Sparkline DockPanel.Dock="Right" Values="{Binding Page.CpuSeries}" Width="84" Height="30" VerticalAlignment="Bottom" Foreground="{DynamicResource Accent}" />
+            <StackPanel Spacing="3">
+              <TextBlock Classes="meta" Text="CPU, last 30 min" />
+              <TextBlock Classes="big num" Classes.warn="{Binding Page.HighCpu}" Text="{Binding Page.CpuText}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Border Classes="panel card">
+          <DockPanel>
+            <c:Sparkline DockPanel.Dock="Right" Values="{Binding Page.MemorySeries}" Width="84" Height="30" VerticalAlignment="Bottom" Foreground="{DynamicResource Accent}" />
+            <StackPanel Spacing="3">
+              <TextBlock Classes="meta" Text="Memory" />
+              <TextBlock Classes="big num" Classes.warn="{Binding Page.LowMemory}" Text="{Binding Page.MemoryUsedText}" />
+              <TextBlock Classes="meta num" Text="{Binding Page.MemoryFreeText}" IsVisible="{Binding Page.MemoryFreeText, Converter={x:Static conv:EventConverters.HasText}}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Border Classes="panel card">
+          <DockPanel>
+            <c:Sparkline DockPanel.Dock="Right" Values="{Binding Page.DiskSeries}" Width="84" Height="30" VerticalAlignment="Bottom" Foreground="{DynamicResource Accent}" />
+            <StackPanel Spacing="3">
+              <TextBlock Classes="meta" Text="Disk" />
+              <TextBlock Classes="big num" Classes.warn="{Binding Page.LowDisk}" Text="{Binding Page.DiskText}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Button Classes="row" Padding="0" CornerRadius="{StaticResource Radius}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronEvents}"
+                ToolTip.Tip="Open this Neuron's events">
+          <Border Classes="panel card">
+            <StackPanel Spacing="3">
+              <TextBlock Classes="meta" Text="Errors, last hour" />
+              <TextBlock Classes="big num" Classes.bad="{Binding Page.HasErrors}" Text="{Binding Page.ErrorsLastHour}" />
+              <TextBlock Classes="meta num" TextTrimming="CharacterEllipsis">
+                <Run Text="{Binding Page.WarningsLastHour}" /><Run Text=" warnings · last event " /><Run Text="{Binding Page.LastEventText}" />
+              </TextBlock>
+            </StackPanel>
+          </Border>
+        </Button>
+      </UniformGrid>
+
+      <Grid ColumnDefinitions="3*,2*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="14">
+
+        <StackPanel Classes="mainCol" Spacing="14">
+          <!-- What is wrong -->
+          <Border Classes="panel" ClipToBounds="True">
+            <DockPanel>
+              <Border DockPanel.Dock="Top" Classes="head">
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Classes="ghost small" Content="All its events" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronEvents}" />
+                  <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Classes="section" Text="Open problems" />
+                    <TextBlock Classes="meta" Text="{Binding Page.ProblemsText}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </DockPanel>
+              </Border>
+              <Panel>
+                <ScrollViewer MaxHeight="264" IsVisible="{Binding NeuronEvents.HasIssues}">
+                  <ItemsControl ItemsSource="{Binding NeuronEvents.Issues}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:IssueItemViewModel">
+                        <Button Classes="row" Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).OpenPageIssueCommand}" CommandParameter="{Binding}"
+                                c:ActionMenu.Source="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).NeuronEvents}" c:ActionMenu.Item="{Binding}">
+                          <Grid ColumnDefinitions="74,*,Auto,Auto" ColumnSpacing="10">
+                            <Border Classes="sev" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
+                              <TextBlock Text="{Binding Severity, Converter={x:Static conv:SeverityTextConverter.Instance}}"
+                                         Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+                              <TextBlock Classes="meta" Text="{Binding Meta}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <c:Sparkline Grid.Column="2" Values="{Binding Histogram}" Width="64" Height="16" VerticalAlignment="Center"
+                                         Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+                            <TextBlock Grid.Column="3" Classes="num" Text="{Binding Count, StringFormat='{}{0:N0}'}" FontWeight="SemiBold" MinWidth="34" TextAlignment="Right" VerticalAlignment="Center" />
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="14,4,14,14" IsVisible="{Binding !NeuronEvents.HasIssues}">
+                  <c:LineIcon Data="{StaticResource Icon.Check}" Width="15" Height="15" Foreground="{DynamicResource State.Ok}" VerticalAlignment="Center" />
+                  <TextBlock Classes="meta" Text="No open problems on this Neuron." VerticalAlignment="Center" />
+                </StackPanel>
+              </Panel>
+            </DockPanel>
+          </Border>
+
+          <!-- What it logged last -->
+          <Border Classes="panel" ClipToBounds="True">
+            <DockPanel>
+              <Border DockPanel.Dock="Top" Classes="head">
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Classes="ghost small" Content="All its events" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronEvents}" />
+                  <TextBlock Classes="section" Text="Latest events" VerticalAlignment="Center" />
+                </DockPanel>
+              </Border>
+              <Panel>
+                <ListBox Classes="stream" ItemsSource="{Binding NeuronEvents.Stream}" Height="332" Margin="0,0,0,4" SelectionMode="Multiple"
+                         c:ActionMenu.Source="{Binding NeuronEvents}" IsVisible="{Binding !NeuronEvents.IsStreamEmpty}">
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="ev:NeuronEvent">
+                      <Grid ColumnDefinitions="72,74,*" Height="24">
+                        <TextBlock Classes="mono tertiary" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Classes="sev" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
+                          <TextBlock Text="{Binding Severity, Converter={x:Static conv:SeverityTextConverter.Instance}}"
+                                     Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+                        </Border>
+                        <TextBlock Grid.Column="2" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Classes="meta" Margin="14,4,14,14" TextWrapping="Wrap" IsVisible="{Binding NeuronEvents.IsStreamEmpty}"
+                           Text="Nothing to show yet. Events appear here the moment this Neuron logs them. The Events tab can also show informational ones." />
+              </Panel>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+
+        <StackPanel Classes="sideCol" Spacing="14">
+          <!-- What waits for an answer here -->
+          <Border Classes="panel" ClipToBounds="True">
+            <DockPanel>
+              <Border DockPanel.Dock="Top" Classes="head">
+                <TextBlock Classes="section" Text="Waiting for you" />
+              </Border>
+              <Panel>
+                <ItemsControl ItemsSource="{Binding Page.Waiting}" IsVisible="{Binding Page.HasWaiting}" Margin="0,0,0,6">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PageWaiting">
+                      <Button Classes="row" Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).OpenWaitingCommand}" CommandParameter="{Binding}"
+                              ToolTip.Tip="Open it in the Inbox">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                          <c:LineIcon Data="{Binding IconKey, Converter={x:Static conv:IconConverter.Instance}}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Classes="meta" Text="{Binding When}" VerticalAlignment="Center" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="14,4,14,14" IsVisible="{Binding !Page.HasWaiting}">
+                  <c:LineIcon Data="{StaticResource Icon.Check}" Width="15" Height="15" Foreground="{DynamicResource State.Ok}" VerticalAlignment="Center" />
+                  <TextBlock Classes="meta" Text="Nothing from this Neuron waits for you." VerticalAlignment="Center" />
+                </StackPanel>
+              </Panel>
+            </DockPanel>
+          </Border>
+
+          <!-- What it is connected to -->
+          <Border Classes="panel" ClipToBounds="True">
+            <DockPanel>
+              <Border DockPanel.Dock="Top" Classes="head">
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Classes="ghost small" Content="Show on the map" Command="{Binding ShowPageOnMapCommand}" />
+                  <TextBlock Classes="section" Text="Connected to" VerticalAlignment="Center" />
+                </DockPanel>
+              </Border>
+              <Panel>
+                <ItemsControl ItemsSource="{Binding Page.Links}" IsVisible="{Binding Page.HasLinks}" Margin="0,0,0,6">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TopologyConnection">
+                      <Button Classes="row" Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).OpenLinkCommand}" CommandParameter="{Binding}"
+                              ToolTip.Tip="Open it: its page when it is one of your Neurons, the map otherwise">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                          <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Classes="meta" Text="{Binding Relation}" VerticalAlignment="Center" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="meta" Margin="14,4,14,14" TextWrapping="Wrap" Text="{Binding Page.LinksNote}" IsVisible="{Binding !Page.HasLinks}" />
+              </Panel>
+            </DockPanel>
+          </Border>
+
+          <!-- The rest of the page, one click away -->
+          <Border Classes="panel" ClipToBounds="True">
+            <StackPanel Margin="0,6">
+              <Button Classes="row" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Sources}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <c:LineIcon Data="{StaticResource Icon.Sources}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
+                  <TextBlock Grid.Column="1" Text="Sources" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Classes="meta" Text="Data sources, nodes and sensor values" VerticalAlignment="Center" />
+                </Grid>
+              </Button>
+              <Button Classes="row" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronConsole}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <c:LineIcon Data="{StaticResource Icon.Console}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
+                  <TextBlock Grid.Column="1" Text="Console" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Classes="meta" Text="Send it a command" VerticalAlignment="Center" />
+                </Grid>
+              </Button>
+              <Button Classes="row" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Updates}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <c:LineIcon Data="{StaticResource Icon.Updates}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
+                  <TextBlock Grid.Column="1" Text="Software" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Page.Software}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240" />
+                </Grid>
+              </Button>
+              <Button Classes="row" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Identities}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <c:LineIcon Data="{StaticResource Icon.Identities}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
+                  <TextBlock Grid.Column="1" Text="Identity" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Classes="meta" Text="Its legal identity, and applications to review" VerticalAlignment="Center" />
+                </Grid>
+              </Button>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

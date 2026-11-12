@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Neuro.Nat.Desktop</RootNamespace>
+    <AssemblyName>NAT</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\NAT.ico</ApplicationIcon>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Where installed copies look for updates by default: UpdateSource in Directory.Build.props. -->
+    <AssemblyMetadata Include="UpdateSource" Value="$(UpdateSource)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Neuro.Nat.App.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <PackageReference Include="Velopack" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Neuro.Nat.App\Neuro.Nat.App.csproj" />
+  </ItemGroup>
+
+</Project>

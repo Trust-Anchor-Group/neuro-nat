@@ -1,0 +1,372 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             xmlns:ev="using:Neuro.Nat.Engine.Events"
+             x:Class="Neuro.Nat.App.Views.EventsView"
+             x:DataType="vm:EventsViewModel">
+
+  <UserControl.Styles>
+    <!-- Severity tag: tinted pill with the severity colour -->
+    <Style Selector="Border.sev">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.sev TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.issuesPane">
+      <Setter Property="Width" Value="380" />
+    </Style>
+    <!-- A very wide window (1800 px and up): the list gets some of the room, instead of the rest stretching -->
+    <Style Selector=".wide Border.issuesPane">
+      <Setter Property="Width" Value="480" />
+    </Style>
+    <!-- Narrower windows: slimmer issue list, drop the module column. -->
+    <!-- Window width 1280 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw1280 Border.issuesPane">
+      <Setter Property="Width" Value="320" />
+    </Style>
+    <Style Selector=".maxw1280 TextBlock.btnLabel.wideOnly">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw1280 TextBlock.colModule">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    
+    <!-- Window width 960 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw960 Border.issuesPane">
+      <Setter Property="Width" Value="260" />
+    </Style>
+    <!-- The bar over the stream gives way step by step, so nothing in it is ever cut off:
+         a narrower filter box, then the level picker in fewer words and no title, then copy,
+         save and mute from the right-click menu only. -->
+    <Style Selector="TextBox.streamFilter">
+      <Setter Property="Width" Value="260" />
+    </Style>
+    <Style Selector=".maxw1280 TextBox.streamFilter">
+      <Setter Property="Width" Value="200" />
+    </Style>
+    <Style Selector=".maxw1100 TextBox.streamFilter">
+      <Setter Property="Width" Value="160" />
+    </Style>
+    <Style Selector="TextBlock.short">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw1100 TextBlock.short">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector=".maxw1100 TextBlock.long, .maxw1100 TextBlock.streamTitle, .maxw860 :is(Control).roomy">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+
+    <!-- Stream rows and their header share these column widths. -->
+    <Style Selector="TextBlock.colNeuron">
+      <Setter Property="Width" Value="150" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style Selector="TextBlock.colModule">
+      <Setter Property="Width" Value="130" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="Auto,*">
+
+    <!-- Issues -->
+    <Border Classes="issuesPane" c:Pane.Key="events" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="12,14,12,12">
+        <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
+          <ToggleButton DockPanel.Dock="Right" Classes="ghost" IsChecked="{Binding ShowResolved}"
+                        ToolTip.Tip="Also show muted and fixed problems">
+            <TextBlock Text="Show fixed" FontSize="{StaticResource Type.Meta}" />
+          </ToggleButton>
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center" Margin="0,0,8,0">
+            <TextBlock Classes="section" Text="Problems" />
+            <TextBlock Grid.Column="1" Classes="meta num" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="Errors and critical events in the last hour, all Neurons">
+              <Run Text="{Binding ErrorsLastHour}" /><Run Text=" errors last hour" />
+            </TextBlock>
+          </Grid>
+        </DockPanel>
+
+        <c:ActionBar x:Name="IssueBar" DockPanel.Dock="Bottom" Noun="problem" Margin="0,8,0,0" />
+
+        <Panel>
+          <ListBox x:Name="IssueList" Classes="rows" c:Motion.NewRows="True" ItemsSource="{Binding Issues}" SelectedItem="{Binding SelectedIssue}" SelectionMode="Multiple"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #IssueBar}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:IssueItemViewModel">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" RowDefinitions="Auto,Auto,Auto">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Classes="sev" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
+                      <TextBlock Text="{Binding Severity, Converter={x:Static conv:SeverityTextConverter.Instance}}"
+                                 Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+                    </Border>
+                    <Border Classes="sev" Background="{DynamicResource Surface.Pressed}"
+                            IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsNotOpen}}">
+                      <TextBlock Text="{Binding State, Converter={x:Static conv:EventConverters.StateText}}" Foreground="{DynamicResource Ink.Secondary}" />
+                    </Border>
+                    <Border Classes="sev" Background="{DynamicResource Accent.Subtle}" IsVisible="{Binding IsReopened}">
+                      <TextBlock Text="Back again" Foreground="{DynamicResource Accent.Ink}" />
+                    </Border>
+                  </StackPanel>
+                  <TextBlock Grid.Row="1" Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2"
+                             TextTrimming="CharacterEllipsis" Margin="0,5,0,3" ToolTip.Tip="{Binding Title}" />
+                  <TextBlock Grid.Row="2" Classes="meta" Text="{Binding Meta}" TextTrimming="CharacterEllipsis" />
+
+                  <StackPanel Grid.Column="1" Grid.RowSpan="3" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5" ToolTip.Tip="{Binding TrendText}">
+                      <c:LineIcon Data="{StaticResource Icon.TrendUp}" Width="15" Height="15" StrokeWidth="2" VerticalAlignment="Center" IsVisible="{Binding IsRising}"
+                                  Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+                      <c:LineIcon Data="{StaticResource Icon.TrendDown}" Width="15" Height="15" StrokeWidth="2" VerticalAlignment="Center" IsVisible="{Binding IsFalling}"
+                                  Foreground="{DynamicResource Ink.Tertiary}" />
+                      <TextBlock Classes="num" Text="{Binding Count, StringFormat='{}{0:N0}'}" FontSize="{StaticResource Type.Number}" FontWeight="SemiBold"
+                                 LetterSpacing="-0.3" />
+                    </StackPanel>
+                    <c:Sparkline Values="{Binding Histogram}" Width="64" Height="16"
+                                 Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}"
+                                 ToolTip.Tip="Occurrences per minute, last hour" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <StackPanel IsVisible="{Binding !HasIssues}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="300" Spacing="6">
+            <c:LineIcon Data="{StaticResource Icon.Events}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+            <TextBlock Text="No open problems" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                       Text="Warnings, errors and critical events from your Neurons are grouped here: one problem for each thing that goes wrong, across all your Neurons." />
+          </StackPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- Stream and detail -->
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+
+      <!-- Toolbar: filters, or the selected issue's header -->
+      <Panel Margin="20,14,16,10">
+        <DockPanel IsVisible="{Binding !HasSelectedIssue}">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+            <StackPanel Orientation="Horizontal">
+              <ToggleButton Classes="seg first" Content="All" IsChecked="{Binding IsAllSelected, Mode=OneWay}"
+                            Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.All}" />
+              <ToggleButton Classes="seg" IsChecked="{Binding IsWarningsSelected, Mode=OneWay}" Margin="-1,0,0,0" ToolTip.Tip="Warnings and worse"
+                            Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.WarningsAndWorse}">
+                <Panel>
+                  <TextBlock Classes="long" Text="Warnings and up" />
+                  <TextBlock Classes="short" Text="Warnings" />
+                </Panel>
+              </ToggleButton>
+              <ToggleButton Classes="seg last" IsChecked="{Binding IsErrorsSelected, Mode=OneWay}" Margin="-1,0,0,0" ToolTip.Tip="Errors and worse"
+                            Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:SeverityFilter.ErrorsAndWorse}">
+                <Panel>
+                  <TextBlock Classes="long" Text="Errors and up" />
+                  <TextBlock Classes="short" Text="Errors" />
+                </Panel>
+              </ToggleButton>
+            </StackPanel>
+            <TextBox Classes="streamFilter find" Text="{Binding SearchText}" PlaceholderText="Filter messages, modules, Neurons…" MinHeight="28" Padding="10,4"
+                     ToolTip.Tip="Filter the events (Ctrl+F)" />
+            <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause the stream (events are still collected)">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />
+                <TextBlock Classes="btnLabel wideOnly" Text="Pause" />
+              </StackPanel>
+            </ToggleButton>
+            <Button Classes="ghost roomy" Command="{Binding CopyStreamCommand}" ToolTip.Tip="Copy the selected events, or every event shown when none is selected">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+            </Button>
+            <Button Classes="ghost roomy" Command="{Binding SaveStreamCommand}" ToolTip.Tip="Save the selected events to a file, or every event shown when none is selected">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+            </Button>
+          </StackPanel>
+          <TextBlock Classes="section streamTitle" Text="{Binding StreamTitle}" VerticalAlignment="Center" />
+        </DockPanel>
+
+        <Panel IsVisible="{Binding HasSelectedIssue}">
+        <DockPanel DataContext="{Binding SelectedIssue}" x:DataType="vm:IssueItemViewModel">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button Content="Acknowledge" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).AcknowledgeCommand}" CommandParameter="{Binding}"
+                    IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsOpenOrAck}}" />
+            <Panel Classes="roomy">
+              <Button Content="Mute" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).MuteCommand}" CommandParameter="{Binding}"
+                      IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsOpenOrAck}}" />
+            </Panel>
+            <Button Content="Mark fixed" Classes="primary" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ResolveCommand}" CommandParameter="{Binding}"
+                    IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsOpenOrAck}}" />
+            <Button Content="Reopen" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ReopenCommand}" CommandParameter="{Binding}"
+                    IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsResolvedOrMuted}}" />
+            <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ShareIssueCommand}" CommandParameter="{Binding}"
+                    ToolTip.Tip="Send this problem to a coworker or a room">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
+                <TextBlock Classes="btnLabel" Text="Share" />
+              </StackPanel>
+            </Button>
+            <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ClearIssueCommand}"
+                    ToolTip.Tip="Back to all events" Margin="12,0,0,0">
+              <StackPanel Classes="btn">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.Close}" />
+                <TextBlock Classes="btnLabel" Text="All events" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+          <StackPanel Spacing="2" VerticalAlignment="Center" ClipToBounds="True" Margin="0,0,12,0">
+            <TextBlock Classes="section" Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+            <TextBlock Classes="meta num" TextTrimming="CharacterEllipsis">
+              <Run Text="{Binding Count}" /><Run Text=" events · " /><Run Text="{Binding Meta}" />
+            </TextBlock>
+          </StackPanel>
+        </DockPanel>
+        </Panel>
+      </Panel>
+
+      <!-- The stream -->
+      <Border Grid.Row="1" Classes="panel" Margin="20,0,20,12" Background="{DynamicResource Surface.Panel}">
+        <DockPanel>
+          <!-- Column names; the widths match the rows below -->
+          <Border DockPanel.Dock="Top" Classes="thead" Padding="14,0">
+            <Grid ColumnDefinitions="76,74,Auto,Auto,*">
+              <TextBlock Classes="th" Text="Time" />
+              <TextBlock Grid.Column="1" Classes="th" Text="Level" />
+              <TextBlock Grid.Column="2" Classes="th colNeuron" Text="Neuron" />
+              <TextBlock Grid.Column="3" Classes="th colModule" Text="Where" ToolTip.Tip="The part of the Neuron that logged the event" />
+              <TextBlock Grid.Column="4" Classes="th" Text="Message" />
+            </Grid>
+          </Border>
+        <Panel>
+          <ListBox x:Name="StreamList" Classes="stream" c:Motion.NewRows="True" ItemsSource="{Binding Stream}" SelectedItem="{Binding SelectedEvent}" Margin="0,2,0,4" SelectionMode="Multiple"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #StreamBar}">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <VirtualizingStackPanel />
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="ev:NeuronEvent">
+                <Grid ColumnDefinitions="76,74,Auto,Auto,*" Height="26">
+                  <TextBlock Classes="mono tertiary" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" VerticalAlignment="Center" />
+                  <Border Grid.Column="1" Classes="sev" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
+                    <TextBlock Text="{Binding Severity, Converter={x:Static conv:SeverityTextConverter.Instance}}"
+                               Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+                  </Border>
+                  <TextBlock Grid.Column="2" Classes="mono colNeuron" Text="{Binding Source.NeuronJid}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="3" Classes="meta colModule" Text="{Binding Module}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Module}" />
+                  <TextBlock Grid.Column="4" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <!-- New events wait here while the stream is scrolled down -->
+          <Button Classes="primary" IsVisible="{Binding HasHeld}" Command="{Binding ShowHeldCommand}"
+                  HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="12,4" CornerRadius="{StaticResource Radius.Pill}"
+                  ToolTip.Tip="Show the newest events and go back to the top">
+            <TextBlock Text="{Binding HeldText}" FontSize="{StaticResource Type.Meta}" />
+          </Button>
+
+          <!-- Kinds of events hidden from the right-click menu -->
+          <Button Classes="small" IsVisible="{Binding HasHidden}" Command="{Binding ShowHiddenCommand}"
+                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,18,0" ToolTip.Tip="Show them again">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:LineIcon Data="{StaticResource Icon.Eye}" Width="13" Height="13" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding HiddenText}" FontSize="{StaticResource Type.Meta}" />
+            </StackPanel>
+          </Button>
+
+          <!-- Empty states -->
+          <StackPanel IsVisible="{Binding IsStreamEmpty}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="440" Spacing="6">
+            <c:LineIcon Data="{StaticResource Icon.Events}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+            <TextBlock Text="Waiting for events" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding HasNeurons}" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding HasNeurons}"
+                       Text="Events appear here the moment a Neuron logs them. Try All to include informational events." />
+            <TextBlock Text="No Neurons found yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding !HasNeurons}" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !HasNeurons}"
+                       Text="NAT streams events from every Neuron in your accounts' rosters where the account is an administrator (a notification address, or a user with the Admin privilege). Neurons that send you notifications are picked up automatically." />
+          </StackPanel>
+        </Panel>
+        </DockPanel>
+      </Border>
+
+      <!-- Several events selected -->
+      <c:ActionBar x:Name="StreamBar" Grid.Row="1" Noun="event" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,24" MinWidth="420" />
+
+      <!-- Detail of the selected event -->
+      <Border Grid.Row="2" Classes="panel" Margin="20,0,20,20" MaxHeight="360" IsVisible="{Binding HasSelectedEvent}">
+        <DockPanel DataContext="{Binding SelectedEvent}" x:DataType="ev:NeuronEvent" x:CompileBindings="True">
+          <Border DockPanel.Dock="Top" Padding="14,10" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Classes="ghost" ToolTip.Tip="Everything you can do with this event. The same list as a right-click on its row."
+                      c:ActionMenu.Source="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext)}" c:ActionMenu.OnClick="True">
+                <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
+              </Button>
+              <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ShareSelectedEventCommand}"
+                      ToolTip.Tip="Send this event to a coworker or a room">
+                <TextBlock Text="Share" FontSize="{StaticResource Type.Meta}" />
+              </Button>
+              <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).CopySelectedEventCommand}"
+                      ToolTip.Tip="Copy the event as Markdown, for chat or a ticket">
+                <TextBlock Text="Copy as Markdown" FontSize="{StaticResource Type.Meta}" />
+              </Button>
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Border Classes="sev" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
+                  <TextBlock Text="{Binding Severity, Converter={x:Static conv:SeverityTextConverter.Instance}}"
+                             Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+                </Border>
+                <TextBlock Classes="mono" Text="{Binding Source.NeuronJid}" VerticalAlignment="Center" />
+                <TextBlock Classes="meta" Text="{Binding Timestamp, Converter={x:Static conv:EventConverters.Time}}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <ScrollViewer Padding="14,10">
+            <StackPanel Spacing="10" Grid.IsSharedSizeScope="True">
+              <SelectableTextBlock Text="{Binding Message}" TextWrapping="Wrap" FontWeight="Medium" />
+              <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" SharedSizeGroup="FieldLabel" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Classes="label" Text="Event ID" IsVisible="{Binding EventId, Converter={x:Static conv:EventConverters.HasText}}" />
+                <SelectableTextBlock Grid.Column="1" Classes="mono" Text="{Binding EventId}" IsVisible="{Binding EventId, Converter={x:Static conv:EventConverters.HasText}}" />
+                <TextBlock Grid.Row="1" Classes="label" Text="Object" IsVisible="{Binding Object, Converter={x:Static conv:EventConverters.HasText}}" />
+                <SelectableTextBlock Grid.Row="1" Grid.Column="1" Classes="mono" Text="{Binding Object}" TextWrapping="Wrap" IsVisible="{Binding Object, Converter={x:Static conv:EventConverters.HasText}}" />
+                <TextBlock Grid.Row="2" Classes="label" Text="Actor" IsVisible="{Binding Actor, Converter={x:Static conv:EventConverters.HasText}}" />
+                <SelectableTextBlock Grid.Row="2" Grid.Column="1" Classes="mono" Text="{Binding Actor}" IsVisible="{Binding Actor, Converter={x:Static conv:EventConverters.HasText}}" />
+                <TextBlock Grid.Row="3" Classes="label" Text="Facility" IsVisible="{Binding Facility, Converter={x:Static conv:EventConverters.HasText}}" />
+                <SelectableTextBlock Grid.Row="3" Grid.Column="1" Classes="mono" Text="{Binding Facility}" IsVisible="{Binding Facility, Converter={x:Static conv:EventConverters.HasText}}" />
+                <TextBlock Grid.Row="4" Classes="label" Text="Module" IsVisible="{Binding Module, Converter={x:Static conv:EventConverters.HasText}}" />
+                <SelectableTextBlock Grid.Row="4" Grid.Column="1" Classes="mono" Text="{Binding Module}" IsVisible="{Binding Module, Converter={x:Static conv:EventConverters.HasText}}" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Tags}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnSpacing="16" Margin="0,0,0,4">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="FieldLabel" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Classes="label" Text="{ReflectionBinding Key}" />
+                      <SelectableTextBlock Grid.Column="1" Classes="mono" Text="{ReflectionBinding Value}" TextWrapping="Wrap" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Border Classes="panel" Background="{DynamicResource Surface.Code}" Padding="10"
+                      IsVisible="{Binding StackTrace, Converter={x:Static conv:EventConverters.HasText}}">
+                <SelectableTextBlock Classes="mono" Text="{Binding StackTrace}" TextWrapping="Wrap" />
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

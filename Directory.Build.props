@@ -5,10 +5,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <Company>Neuro.AA</Company>
-    <Product>Neuro.AA</Product>
-    <Version>0.1.1</Version>
-      <!-- Waher.Content.Markdown is held at 6.3.3 below what the contracts client asks for; see Neuro.AA.Engine.csproj. -->
+    <Company>NAT</Company>
+    <Product>NAT</Product>
+    <Version>0.2.0</Version>
+      <!-- Waher.Content.Markdown is held at 6.3.3 below what the contracts client asks for; see Neuro.Nat.Engine.csproj. -->
     <NoWarn>$(NoWarn);NU1605</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Where installed copies look for updates. This is the only place the address is written:
+         the app reads it from its assembly metadata, and tools/installer/Build-Installer.ps1 reads it
+         from here. Change this line after the GitHub repository is renamed. -->
+    <UpdateSource Condition="'$(UpdateSource)' == ''">https://github.com/berggrenmille/Neuro-AA</UpdateSource>
   </PropertyGroup>
 </Project>

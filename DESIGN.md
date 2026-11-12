@@ -1,5 +1,5 @@
 ---
-name: Neuro.AA
+name: NAT
 description: A calm, dense desktop app for running many Neurons at once, in designed light and dark, at any window size.
 colors:
   accent: "#3358D4"
@@ -246,13 +246,13 @@ components:
     padding: "10px 12px"
 ---
 
-# Design System: Neuro.AA
+# Design System: NAT
 
-This file records the app as it is built. The XAML is the source of truth: colours, type and shapes are resources in `src/Neuro.AA.App/Themes/Tokens.axaml`, the restyled controls are in `Themes/Controls.axaml`, motion is in `Themes/Motion.axaml`, and the shared behaviour (right-click menus, the selection bar, panes, the note at the bottom) is in `Controls/` and `ViewModels/Ui.cs`. When this file and the XAML disagree, the XAML is right and this file needs an edit.
+This file records the app as it is built. The XAML is the source of truth: colours, type and shapes are resources in `src/Neuro.Nat.App/Themes/Tokens.axaml`, the restyled controls are in `Themes/Controls.axaml`, motion is in `Themes/Motion.axaml`, and the shared behaviour (right-click menus, the selection bar, panes, the note at the bottom) is in `Controls/` and `ViewModels/Ui.cs`. When this file and the XAML disagree, the XAML is right and this file needs an edit.
 
 ## Overview
 
-**North star: "The Quiet Console".** Neuro.AA is a native Avalonia 12 desktop app for Windows, macOS and Linux. It replaces IoTClient and Lil'Sis for the people who run Neurons. The look is the calm, dense layout operators already know, built with care: hierarchy from type weight, spacing and 1 px lines, and colour only where it means something. The app stays open for hours, so its resting state is quiet.
+**North star: "The Quiet Console".** NAT (Neuro Administration Tool) is a native Avalonia 12 desktop app for Windows, macOS and Linux. It replaces IoTClient and Lil'Sis for the people who run Neurons. The look is the calm, dense layout operators already know, built with care: hierarchy from type weight, spacing and 1 px lines, and colour only where it means something. The app stays open for hours, so its resting state is quiet.
 
 **What it is like to use:**
 - Five places in the rail, in the order of a working day: Inbox, Neurons, Events, Chat, Console. Accounts and Settings sit at the bottom.

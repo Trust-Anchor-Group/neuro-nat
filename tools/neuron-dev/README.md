@@ -1,6 +1,6 @@
 # Local test Neuron ("NeuroAA")
 
-A separate Neuron instance for developing and testing Neuro.AA. It never touches the Dev instance, and like any local setup it runs **without a domain name**.
+A separate Neuron instance for developing and testing NAT. It never touches the Dev instance, and like any local setup it runs **without a domain name**.
 
 | | |
 |---|---|
@@ -22,10 +22,10 @@ It runs the IoTGateway console from `C:\My Projects\IoTGateway\Waher.IoTGateway.
 ## Run the live tests
 
 ```powershell
-$env:NEUROAA_TEST_HOST = "localhost"
-$env:NEUROAA_TEST_USER = "neuroaa"
-$env:NEUROAA_TEST_PASSWORD = "<from .local/test-neuron.env>"
-dotnet test tests\Neuro.AA.Engine.Tests
+$env:NAT_TEST_HOST = "localhost"
+$env:NAT_TEST_USER = "neuroaa"
+$env:NAT_TEST_PASSWORD = "<from .local/test-neuron.env>"
+dotnet test tests\Neuro.Nat.Engine.Tests
 ```
 
 ## Local, uncommitted change in IoTGateway
@@ -71,5 +71,5 @@ Account creation fails with a missing `Waher.Persistence.NeuroLedger` assembly i
 ## Good to know
 
 - Like any Neuron, it deletes files older than 7 days from the Windows user's temp folder at startup (`Gateway.DeleteOldFiles(Path.GetTempPath(), 7, ...)`).
-- The Neuron's own XMPP client uses the account `neuronode` (password `NEUROAA_NEURON_PASSWORD`). The name `neuron` cannot be used: setup creates a web admin user with the XMPP account name, and the broker refuses accounts that clash with a user. Set via the script prompt: `X:=Waher.IoTGateway.Setup.XmppConfiguration.Instance; X.Account:="neuronode"; X.Password:="..."; X.PasswordType:=""; UpdateObject(X)`, then restart.
+- The Neuron's own XMPP client uses the account `neuronode` (password `NAT_NEURON_PASSWORD`). The name `neuron` cannot be used: setup creates a web admin user with the XMPP account name, and the broker refuses accounts that clash with a user. Set via the script prompt: `X:=Waher.IoTGateway.Setup.XmppConfiguration.Instance; X.Account:="neuronode"; X.Password:="..."; X.PasswordType:=""; UpdateObject(X)`, then restart.
 - If its own client keeps failing, the login auditor blocks `[::1]` for everyone. Unblock from the script prompt: `Gateway.LoginAuditor.UnblockAndReset("[::1]")`.

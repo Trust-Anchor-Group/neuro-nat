@@ -1,0 +1,504 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:views="using:Neuro.Nat.App.Views"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             x:Class="Neuro.Nat.App.Views.PubSubView"
+             x:DataType="vm:PubSubViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.listPane">
+      <Setter Property="Width" Value="320" />
+    </Style>
+    <!-- A very wide window (1800 px and up): the list gets some of the room, instead of the rest stretching -->
+    <Style Selector=".wide Border.listPane">
+      <Setter Property="Width" Value="400" />
+    </Style>
+    <!-- Window width 1100 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw1100 Border.listPane">
+      <Setter Property="Width" Value="250" />
+    </Style>
+    <Style Selector=".maxw860 Border.listPane">
+      <Setter Property="Width" Value="210" />
+    </Style>
+
+    <!-- An item: the words first, the XML when asked for -->
+    <Style Selector="Border.xml">
+      <Setter Property="Background" Value="{DynamicResource Surface.Code}" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,8" />
+    </Style>
+    <Style Selector="Border.kind">
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+    </Style>
+    <Style Selector="Border.kind TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+    </Style>
+    <Style Selector="Border.fresh">
+      <Setter Property="Background" Value="{DynamicResource State.Ok.Subtle}" />
+    </Style>
+    <Style Selector="Border.fresh TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource State.Ok}" />
+    </Style>
+    <Style Selector="Grid.item">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.3" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Grid.item.gone">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+
+    <!-- The part of a tab that removes things for good -->
+    <Style Selector="Border.dangerZone">
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="Padding" Value="0,16,0,0" />
+      <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+    <Style Selector="Border.personRow">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Padding" Value="0,7" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="Auto,*">
+
+    <!-- The nodes, as a tree -->
+    <Border Classes="listPane" c:Pane.Key="nodes" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="12,14,12,12">
+        <DockPanel DockPanel.Dock="Top" Margin="6,0,0,8">
+          <Button DockPanel.Dock="Right" Classes="ghost small" Command="{Binding ReloadNodesCommand}" ToolTip.Tip="Read the nodes again">
+            <c:LineIcon Data="{StaticResource Icon.Refresh}" Width="14" Height="14" />
+          </Button>
+          <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Center" />
+        </DockPanel>
+        <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding AccountChoices}" SelectedItem="{Binding Account}" HorizontalAlignment="Stretch" Margin="6,0,0,10"
+                  IsVisible="{Binding !IsPinned}" />
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,8" IsVisible="{Binding !IsPinned}">
+          <ToggleButton Classes="seg first" IsChecked="{Binding IsService, Mode=OneWay}" Command="{Binding SetPersonalCommand}" CommandParameter="service"
+                        ToolTip.Tip="Nodes on the server's publish/subscribe service">
+            <TextBlock Text="Service" />
+          </ToggleButton>
+          <ToggleButton Classes="seg last" IsChecked="{Binding IsPersonal, Mode=OneWay}" Margin="-1,0,0,0" Command="{Binding SetPersonalCommand}" CommandParameter="personal"
+                        ToolTip.Tip="The account's personal storage: picture, nickname, keys">
+            <TextBlock Text="Personal" />
+          </ToggleButton>
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Classes="meta" Text="{Binding ServiceText}" TextTrimming="CharacterEllipsis" Margin="6,0,0,8" ToolTip.Tip="{Binding ServiceText}" />
+
+        <TextBox x:Name="NodeFilterBox" Classes="find" DockPanel.Dock="Top" Text="{Binding NodeFilter}" PlaceholderText="Find a node" Margin="6,0,0,8" MinHeight="30" Padding="10,4" />
+
+        <ToggleButton DockPanel.Dock="Top" Classes="chip" IsChecked="{Binding WatchingOnly}" IsVisible="{Binding HasWatched}" HorizontalAlignment="Left" Margin="6,0,0,8"
+                      ToolTip.Tip="Only the nodes you watch: the ones whose items show up as they are published">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Ellipse Classes="dot ok" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding WatchingText}" />
+          </StackPanel>
+        </ToggleButton>
+
+        <Button x:Name="NewNodeButton" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="6,10,0,0"
+                Command="{Binding OpenCreateCommand}" IsVisible="{Binding IsService}"
+                ToolTip.Tip="Make a node on this service. With a collection open, the new node can go inside it.">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <c:LineIcon Data="{StaticResource Icon.Plus}" Width="14" Height="14" VerticalAlignment="Center" />
+            <TextBlock Text="New node" />
+          </StackPanel>
+        </Button>
+
+        <!-- Why the nodes are not there, with a way to try again -->
+        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="6,0,0,8" IsVisible="{Binding Error, Converter={x:Static conv:EventConverters.HasText}}">
+          <TextBlock Classes="error" Text="{Binding Error}" TextWrapping="Wrap" />
+          <Button Classes="small" Content="Try again" Command="{Binding ReloadNodesCommand}" HorizontalAlignment="Left" />
+        </StackPanel>
+
+        <Panel>
+          <ListBox x:Name="NodeList" Classes="rows" ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedNode}"
+                   c:ActionMenu.Source="{Binding}" c:ActionMenu.KeepSelection="True">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:PubSubNodeRow">
+                <DockPanel Margin="{Binding Indent}" Background="Transparent">
+                  <Panel DockPanel.Dock="Left" Width="20" VerticalAlignment="Top" Margin="-6,-1,2,0">
+                    <Button Classes="ghost small" Padding="4,3" MinHeight="0" IsVisible="{Binding IsCollection}"
+                            Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).ToggleExpandCommand}" CommandParameter="{Binding}"
+                            ToolTip.Tip="Show or hide the nodes inside">
+                      <Panel>
+                        <c:LineIcon Data="{StaticResource Icon.ChevronRight}" Width="12" Height="12" IsVisible="{Binding !IsExpanded}" />
+                        <c:LineIcon Data="{StaticResource Icon.ChevronDown}" Width="12" Height="12" IsVisible="{Binding IsExpanded}" />
+                      </Panel>
+                    </Button>
+                  </Panel>
+                  <Border DockPanel.Dock="Right" Classes="count" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding HasNew}"
+                          ToolTip.Tip="Published here since you last looked">
+                    <TextBlock Text="{Binding NewText}" />
+                  </Border>
+                  <Ellipse DockPanel.Dock="Right" Classes="dot ok" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding IsWatched}"
+                           ToolTip.Tip="You watch this node" />
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Node}" />
+                    <TextBlock Classes="meta" Text="{Binding Sub}" TextTrimming="CharacterEllipsis" IsVisible="{Binding HasSub}" />
+                  </StackPanel>
+                </DockPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel IsVisible="{Binding !HasNodes}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="240" Spacing="6">
+            <c:LineIcon Data="{StaticResource Icon.PubSub}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center"
+                        IsVisible="{Binding NodesEmptyText, Converter={x:Static conv:EventConverters.HasText}}" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="{Binding NodesEmptyText}" />
+          </StackPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <Panel Grid.Column="1">
+
+      <!-- The open node -->
+      <DockPanel IsVisible="{Binding HasNode}">
+        <DockPanel DockPanel.Dock="Top" Margin="24,16,24,0">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+            <ToggleButton x:Name="WatchButton" Classes="chip" IsChecked="{Binding IsWatching, Mode=OneWay}" Command="{Binding ToggleWatchCommand}"
+                          IsVisible="{Binding CanPublishHere}" ToolTip.Tip="{Binding WatchTip}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <c:LineIcon Data="{StaticResource Icon.Eye}" Width="14" Height="14" VerticalAlignment="Center" />
+                <TextBlock Text="Watch" IsVisible="{Binding !IsWatching}" />
+                <TextBlock Text="Watching" IsVisible="{Binding IsWatching}" />
+              </StackPanel>
+            </ToggleButton>
+            <Button x:Name="PublishButton" Classes="primary" Command="{Binding OpenEditorCommand}" IsVisible="{Binding ShowsPublish}"
+                    ToolTip.Tip="Write an item and publish it on this node">
+              <TextBlock Text="Publish" />
+            </Button>
+            <Button Classes="ghost" Command="{Binding ReloadCommand}" ToolTip.Tip="Read this again from the service">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Refresh}" />
+            </Button>
+            <Button x:Name="MoreButton" Classes="ghost" ToolTip.Tip="Everything else you can do with this node. The same list as a right-click on it."
+                    c:ActionMenu.Source="{Binding}" c:ActionMenu.OnClick="True">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
+            </Button>
+          </StackPanel>
+          <StackPanel Spacing="4">
+            <TextBlock Classes="title" Text="{Binding NodeTitle}" TextWrapping="Wrap" />
+            <TextBlock Classes="meta" Text="{Binding NodeMeta}" TextWrapping="Wrap" />
+          </StackPanel>
+        </DockPanel>
+
+        <TextBlock DockPanel.Dock="Top" Classes="meta" Text="{Binding WatchNote}" TextWrapping="Wrap" Margin="24,8,24,0"
+                   IsVisible="{Binding WatchNote, Converter={x:Static conv:EventConverters.HasText}}" />
+
+        <!-- Sides of the node -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="16,10,24,0">
+          <Button Classes="tab" Classes.current="{Binding IsItems}" Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:PubSubTab.Items}" Content="Items"
+                  ToolTip.Tip="What is published on the node" />
+          <Button Classes="tab" Classes.current="{Binding IsSettings}" Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:PubSubTab.Settings}" Content="Settings"
+                  ToolTip.Tip="Who may read and publish, what is kept, and removing the node" />
+          <Button Classes="tab" Classes.current="{Binding IsPeople}" Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:PubSubTab.People}" Content="People"
+                  ToolTip.Tip="Owners, publishers and subscribers" />
+        </StackPanel>
+        <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Line}" />
+
+        <!-- A question that wants an answer first: the node's name, typed, before something goes for good -->
+        <Border DockPanel.Dock="Top" Padding="24,12" Background="{DynamicResource Surface.Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1"
+                IsVisible="{Binding IsAsking}">
+          <StackPanel DataContext="{Binding Ask}" x:DataType="vm:AskViewModel" Spacing="8" MaxWidth="680" HorizontalAlignment="Left">
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Classes="meta" Text="{Binding Text}" TextWrapping="Wrap" IsVisible="{Binding Text, Converter={x:Static conv:EventConverters.HasText}}" />
+            <TextBox x:Name="AskInput" Text="{Binding Input}" PlaceholderText="{Binding Placeholder}" IsVisible="{Binding HasInput}" MinWidth="320" />
+            <TextBlock Classes="error" Text="{Binding Error}" TextWrapping="Wrap" IsVisible="{Binding Error, Converter={x:Static conv:EventConverters.HasText}}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="danger armed" Content="{Binding ConfirmText}" IsEnabled="{Binding CanConfirm}"
+                      Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).ConfirmAskCommand}" />
+              <Button Content="Cancel" Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).CancelAskCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Panel>
+
+          <!-- Items -->
+          <DockPanel IsVisible="{Binding IsItems}" Margin="24,12,24,16">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+              <TextBlock DockPanel.Dock="Right" Classes="meta" Text="{Binding ItemsFooter}" VerticalAlignment="Center" Margin="12,0,0,0" />
+              <TextBox x:Name="ItemFilterBox" Text="{Binding ItemFilter}" PlaceholderText="Find among the items" MinHeight="30" Padding="10,4" MaxWidth="360" HorizontalAlignment="Left" MinWidth="220" />
+            </DockPanel>
+
+            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,8" IsVisible="{Binding ItemsError, Converter={x:Static conv:EventConverters.HasText}}">
+              <TextBlock Classes="error" Text="{Binding ItemsError}" TextWrapping="Wrap" />
+              <Button Classes="small" Content="Try again" Command="{Binding ReloadCommand}" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <!-- Removed, with a way back for a few seconds -->
+            <Border DockPanel.Dock="Bottom" Classes="panel" Padding="14,8" Margin="0,8,0,0" IsVisible="{Binding HasUndo}">
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Classes="small" Command="{Binding UndoCommand}" ToolTip.Tip="Publish what was removed again, under the same ids">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <c:LineIcon Data="{StaticResource Icon.Undo}" Width="13" Height="13" VerticalAlignment="Center" />
+                    <TextBlock Text="Undo" />
+                  </StackPanel>
+                </Button>
+                <TextBlock Text="{Binding UndoText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </Border>
+
+            <c:ActionBar x:Name="ItemBar" DockPanel.Dock="Bottom" Noun="item" Margin="0,8,0,0" />
+
+            <Button x:Name="MoreItemsButton" DockPanel.Dock="Bottom" Classes="small" HorizontalAlignment="Center" Margin="0,8,0,0" Content="Load more"
+                    Command="{Binding LoadMoreCommand}" IsVisible="{Binding HasMore}" ToolTip.Tip="Show older items too" />
+
+            <Panel>
+              <ListBox x:Name="ItemList" Classes="rows" ItemsSource="{Binding Items}" SelectionMode="Multiple"
+                       c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #ItemBar}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PubSubItemRow">
+                    <Grid Classes="item" Classes.gone="{Binding IsGone}" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" Background="Transparent">
+                      <DockPanel>
+                        <Button DockPanel.Dock="Right" Classes="link" Command="{Binding ToggleXmlCommand}" IsVisible="{Binding IsReadable}" VerticalAlignment="Center"
+                                ToolTip.Tip="The item as it was published">
+                          <TextBlock Text="{Binding XmlToggleText}" FontSize="{StaticResource Type.Meta}" />
+                        </Button>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <Border Classes="pill fresh" IsVisible="{Binding IsNew}" ToolTip.Tip="Published while you were looking">
+                            <TextBlock Text="New" />
+                          </Border>
+                          <Border Classes="pill kind" IsVisible="{Binding IsReadable}">
+                            <TextBlock Text="{Binding Kind}" />
+                          </Border>
+                          <TextBlock Classes="mono" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320" ToolTip.Tip="{Binding Title}" />
+                          <TextBlock Classes="meta" Text="{Binding Meta}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                      </DockPanel>
+
+                      <!-- In words, for the kinds the app knows -->
+                      <DockPanel Grid.Row="1" IsVisible="{Binding IsReadable}">
+                        <Border DockPanel.Dock="Left" Width="56" Height="56" CornerRadius="{StaticResource Radius}" ClipToBounds="True" Margin="0,0,12,0" VerticalAlignment="Top"
+                                Background="{DynamicResource Surface.Code}" IsVisible="{Binding HasPicture}">
+                          <Image Source="{Binding Picture}" Stretch="UniformToFill" />
+                        </Border>
+                        <StackPanel Spacing="4">
+                          <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" IsVisible="{Binding HasSummary}" />
+                          <ItemsControl ItemsSource="{Binding Fields}" IsVisible="{Binding HasFields}" Grid.IsSharedSizeScope="True">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:ReadableField">
+                                <Grid Margin="0,1">
+                                  <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="name" />
+                                    <ColumnDefinition Width="*" />
+                                  </Grid.ColumnDefinitions>
+                                  <TextBlock Classes="meta" Text="{Binding Label}" Margin="0,0,16,0" />
+                                  <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DockPanel>
+
+                      <!-- As it was published -->
+                      <Border Grid.Row="2" Classes="xml" IsVisible="{Binding IsXmlOpen}">
+                        <StackPanel Spacing="4">
+                          <SelectableTextBlock Classes="mono" Text="{Binding ShownXml}" TextWrapping="Wrap" FontSize="12" />
+                          <Button Classes="link" Command="{Binding UnfoldCommand}" IsVisible="{Binding CanUnfold}" HorizontalAlignment="Left">
+                            <TextBlock Text="{Binding FoldText}" FontSize="{StaticResource Type.Meta}" />
+                          </Button>
+                        </StackPanel>
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Classes="meta" Text="{Binding ItemsEmptyText}" TextWrapping="Wrap" VerticalAlignment="Top" Margin="0,4,0,0"
+                         IsVisible="{Binding ItemsEmptyText, Converter={x:Static conv:EventConverters.HasText}}" />
+            </Panel>
+          </DockPanel>
+
+          <!-- Settings -->
+          <ScrollViewer IsVisible="{Binding IsSettings}">
+            <StackPanel Margin="24,16,24,24" MaxWidth="560" HorizontalAlignment="Left" Spacing="14">
+              <StackPanel IsVisible="{Binding IsSettingsLoading}" Spacing="6">
+                <TextBlock Classes="meta" Text="Reading the settings…" />
+                <c:Placeholder Rows="5" RowHeight="40" />
+              </StackPanel>
+
+              <StackPanel Spacing="8" IsVisible="{Binding SettingsError, Converter={x:Static conv:EventConverters.HasText}}">
+                <TextBlock Classes="error" Text="{Binding SettingsError}" TextWrapping="Wrap" />
+                <Button Classes="small" Content="Try again" Command="{Binding ResetSettingsCommand}" HorizontalAlignment="Left" IsVisible="{Binding !HasSettings}" />
+              </StackPanel>
+
+              <StackPanel Spacing="14" IsVisible="{Binding HasSettings}">
+                <views:NodeSettingsFormView DataContext="{Binding Settings}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button x:Name="SaveSettingsButton" Classes="primary" Content="Save" Command="{Binding SaveSettingsCommand}" />
+                  <Button Content="Put back" Command="{Binding ResetSettingsCommand}" ToolTip.Tip="Read the settings from the node again and drop what you changed" />
+                  <TextBlock Classes="meta" Text="{Binding SettingsNote}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Border Classes="dangerZone">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="section" Text="Removing" />
+                    <DockPanel IsVisible="{Binding CanPublishHere}">
+                      <Button DockPanel.Dock="Right" Classes="danger" Content="Remove all items…" Command="{Binding AskClearCommand}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                      <TextBlock Classes="meta" TextWrapping="Wrap" VerticalAlignment="Center" Text="Empties the node. The node, its settings and its subscribers stay." />
+                    </DockPanel>
+                    <DockPanel IsVisible="{Binding IsService}">
+                      <Button DockPanel.Dock="Right" Classes="danger" Content="Delete node…" Command="{Binding AskDeleteCommand}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                      <TextBlock Classes="meta" TextWrapping="Wrap" VerticalAlignment="Center" Text="Removes the node and everything published on it. Its subscribers are told." />
+                    </DockPanel>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- People -->
+          <ScrollViewer IsVisible="{Binding IsPeople}">
+            <StackPanel Margin="24,16,24,24" MaxWidth="640" HorizontalAlignment="Left" Spacing="14">
+              <StackPanel IsVisible="{Binding IsPeopleLoading}" Spacing="6">
+                <TextBlock Classes="meta" Text="Reading who is on the node…" />
+                <c:Placeholder Rows="4" RowHeight="34" />
+              </StackPanel>
+
+              <StackPanel Spacing="8" IsVisible="{Binding PeopleError, Converter={x:Static conv:EventConverters.HasText}}">
+                <TextBlock Classes="error" Text="{Binding PeopleError}" TextWrapping="Wrap" />
+                <Button Classes="small" Content="Try again" Command="{Binding ReloadCommand}" HorizontalAlignment="Left" IsVisible="{Binding !CanSeePeople}" />
+              </StackPanel>
+
+              <StackPanel Spacing="18" IsVisible="{Binding CanSeePeople}" MinWidth="420">
+
+                <!-- Who asked, and who subscribes -->
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="section" Text="Subscribers" />
+                  <TextBlock Classes="meta" Text="Nobody subscribes to this node." IsVisible="{Binding !HasSubscribers}" />
+                  <ItemsControl ItemsSource="{Binding Subscribers}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:NodeSubscriberRow">
+                        <Border Classes="personRow" c:ActionMenu.Source="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext)}">
+                          <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="12,0,0,0">
+                              <Button Classes="small primary" Content="Allow" IsVisible="{Binding IsPending}" ToolTip.Tip="Let them subscribe: they get what is published from now on"
+                                      Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).AllowSubscriberCommand}" CommandParameter="{Binding}" />
+                              <Button Classes="small" Content="Deny" IsVisible="{Binding IsPending}"
+                                      Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).EndSubscriberCommand}" CommandParameter="{Binding}" />
+                              <Button Classes="small" Content="End" IsVisible="{Binding IsSettled}" ToolTip.Tip="End the subscription: nothing more is sent to them"
+                                      Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).EndSubscriberCommand}" CommandParameter="{Binding}" />
+                            </StackPanel>
+                            <StackPanel Spacing="1" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Jid}" />
+                              <TextBlock Classes="meta" Text="{Binding StateText}" />
+                            </StackPanel>
+                          </DockPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+
+                <!-- Who may do what -->
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="section" Text="Who may do what" />
+                  <ItemsControl ItemsSource="{Binding People}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:NodePersonRow">
+                        <Border Classes="personRow" c:ActionMenu.Source="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext)}">
+                          <DockPanel>
+                            <Button DockPanel.Dock="Right" Classes="small" Content="Change" VerticalAlignment="Center" Margin="12,0,0,0"
+                                    ToolTip.Tip="Give them another role, or take them off the list"
+                                    c:ActionMenu.Source="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext)}" c:ActionMenu.OnClick="True" />
+                            <StackPanel Spacing="1" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Jid}" />
+                              <TextBlock Classes="meta" Text="{Binding RoleText}" />
+                            </StackPanel>
+                          </DockPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <TextBlock Classes="label" Text="Give somebody a role" Margin="0,12,0,4" />
+                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <TextBox x:Name="NewPersonBox" Text="{Binding NewPersonJid}" PlaceholderText="Their address, such as kim@example.org" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Roles}" SelectedItem="{Binding NewPersonRole}" MinWidth="200" />
+                    <Button Grid.Column="2" Content="Add" Command="{Binding AddPersonCommand}" />
+                  </Grid>
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- The editor: write an item, see what is wrong with it while typing, publish -->
+          <Border IsVisible="{Binding IsEditorOpen}" Background="{DynamicResource Surface.Ground}">
+            <DockPanel Margin="24,14,24,16">
+              <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <Button DockPanel.Dock="Right" Classes="ghost small" Command="{Binding CloseEditorCommand}" ToolTip.Tip="Close without publishing (Esc)">
+                  <c:LineIcon Data="{StaticResource Icon.Close}" Width="13" Height="13" />
+                </Button>
+                <Button DockPanel.Dock="Right" Classes="small" Content="Tidy up" Command="{Binding TidyCommand}" IsEnabled="{Binding CanPublish}" Margin="0,0,8,0"
+                        ToolTip.Tip="Lay the XML out with one element to a line. What is published stays the same." />
+                <Button DockPanel.Dock="Right" Classes="small" Content="Start from the last one" Command="{Binding UseLastCommand}" IsVisible="{Binding HasLast}" Margin="0,0,8,0"
+                        ToolTip.Tip="Fill in what you last published on this node from here" />
+                <TextBlock Text="{Binding EditorTitle}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+
+              <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
+                  <Button Content="Cancel" Command="{Binding CloseEditorCommand}" />
+                  <Button x:Name="SendButton" Classes="primary" Content="Publish" Command="{Binding PublishCommand}" IsEnabled="{Binding CanPublish}" ToolTip.Tip="Publish (Ctrl+Enter)" />
+                </StackPanel>
+                <TextBox Text="{Binding PublishItemId}" PlaceholderText="Id (optional: the service gives one)" MaxWidth="320" HorizontalAlignment="Left" MinWidth="240"
+                         ToolTip.Tip="An item published under an id that is already there takes its place" />
+              </DockPanel>
+
+              <TextBlock DockPanel.Dock="Bottom" Classes="error" Text="{Binding EditorError}" TextWrapping="Wrap" Margin="0,8,0,0"
+                         IsVisible="{Binding EditorError, Converter={x:Static conv:EventConverters.HasText}}" />
+
+              <!-- What is wrong with the XML right now. A click goes to the place. -->
+              <Button x:Name="ProblemButton" DockPanel.Dock="Bottom" Classes="link" HorizontalAlignment="Left" Margin="0,8,0,0" IsVisible="{Binding HasEditorProblem}"
+                      ToolTip.Tip="Go to the place in the text">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <c:LineIcon Data="{StaticResource Icon.Alert}" Width="13" Height="13" Foreground="{DynamicResource State.Busy}" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding EditorProblem}" TextWrapping="Wrap" FontSize="{StaticResource Type.Meta}" />
+                </StackPanel>
+              </Button>
+
+              <TextBox x:Name="EditorBox" Text="{Binding PublishXml}" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" VerticalContentAlignment="Top"
+                       FontFamily="{StaticResource Font.Mono}" FontSize="13" Padding="12,10"
+                       PlaceholderText="&lt;value xmlns='urn:example'&gt;42&lt;/value&gt;" />
+            </DockPanel>
+          </Border>
+        </Panel>
+      </DockPanel>
+
+      <!-- A new node: its name, and the same short form with what the service gives a new node -->
+      <ScrollViewer IsVisible="{Binding IsCreating}">
+        <StackPanel Margin="24,16,24,24" MaxWidth="560" HorizontalAlignment="Left" Spacing="14">
+          <TextBlock Classes="title" Text="New node" />
+          <StackPanel>
+            <TextBlock Classes="label" Text="Name" />
+            <TextBox x:Name="NewNodeBox" Text="{Binding NewNodeName}" PlaceholderText="Such as lab/alerts. It cannot be changed later." />
+          </StackPanel>
+          <CheckBox IsChecked="{Binding NewInsideParent}" Content="{Binding NewParentText}" IsVisible="{Binding HasNewParent}" />
+          <CheckBox IsChecked="{Binding NewIsCollection}" Content="A collection: it holds other nodes, and no items of its own" />
+          <TextBlock Classes="meta" Text="{Binding NewNote}" TextWrapping="Wrap" IsVisible="{Binding NewNote, Converter={x:Static conv:EventConverters.HasText}}" />
+          <views:NodeSettingsFormView DataContext="{Binding NewSettings}" />
+          <TextBlock Classes="error" Text="{Binding CreateError}" TextWrapping="Wrap" IsVisible="{Binding CreateError, Converter={x:Static conv:EventConverters.HasText}}" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="CreateButton" Classes="primary" Content="Make the node" Command="{Binding CreateNodeCommand}" IsEnabled="{Binding !IsBusy}" />
+            <Button Content="Cancel" Command="{Binding CancelCreateCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Nothing open -->
+      <StackPanel IsVisible="{Binding ShowsPicker}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6" Margin="16,0">
+        <c:LineIcon Data="{StaticResource Icon.PubSub}" Width="28" Height="28" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+        <TextBlock Text="Pick a node" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                   Text="A node is a place things are published. Open one to read its items, publish on it, and watch what comes in." />
+      </StackPanel>
+    </Panel>
+  </Grid>
+</UserControl>

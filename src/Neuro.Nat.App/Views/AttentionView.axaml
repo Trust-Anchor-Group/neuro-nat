@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             xmlns:at="using:Neuro.Nat.Engine.Attention"
+             x:Class="Neuro.Nat.App.Views.AttentionView"
+             x:DataType="vm:AttentionViewModel">
+
+  <!-- One notification from a Neuron, as the Neuron wrote it, with what you can do about it.
+       The Inbox shows it beside its list. -->
+  <DockPanel IsVisible="{Binding HasSelection}" Margin="24,16,24,20">
+    <DockPanel DockPanel.Dock="Top" DataContext="{Binding SelectedItem}" x:DataType="vm:AttentionItemViewModel" Margin="0,0,0,14">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+        <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ShowEventsCommand}" CommandParameter="{Binding}"
+                ToolTip.Tip="This Neuron's events">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Events}" />
+            <TextBlock Classes="btnLabel" Text="Events" />
+          </StackPanel>
+        </Button>
+        <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ShareCommand}" CommandParameter="{Binding}"
+                ToolTip.Tip="Send this notification to a coworker or a room">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
+            <TextBlock Classes="btnLabel" Text="Share" />
+          </StackPanel>
+        </Button>
+        <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).CopyCommand}" CommandParameter="{Binding}"
+                ToolTip.Tip="Copy as Markdown, for chat or a ticket">
+          <StackPanel Classes="btn">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+            <TextBlock Classes="btnLabel" Text="Copy" />
+          </StackPanel>
+        </Button>
+        <Button Content="Reopen" IsVisible="{Binding IsHandled}" ToolTip.Tip="Put it back among what needs you"
+                Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ReopenCommand}" CommandParameter="{Binding}" />
+        <Button Classes="primary" Content="Done" IsVisible="{Binding IsOpen}" ToolTip.Tip="You have dealt with it: it leaves the Inbox"
+                Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).MarkHandledCommand}" CommandParameter="{Binding}" />
+      </StackPanel>
+
+      <StackPanel Spacing="6" Margin="0,0,16,0">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Border Classes="pill" Background="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}, ConverterParameter=subtle}">
+            <TextBlock Text="{Binding KindLabel}" Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
+          </Border>
+          <Border Classes="pill" Background="{DynamicResource Accent.Subtle}" IsVisible="{Binding IsOpen}">
+            <TextBlock Text="Waiting for you" Foreground="{DynamicResource Accent.Ink}" />
+          </Border>
+          <Border Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding IsHandled}">
+            <TextBlock Text="Done" Foreground="{DynamicResource Ink.Secondary}" />
+          </Border>
+        </StackPanel>
+        <TextBlock Classes="title" Text="{Binding Title}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Border Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
+                  Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}"
+                  ToolTip.Tip="{Binding AccountLabel}">
+            <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="10" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+          </Border>
+          <TextBlock Classes="mono" Text="{Binding NeuronLabel}" VerticalAlignment="Center" />
+          <TextBlock Classes="meta" Text="{Binding WhenText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </StackPanel>
+    </DockPanel>
+
+    <!-- Links to the Neuron's own pages: approve an identity, open an account, read the release notes. -->
+    <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding SelectedItem.Links}" Margin="0,0,0,14"
+                  IsVisible="{Binding SelectedItem.HasLinks}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="at:NotificationLink">
+          <Button Margin="0,0,8,8" ToolTip.Tip="{Binding Url}"
+                  Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).OpenLinkCommand}" CommandParameter="{Binding}">
+            <TextBlock FontSize="{StaticResource Type.Meta}" MaxWidth="320" TextTrimming="CharacterEllipsis">
+              <Run Text="Open " /><Run Text="{Binding Text}" FontWeight="SemiBold" />
+            </TextBlock>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <Border Classes="panel" Background="{DynamicResource Surface.Panel}">
+      <ScrollViewer Padding="18,14">
+        <c:MarkdownView Markdown="{Binding SelectedItem.Markdown}" MaxWidth="860" HorizontalAlignment="Left" />
+      </ScrollViewer>
+    </Border>
+  </DockPanel>
+</UserControl>

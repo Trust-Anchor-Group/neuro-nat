@@ -51,12 +51,11 @@ Decided:
 
 Undecided:
 - Whether contracts (browse and sign) are in scope, or only identities.
-- What "Neuro.AA" stands for and whether the app carries Neuro / TAG branding.
 
 ## Brand Commitments
 
 - Look (Mille, 2026-11-09): modern and clean, responsive and clear, with designed light and dark modes. "No need to make crazy designs." Of the six sketched directions the standard dark ops console read best, "but we can do better". So the category standard is the commitment, executed at the craft level of the best tools in the category (proposed bar: Linear, Sentry, Grafana; Mille may name others), not a themed world.
-- No name meaning or logo yet ("Neuro.AA" is the working name).
+- Name (Mille, 2026-11-12): NAT, short for Neuro Administration Tool. The icon is the company logo's ring around a dot, on a dark tile; the dot shows the state of the Neurons.
 
 ## Evidence on Hand
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-11-09T17:12:41+00:00",
-  "title": "Design System: Neuro.AA",
+  "title": "Design System: NAT",
   "extensions": {
     "colorMeta": {
       "accent": {
@@ -1190,8 +1190,8 @@
     ],
     "platform": {
       "runtime": "Avalonia 12 (.NET 10), FluentTheme restyled through tokens",
-      "tokenSource": "src/Neuro.AA.App/Themes/Tokens.axaml",
-      "controlStyles": "src/Neuro.AA.App/Themes/Controls.axaml",
+      "tokenSource": "src/Neuro.Nat.App/Themes/Tokens.axaml",
+      "controlStyles": "src/Neuro.Nat.App/Themes/Controls.axaml",
       "themeVariants": "Light and Dark ThemeDictionaries; RequestedThemeVariant=Default follows the OS; rail toggle switches",
       "note": "Native XAML tokens, not CSS. Component html/css here are browser approximations for preview only, resolved to light-theme literals."
     },
@@ -1201,7 +1201,7 @@
       "caps": "round",
       "joins": "round",
       "fill": "none",
-      "control": "src/Neuro.AA.App/Controls/LineIcon.cs",
+      "control": "src/Neuro.Nat.App/Controls/LineIcon.cs",
       "sizes": {
         "button": 15,
         "inline": 16,
@@ -1294,7 +1294,7 @@
   ],
   "narrative": {
     "northStar": "The Quiet Console",
-    "overview": "Neuro.AA is a native Avalonia 12 desktop app for Windows, macOS and Linux, not a website. Its design system lives in XAML, not CSS: colour, type and shape tokens are resources in `src/Neuro.AA.App/Themes/Tokens.axaml`, and the restyled controls are in `src/Neuro.AA.App/Themes/Controls.axaml`, layered over Avalonia's FluentTheme, whose accent palette is pinned to the same cobalt. Views reference token keys only (`{DynamicResource Ink.Primary}`, `{StaticResource Radius}`), never raw colours. Every later workspace (Events, Fleet, Sources, Chat, Console, Topology, Identities) reuses these tokens and control styles and sits inside the shell recorded here. Hex values and px sizes in this file mirror the XAML. The XAML resource is the source of truth and this file records it.\n\nThe world is the category-standard operator console, chosen deliberately: the calm, dense layout the audience already knows, built to the standard of the category's best tools. Hierarchy comes from type weight, spacing and 1 px hairlines. Colour carries meaning only: connection state, selection and primary action, and which account something belongs to. Light mode is a cool near-white ground with white panels. Dark mode is graphite with panels one step lighter. Both are designed palettes; neither is an inversion of the other. The theme follows the OS by default (`RequestedThemeVariant=\"Default\"`) and a rail button toggles it.\n\nDensity is high but never cramped. Body text is 13 px, controls are 30 to 32 px tall, list rows are tight, and the sniffer stream is a full-height monospace log. Operators keep this tool open for hours, so the resting state is quiet. The dashboard-of-cards layout and the neon-on-black \"ops\" costume are both rejected.",
+    "overview": "NAT is a native Avalonia 12 desktop app for Windows, macOS and Linux, not a website. Its design system lives in XAML, not CSS: colour, type and shape tokens are resources in `src/Neuro.Nat.App/Themes/Tokens.axaml`, and the restyled controls are in `src/Neuro.Nat.App/Themes/Controls.axaml`, layered over Avalonia's FluentTheme, whose accent palette is pinned to the same cobalt. Views reference token keys only (`{DynamicResource Ink.Primary}`, `{StaticResource Radius}`), never raw colours. Every later workspace (Events, Fleet, Sources, Chat, Console, Topology, Identities) reuses these tokens and control styles and sits inside the shell recorded here. Hex values and px sizes in this file mirror the XAML. The XAML resource is the source of truth and this file records it.\n\nThe world is the category-standard operator console, chosen deliberately: the calm, dense layout the audience already knows, built to the standard of the category's best tools. Hierarchy comes from type weight, spacing and 1 px hairlines. Colour carries meaning only: connection state, selection and primary action, and which account something belongs to. Light mode is a cool near-white ground with white panels. Dark mode is graphite with panels one step lighter. Both are designed palettes; neither is an inversion of the other. The theme follows the OS by default (`RequestedThemeVariant=\"Default\"`) and a rail button toggles it.\n\nDensity is high but never cramped. Body text is 13 px, controls are 30 to 32 px tall, list rows are tight, and the sniffer stream is a full-height monospace log. Operators keep this tool open for hours, so the resting state is quiet. The dashboard-of-cards layout and the neon-on-black \"ops\" costume are both rejected.",
     "keyCharacteristics": [
       "Flat, hairline-structured surfaces; no shadows anywhere.",
       "One cobalt accent, reserved for selection, primary action and keyboard focus.",

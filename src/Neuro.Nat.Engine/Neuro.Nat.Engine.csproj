@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Neuro.Nat.Engine</RootNamespace>
+    <Description>Protocol engine for NAT: accounts, connections, sniffing and (later) event ingest. No UI dependencies.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Waher.Networking.XMPP" />
+    <PackageReference Include="Waher.Networking.XMPP.Concentrator" />
+    <PackageReference Include="Waher.Networking.XMPP.P2P" />
+    <PackageReference Include="Waher.Networking.XMPP.MUC" />
+    <PackageReference Include="Waher.Networking.XMPP.Contracts" />
+    <!-- Contracts asks for Markdown 6.4, which moves to SkiaSharp 4; Avalonia 12 is built on SkiaSharp 3.
+         Markdown 6.3.3 is held on purpose; the identity features used here do not touch Markdown. -->
+    <PackageReference Include="Waher.Content.Markdown" />
+    <PackageReference Include="Waher.Security.PQC" />
+    <PackageReference Include="Waher.Events" />
+    <PackageReference Include="Waher.Persistence.FilesLW" />
+    <PackageReference Include="Waher.Networking.XMPP.Provisioning" />
+    <PackageReference Include="Waher.Networking.XMPP.PubSub" />
+    <PackageReference Include="Waher.Networking.XMPP.PEP" />
+    <PackageReference Include="Waher.Runtime.Inventory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Neuro.Nat.Engine.Tests" />
+    <InternalsVisibleTo Include="Neuro.Nat.App.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,263 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             xmlns:topo="using:Neuro.Nat.Engine.Topology"
+             x:Class="Neuro.Nat.App.Views.TopologyView"
+             x:DataType="vm:TopologyViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.pill">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.pill TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="ToggleButton.layer">
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="ToggleButton.layer TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
+    </Style>
+    <Style Selector="Line.legend">
+      <Setter Property="StartPoint" Value="0,6" />
+      <Setter Property="EndPoint" Value="18,6" />
+      <Setter Property="StrokeThickness" Value="1.6" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.zoom">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource Surface.Panel}" />
+    </Style>
+    <Style Selector="Border.side">
+      <Setter Property="Width" Value="330" />
+    </Style>
+    <!-- Window width 1100 px or less (classes set by MainWindow; container queries made list scrolling slow) -->
+    <Style Selector=".maxw1100 Border.side">
+      <Setter Property="Width" Value="280" />
+    </Style>
+    <Style Selector=".maxw1100 TextBlock.wideOnly">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="TextBox.mapFind">
+      <Setter Property="Width" Value="240" />
+    </Style>
+    <Style Selector=".maxw960 TextBox.mapFind">
+      <Setter Property="Width" Value="170" />
+    </Style>
+    <!-- A small window: the panel beside the map is narrow, and the layer buttons lose their line samples -->
+    <Style Selector=".maxw860 Border.side">
+      <Setter Property="Width" Value="236" />
+    </Style>
+    <Style Selector=".maxw860 TextBox.mapFind">
+      <Setter Property="Width" Value="128" />
+    </Style>
+    <Style Selector=".maxw860 ToggleButton.layer Line.legend">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw860 ToggleButton.layer">
+      <Setter Property="Padding" Value="8,4" />
+    </Style>
+    <Style Selector="DockPanel.legendRow > :is(Control)">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="DockPanel.legendRow > TextBlock">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="10,0,0,0" />
+    </Style>
+    
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- Toolbar: find, layers, scan -->
+    <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <DockPanel Margin="16,10">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Classes="meta wideOnly" Text="{Binding Summary}" VerticalAlignment="Center" Margin="0,0,6,0" />
+          <Button Command="{Binding ScanCommand}" IsEnabled="{Binding !IsScanning}" ToolTip.Tip="Ask every Neuron again">
+            <Panel>
+              <TextBlock Text="Scan again" FontSize="{StaticResource Type.Meta}" IsVisible="{Binding !IsScanning}" />
+              <TextBlock Text="Scanning…" FontSize="{StaticResource Type.Meta}" IsVisible="{Binding IsScanning}" />
+            </Panel>
+          </Button>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBox Classes="find mapFind" Text="{Binding SearchText}" PlaceholderText="Find a Neuron or broker…" MinHeight="28" Padding="10,4" />
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowParents}" ToolTip.Tip="Each Neuron and the broker its own client connects to">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Line Classes="legend" Stroke="{DynamicResource Line.Strong}" />
+              <TextBlock Text="Parents" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowFederation}" ToolTip.Tip="Server-to-server links between brokers in the same parent tree">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Line Classes="legend" Stroke="{DynamicResource Accent}" StrokeDashArray="3.5,2" />
+              <TextBlock Text="Federation" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowOtherServers}" ToolTip.Tip="Server-to-server links to brokers outside the parent tree, and those brokers">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Line Classes="legend" Stroke="{DynamicResource Ink.Tertiary}" StrokeDashArray="3.5,2" />
+              <TextBlock Text="Other servers" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowGroups}" ToolTip.Tip="Contacts in the Neurons' roster groups. Asks the Neurons once more.">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Line Classes="legend" Stroke="{DynamicResource Ink.Tertiary}" StrokeDashArray="1.5,1.5" />
+              <TextBlock Text="Groups" />
+            </StackPanel>
+          </ToggleButton>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+
+      <!-- The map -->
+      <Panel>
+        <c:TopologyMap x:Name="Map" Graph="{Binding Graph}" SelectedId="{Binding SelectedId}" Filter="{Binding SearchText}"
+                       FitVersion="{Binding FitVersion}" />
+
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,16" Spacing="6" IsVisible="{Binding HasNodes}">
+          <Button Classes="zoom" Click="ZoomIn_Click" ToolTip.Tip="Zoom in (+)">
+            <c:LineIcon Data="{StaticResource Icon.Plus}" Width="14" Height="14" />
+          </Button>
+          <Button Classes="zoom" Click="ZoomOut_Click" ToolTip.Tip="Zoom out (−)">
+            <TextBlock Text="−" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+          </Button>
+          <Button Classes="zoom" Command="{Binding FitCommand}" ToolTip.Tip="Show everything (0)">
+            <TextBlock Text="Fit" FontSize="{StaticResource Type.Caption}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Button>
+        </StackPanel>
+
+        <StackPanel IsVisible="{Binding !HasNodes}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360" Spacing="6">
+          <c:LineIcon Data="{StaticResource Icon.Topology}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+          <TextBlock Text="Asking your Neurons…" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsScanning}" />
+          <TextBlock Text="No network to show yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding !IsScanning}" />
+          <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                     Text="Each Neuron where one of your accounts is an administrator tells how it is connected: to its parent broker, and to the brokers it federates with. Together they make this map." />
+        </StackPanel>
+      </Panel>
+
+      <!-- Beside the map: the selection, or how to read the map -->
+      <Border Grid.Column="1" Classes="side" c:Pane.Key="map" BorderBrush="{DynamicResource Line}" BorderThickness="1,0,0,0" Background="{DynamicResource Surface.Panel}">
+        <ScrollViewer>
+          <StackPanel Margin="18,16" Spacing="16">
+
+            <StackPanel Spacing="16" IsVisible="{Binding HasSelection}">
+              <StackPanel Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Ellipse Width="9" Height="9" VerticalAlignment="Center" Fill="{Binding SelectedTone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                  <TextBlock Classes="meta" Text="{Binding SelectedKind}" TextWrapping="Wrap" />
+                </StackPanel>
+                <TextBlock Classes="title" Text="{Binding SelectedTitle}" TextWrapping="Wrap" />
+              </StackPanel>
+
+              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding SelectedIsNeuron}">
+                <Button Classes="primary" Command="{Binding OpenPageCommand}" ToolTip.Tip="Open this Neuron's page (double click on the map)">
+                  <TextBlock Text="Open" />
+                </Button>
+                <Button Command="{Binding ShowEventsCommand}" ToolTip.Tip="This Neuron's events">
+                  <StackPanel Classes="btn">
+                    <c:LineIcon Classes="btn" Data="{StaticResource Icon.Events}" />
+                    <TextBlock Classes="btnLabel" Text="Events" />
+                  </StackPanel>
+                </Button>
+                <Button Command="{Binding OpenConsoleCommand}" ToolTip.Tip="Send commands to this Neuron">
+                  <StackPanel Classes="btn">
+                    <c:LineIcon Classes="btn" Data="{StaticResource Icon.Console}" />
+                    <TextBlock Classes="btnLabel" Text="Console" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+
+              <ItemsControl ItemsSource="{Binding Facts}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TopologyFact">
+                    <Grid ColumnDefinitions="100,*" Margin="0,3">
+                      <TextBlock Classes="meta" Text="{Binding Name}" />
+                      <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <StackPanel Spacing="6">
+                <TextBlock Classes="section" Text="Connections" />
+                <TextBlock Classes="meta" Text="None on the layers shown." IsVisible="{Binding !Connections.Count}" />
+                <ItemsControl ItemsSource="{Binding Connections}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TopologyConnection">
+                      <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,6" Margin="-8,0"
+                              Command="{Binding $parent[UserControl].((vm:TopologyViewModel)DataContext).SelectCommand}" CommandParameter="{Binding}">
+                        <StackPanel Spacing="2">
+                          <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="meta" Text="{Binding Relation}" />
+                        </StackPanel>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="14" IsVisible="{Binding !HasSelection}">
+              <TextBlock Classes="section" Text="How to read the map" />
+              <StackPanel Spacing="10">
+                <DockPanel Classes="legendRow">
+                  <Border DockPanel.Dock="Left" Width="26" Height="16" CornerRadius="4" BorderBrush="{DynamicResource Line.Strong}" BorderThickness="1" Background="{DynamicResource Surface.Panel}">
+                    <Ellipse Width="6" Height="6" Fill="{DynamicResource State.Ok}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5,0,0,0" />
+                  </Border>
+                  <TextBlock Text="A Neuron you administer, with its health" />
+                </DockPanel>
+                <DockPanel Classes="legendRow">
+                  <Rectangle DockPanel.Dock="Left" Width="26" Height="16" RadiusX="4" RadiusY="4" Stroke="{DynamicResource Line.Strong}" StrokeThickness="1" StrokeDashArray="2,2" />
+                  <TextBlock Text="A broker it connects to" />
+                </DockPanel>
+                <DockPanel Classes="legendRow">
+                  <Line DockPanel.Dock="Left" Classes="legend" Stroke="{DynamicResource Line.Strong}" Width="26" />
+                  <TextBlock Text="Up to its parent: the broker it connects to" />
+                </DockPanel>
+                <DockPanel Classes="legendRow">
+                  <Line DockPanel.Dock="Left" Classes="legend" Stroke="{DynamicResource Accent}" Width="26" />
+                  <TextBlock Text="Its parent, and federated with it" />
+                </DockPanel>
+                <DockPanel Classes="legendRow">
+                  <Line DockPanel.Dock="Left" Classes="legend" Stroke="{DynamicResource Accent}" StrokeDashArray="3.5,2" Width="26" />
+                  <TextBlock Text="Federated with each other: server to server" />
+                </DockPanel>
+              </StackPanel>
+              <TextBlock Classes="meta" TextWrapping="Wrap"
+                         Text="Drag to move, scroll to zoom. Click a point for its connections; double click a Neuron for its console." />
+
+              <StackPanel Spacing="8" IsVisible="{Binding HasProblems}">
+                <TextBlock Classes="section" Text="Did not answer" />
+                <ItemsControl ItemsSource="{Binding Problems}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="topo:TopologyProblem">
+                      <StackPanel Spacing="2" Margin="0,0,0,10">
+                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                        <TextBlock Classes="meta" Text="{Binding Message}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

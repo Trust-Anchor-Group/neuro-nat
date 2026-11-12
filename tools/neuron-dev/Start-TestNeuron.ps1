@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Starts the local "NeuroAA" test Neuron used for Neuro.AA development.
+  Starts the local "NeuroAA" test Neuron used for NAT development.
 
 .DESCRIPTION
   Runs the IoTGateway console (with the IoT Broker installed) as a separate instance named
@@ -31,14 +31,14 @@ $envVars = @{
 	GATEWAY_XMPP_HOST           = 'localhost'
 	GATEWAY_XMPP_PORT           = '5222'
 	GATEWAY_XMPP_CREATE         = 'false'
-	GATEWAY_XMPP_ACCOUNT        = $settings['NEUROAA_NEURON_ACCOUNT']
-	GATEWAY_XMPP_PASSWORD       = $settings['NEUROAA_NEURON_PASSWORD']
+	GATEWAY_XMPP_ACCOUNT        = $settings['NAT_NEURON_ACCOUNT']
+	GATEWAY_XMPP_PASSWORD       = $settings['NAT_NEURON_PASSWORD']
 	GATEWAY_XMPP_TRUST          = 'true'
 	GATEWAY_XMPP_LOG            = 'false'
 	GATEWAY_XMPP_OBS_AUTH       = 'false'
 	GATEWAY_XMPP_CLEAR_PWD      = 'false'
 	GATEWAY_ID_USE              = 'false'
-	GATEWAY_NOTIFICATION_JIDS   = "$($settings['NEUROAA_TEST_USER'])@$domain"
+	GATEWAY_NOTIFICATION_JIDS   = "$($settings['NAT_TEST_USER'])@$domain"
 	GATEWAY_NOTIFICATION_URLS   = ''
 	BROKER_INET_GATEWAY_REG     = 'false'
 	BROKER_REVIEW_USE           = 'false'
@@ -51,4 +51,4 @@ foreach ($k in $envVars.Keys) { [Environment]::SetEnvironmentVariable($k, $envVa
 $exe = Join-Path $ConsoleFolder 'Waher.IoTGateway.Console.exe'
 $style = if ($Visible) { 'Normal' } else { 'Minimized' }
 $p = Start-Process -FilePath $exe -ArgumentList '-instance', 'NeuroAA' -WorkingDirectory $ConsoleFolder -WindowStyle $style -PassThru
-"Started test Neuron, process $($p.Id). Web: $($settings['NEUROAA_NEURON_WEB'])  XMPP: localhost:5222 (no domain)"
+"Started test Neuron, process $($p.Id). Web: $($settings['NAT_NEURON_WEB'])  XMPP: localhost:5222 (no domain)"
