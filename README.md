@@ -19,7 +19,7 @@
 
 ## Install
 
-1. Download `Neuro.Nat-win-Setup.exe` from the [latest release](https://github.com/berggrenmille/Neuro-AA/releases/latest).
+1. Download `Neuro.Nat-win-Setup.exe` from the [latest release](https://github.com/Trust-Anchor-Group/neuro-nat/releases/latest).
 2. Run it. It installs for you only and needs no admin rights.
 3. Add your account on a Neuron, and NAT finds the Neurons in your contacts.
 

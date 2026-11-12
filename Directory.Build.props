@@ -14,7 +14,7 @@
   <PropertyGroup>
     <!-- Where installed copies look for updates. This is the only place the address is written:
          the app reads it from its assembly metadata, and tools/installer/Build-Installer.ps1 reads it
-         from here. Change this line after the GitHub repository is renamed. -->
-    <UpdateSource Condition="'$(UpdateSource)' == ''">https://github.com/berggrenmille/Neuro-AA</UpdateSource>
+         from here. Change this line if the GitHub repository ever moves. -->
+    <UpdateSource Condition="'$(UpdateSource)' == ''">https://github.com/Trust-Anchor-Group/neuro-nat</UpdateSource>
   </PropertyGroup>
 </Project>

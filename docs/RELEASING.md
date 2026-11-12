@@ -43,17 +43,19 @@ that is set:
 A source is a GitHub repository address, any other web address, or a folder or network share.
 A private repository needs a token in `NAT_GITHUB_TOKEN`.
 
-## When the repository is renamed
+## Where the repository lives
 
-The address is written in one place: `<UpdateSource>` in `Directory.Build.props`. Change that line,
-make a release, and point your clone at the new address:
+NAT's home is https://github.com/Trust-Anchor-Group/neuro-nat. The address is written in one place:
+`<UpdateSource>` in `Directory.Build.props`. If the repository ever moves, change that line, make a
+release, and point your clone at the new address:
 
 ```powershell
-git remote set-url Neuro-AA https://github.com/berggrenmille/<new-name>.git
+git remote set-url origin git@github.com:Trust-Anchor-Group/<new-name>.git
 ```
 
-Copies installed before the rename keep asking the old address. GitHub forwards it to the new one
-for as long as nobody makes a new repository with the old name.
+Copies installed before this address was set look for updates at the old address,
+github.com/berggrenmille/Neuro-AA, and do not find the releases here. Install them again from a
+release here once.
 
 ## Build an installer on your own computer
 
