@@ -101,7 +101,7 @@ internal static class Program
 			attention.Load();
 			AppLog.Info($"Inbox items loaded: {attention.Items.Count}.");
 
-			MonitorService monitors = new(accounts, new EventHub(), attention);
+			MonitorService monitors = new(accounts, new EventHub(), attention, stores.KnownNeurons);
 			Engine.Chat.ChatService chat = new(accounts, monitors, stores.Chat);
 			chat.Load();
 
@@ -143,7 +143,7 @@ internal static class Program
 	/// <summary>Where everything NAT keeps lives while it runs.</summary>
 	private sealed record HostStores(
 		IAccountStore Accounts, ICredentialVault SignIns, IAttentionStore? Inbox, Engine.Chat.IChatStore? Chat,
-		Engine.Alerts.IAlertSettingsStore AlertSettings, App.ViewModels.IUiSettingsStore UiSettings, bool KeepsData);
+		Engine.Alerts.IAlertSettingsStore AlertSettings, App.ViewModels.IUiSettingsStore UiSettings, IKnownNeuronStore KnownNeurons, bool KeepsData);
 
 	/// <summary>
 	/// Opens the encrypted database and moves the old plain files into it. Returns null when the
@@ -167,7 +167,7 @@ internal static class Program
 			EngineRuntime.Initialize();
 			AppLog.Info("No vault for a database key on this system: nothing is kept between runs.");
 			return new HostStores(new InMemoryAccountStore(), new InMemoryCredentialVault(), null, null,
-				new Engine.Alerts.MemoryAlertSettingsStore(), new App.ViewModels.MemoryUiSettingsStore(), KeepsData: false);
+				new Engine.Alerts.MemoryAlertSettingsStore(), new App.ViewModels.MemoryUiSettingsStore(), new InMemoryKnownNeuronStore(), KeepsData: false);
 		}
 
 		DatabaseOpening opening;
@@ -220,7 +220,7 @@ internal static class Program
 
 		DatabaseSettings settings = new(db);
 		return new HostStores(new DatabaseAccountStore(db), new DatabaseCredentialVault(db), new DatabaseAttentionStore(db), new DatabaseChatStore(db),
-			new Engine.Alerts.DatabaseAlertSettingsStore(settings), new App.ViewModels.DatabaseUiSettingsStore(settings), KeepsData: true);
+			new Engine.Alerts.DatabaseAlertSettingsStore(settings), new App.ViewModels.DatabaseUiSettingsStore(settings), new DatabaseKnownNeuronStore(db), KeepsData: true);
 	}
 
 	/// <summary>

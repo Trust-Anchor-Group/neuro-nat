@@ -80,7 +80,7 @@
 
       <!-- Who it is -->
       <DockPanel>
-        <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding ReadPageHealthCommand}" VerticalAlignment="Center" ToolTip.Tip="Read its health again now (F5)">
+        <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding ReadPageHealthCommand}" VerticalAlignment="Center" ToolTip.Tip="Read again (F5)">
           <StackPanel Classes="btn">
             <c:LineIcon Classes="btn" Data="{StaticResource Icon.Refresh}" />
             <TextBlock Classes="btnLabel" Text="Read again" />
@@ -88,19 +88,18 @@
         </Button>
         <TextBlock DockPanel.Dock="Right" Classes="meta tertiary healthAge" Text="{Binding Page.HealthAge}" VerticalAlignment="Center" Margin="0,0,6,0" />
         <StackPanel Spacing="4">
-          <SelectableTextBlock FontFamily="{StaticResource Font.Mono}" FontSize="{StaticResource Type.Section}" FontWeight="SemiBold" Text="{Binding Page.BareJid}" />
-          <StackPanel Orientation="Horizontal" Spacing="6">
+          <SelectableTextBlock FontSize="{StaticResource Type.Section}" FontWeight="SemiBold" Text="{Binding Page.Label}" ToolTip.Tip="{Binding Page.BareJid}" />
+          <StackPanel Orientation="Horizontal" Spacing="16">
             <TextBlock Classes="meta" Text="{Binding Page.StateText}" />
-            <TextBlock Classes="meta tertiary" Text="·" />
-            <TextBlock Classes="meta" Text="through" />
-            <Border Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center"
-                    Background="{Binding Page.AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
-              <TextBlock Text="{Binding Page.AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="9" FontWeight="SemiBold"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                         Foreground="{Binding Page.AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
-            </Border>
-            <TextBlock Classes="meta" Text="{Binding Page.AccountLabel}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Classes="meta tertiary" Text="·" />
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Page.ShowAccount}">
+              <Border Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center"
+                      Background="{Binding Page.AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
+                <TextBlock Text="{Binding Page.AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="9" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{Binding Page.AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+              </Border>
+              <TextBlock Classes="meta" Text="{Binding Page.AccountLabel}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
             <TextBlock Classes="meta" Text="{Binding Page.Software}" TextTrimming="CharacterEllipsis" />
           </StackPanel>
         </StackPanel>
@@ -143,13 +142,13 @@
           </DockPanel>
         </Border>
         <Button Classes="row" Padding="0" CornerRadius="{StaticResource Radius}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronEvents}"
-                ToolTip.Tip="Open this Neuron's events">
+                ToolTip.Tip="Events">
           <Border Classes="panel card">
             <StackPanel Spacing="3">
               <TextBlock Classes="meta" Text="Errors, last hour" />
               <TextBlock Classes="big num" Classes.bad="{Binding Page.HasErrors}" Text="{Binding Page.ErrorsLastHour}" />
               <TextBlock Classes="meta num" TextTrimming="CharacterEllipsis">
-                <Run Text="{Binding Page.WarningsLastHour}" /><Run Text=" warnings · last event " /><Run Text="{Binding Page.LastEventText}" />
+                <Run Text="{Binding Page.WarningsLastHour}" /><Run Text=" warnings, last event " /><Run Text="{Binding Page.LastEventText}" />
               </TextBlock>
             </StackPanel>
           </Border>
@@ -235,7 +234,7 @@
                   </ListBox.ItemTemplate>
                 </ListBox>
                 <TextBlock Classes="meta" Margin="14,4,14,14" TextWrapping="Wrap" IsVisible="{Binding NeuronEvents.IsStreamEmpty}"
-                           Text="Nothing to show yet. Events appear here the moment this Neuron logs them. The Events tab can also show informational ones." />
+                           Text="No events yet" />
               </Panel>
             </DockPanel>
           </Border>
@@ -285,7 +284,7 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:TopologyConnection">
                       <Button Classes="row" Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).OpenLinkCommand}" CommandParameter="{Binding}"
-                              ToolTip.Tip="Open it: its page when it is one of your Neurons, the map otherwise">
+                              ToolTip.Tip="Open">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                           <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Classes="meta" Text="{Binding Relation}" VerticalAlignment="Center" />
@@ -306,14 +305,12 @@
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                   <c:LineIcon Data="{StaticResource Icon.Sources}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
                   <TextBlock Grid.Column="1" Text="Sources" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="2" Classes="meta" Text="Data sources, nodes and sensor values" VerticalAlignment="Center" />
                 </Grid>
               </Button>
               <Button Classes="row" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.NeuronConsole}">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                   <c:LineIcon Data="{StaticResource Icon.Console}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
                   <TextBlock Grid.Column="1" Text="Console" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="2" Classes="meta" Text="Send it a command" VerticalAlignment="Center" />
                 </Grid>
               </Button>
               <Button Classes="row" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Updates}">
@@ -327,7 +324,6 @@
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                   <c:LineIcon Data="{StaticResource Icon.Identities}" Width="15" Height="15" VerticalAlignment="Center" Foreground="{DynamicResource Ink.Secondary}" />
                   <TextBlock Grid.Column="1" Text="Identity" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="2" Classes="meta" Text="Its legal identity, and applications to review" VerticalAlignment="Center" />
                 </Grid>
               </Button>
             </StackPanel>

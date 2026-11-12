@@ -38,7 +38,7 @@ public sealed partial class NoticeViewModel : ObservableObject
 
 	/// <summary>How many more arrived while this one was showing.</summary>
 	[ObservableProperty]
-	[NotifyPropertyChangedFor(nameof(Caption))]
+	[NotifyPropertyChangedFor(nameof(Caption), nameof(MoreText))]
 	private int more;
 
 	public string KindText => this.Alert.Kind switch
@@ -54,8 +54,11 @@ public sealed partial class NoticeViewModel : ObservableObject
 		_ => this.Alert.IsRoom ? "Room message" : "Message",
 	};
 
-	/// <summary>"MESSAGE · 3 new"</summary>
-	public string Caption => this.KindText.ToUpperInvariant() + (this.More > 0 ? $"  ·  {this.More + 1} new" : string.Empty);
+	/// <summary>"MESSAGE"</summary>
+	public string Caption => this.KindText.ToUpperInvariant();
+
+	/// <summary>"3 new" when more came from the same place, else empty.</summary>
+	public string MoreText => this.More > 0 ? $"{this.More + 1} new" : string.Empty;
 
 	// The colour of the bar on the left: red for what is broken, amber for what needs you,
 	// green for good news, the accent for people.

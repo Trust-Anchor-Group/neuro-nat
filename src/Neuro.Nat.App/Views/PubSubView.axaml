@@ -82,11 +82,11 @@
                   IsVisible="{Binding !IsPinned}" />
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,8" IsVisible="{Binding !IsPinned}">
           <ToggleButton Classes="seg first" IsChecked="{Binding IsService, Mode=OneWay}" Command="{Binding SetPersonalCommand}" CommandParameter="service"
-                        ToolTip.Tip="Nodes on the server's publish/subscribe service">
+                        ToolTip.Tip="Service">
             <TextBlock Text="Service" />
           </ToggleButton>
           <ToggleButton Classes="seg last" IsChecked="{Binding IsPersonal, Mode=OneWay}" Margin="-1,0,0,0" Command="{Binding SetPersonalCommand}" CommandParameter="personal"
-                        ToolTip.Tip="The account's personal storage: picture, nickname, keys">
+                        ToolTip.Tip="Personal storage">
             <TextBlock Text="Personal" />
           </ToggleButton>
         </StackPanel>
@@ -95,7 +95,7 @@
         <TextBox x:Name="NodeFilterBox" Classes="find" DockPanel.Dock="Top" Text="{Binding NodeFilter}" PlaceholderText="Find a node" Margin="6,0,0,8" MinHeight="30" Padding="10,4" />
 
         <ToggleButton DockPanel.Dock="Top" Classes="chip" IsChecked="{Binding WatchingOnly}" IsVisible="{Binding HasWatched}" HorizontalAlignment="Left" Margin="6,0,0,8"
-                      ToolTip.Tip="Only the nodes you watch: the ones whose items show up as they are published">
+                      ToolTip.Tip="Watched only">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <Ellipse Classes="dot ok" VerticalAlignment="Center" />
             <TextBlock Text="{Binding WatchingText}" />
@@ -104,7 +104,7 @@
 
         <Button x:Name="NewNodeButton" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="6,10,0,0"
                 Command="{Binding OpenCreateCommand}" IsVisible="{Binding IsService}"
-                ToolTip.Tip="Make a node on this service. With a collection open, the new node can go inside it.">
+                ToolTip.Tip="New node">
           <StackPanel Orientation="Horizontal" Spacing="7">
             <c:LineIcon Data="{StaticResource Icon.Plus}" Width="14" Height="14" VerticalAlignment="Center" />
             <TextBlock Text="New node" />
@@ -126,7 +126,7 @@
                   <Panel DockPanel.Dock="Left" Width="20" VerticalAlignment="Top" Margin="-6,-1,2,0">
                     <Button Classes="ghost small" Padding="4,3" MinHeight="0" IsVisible="{Binding IsCollection}"
                             Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).ToggleExpandCommand}" CommandParameter="{Binding}"
-                            ToolTip.Tip="Show or hide the nodes inside">
+                            ToolTip.Tip="Open or close">
                       <Panel>
                         <c:LineIcon Data="{StaticResource Icon.ChevronRight}" Width="12" Height="12" IsVisible="{Binding !IsExpanded}" />
                         <c:LineIcon Data="{StaticResource Icon.ChevronDown}" Width="12" Height="12" IsVisible="{Binding IsExpanded}" />
@@ -134,7 +134,7 @@
                     </Button>
                   </Panel>
                   <Border DockPanel.Dock="Right" Classes="count" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding HasNew}"
-                          ToolTip.Tip="Published here since you last looked">
+                          ToolTip.Tip="New">
                     <TextBlock Text="{Binding NewText}" />
                   </Border>
                   <Ellipse DockPanel.Dock="Right" Classes="dot ok" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding IsWatched}"
@@ -171,13 +171,13 @@
               </StackPanel>
             </ToggleButton>
             <Button x:Name="PublishButton" Classes="primary" Command="{Binding OpenEditorCommand}" IsVisible="{Binding ShowsPublish}"
-                    ToolTip.Tip="Write an item and publish it on this node">
+                    ToolTip.Tip="Publish">
               <TextBlock Text="Publish" />
             </Button>
-            <Button Classes="ghost" Command="{Binding ReloadCommand}" ToolTip.Tip="Read this again from the service">
+            <Button Classes="ghost" Command="{Binding ReloadCommand}" ToolTip.Tip="Refresh">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Refresh}" />
             </Button>
-            <Button x:Name="MoreButton" Classes="ghost" ToolTip.Tip="Everything else you can do with this node. The same list as a right-click on it."
+            <Button x:Name="MoreButton" Classes="ghost" ToolTip.Tip="More"
                     c:ActionMenu.Source="{Binding}" c:ActionMenu.OnClick="True">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
             </Button>
@@ -194,11 +194,11 @@
         <!-- Sides of the node -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="16,10,24,0">
           <Button Classes="tab" Classes.current="{Binding IsItems}" Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:PubSubTab.Items}" Content="Items"
-                  ToolTip.Tip="What is published on the node" />
+                  ToolTip.Tip="Items" />
           <Button Classes="tab" Classes.current="{Binding IsSettings}" Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:PubSubTab.Settings}" Content="Settings"
-                  ToolTip.Tip="Who may read and publish, what is kept, and removing the node" />
+                  ToolTip.Tip="Settings" />
           <Button Classes="tab" Classes.current="{Binding IsPeople}" Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:PubSubTab.People}" Content="People"
-                  ToolTip.Tip="Owners, publishers and subscribers" />
+                  ToolTip.Tip="People" />
         </StackPanel>
         <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Line}" />
 
@@ -235,7 +235,7 @@
             <!-- Removed, with a way back for a few seconds -->
             <Border DockPanel.Dock="Bottom" Classes="panel" Padding="14,8" Margin="0,8,0,0" IsVisible="{Binding HasUndo}">
               <DockPanel>
-                <Button DockPanel.Dock="Right" Classes="small" Command="{Binding UndoCommand}" ToolTip.Tip="Publish what was removed again, under the same ids">
+                <Button DockPanel.Dock="Right" Classes="small" Command="{Binding UndoCommand}" ToolTip.Tip="Publish again">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <c:LineIcon Data="{StaticResource Icon.Undo}" Width="13" Height="13" VerticalAlignment="Center" />
                     <TextBlock Text="Undo" />
@@ -258,11 +258,11 @@
                     <Grid Classes="item" Classes.gone="{Binding IsGone}" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" Background="Transparent">
                       <DockPanel>
                         <Button DockPanel.Dock="Right" Classes="link" Command="{Binding ToggleXmlCommand}" IsVisible="{Binding IsReadable}" VerticalAlignment="Center"
-                                ToolTip.Tip="The item as it was published">
+                                ToolTip.Tip="XML">
                           <TextBlock Text="{Binding XmlToggleText}" FontSize="{StaticResource Type.Meta}" />
                         </Button>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                          <Border Classes="pill fresh" IsVisible="{Binding IsNew}" ToolTip.Tip="Published while you were looking">
+                          <Border Classes="pill fresh" IsVisible="{Binding IsNew}" ToolTip.Tip="New">
                             <TextBlock Text="New" />
                           </Border>
                           <Border Classes="pill kind" IsVisible="{Binding IsReadable}">
@@ -333,7 +333,7 @@
                 <views:NodeSettingsFormView DataContext="{Binding Settings}" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <Button x:Name="SaveSettingsButton" Classes="primary" Content="Save" Command="{Binding SaveSettingsCommand}" />
-                  <Button Content="Put back" Command="{Binding ResetSettingsCommand}" ToolTip.Tip="Read the settings from the node again and drop what you changed" />
+                  <Button Content="Put back" Command="{Binding ResetSettingsCommand}" ToolTip.Tip="Read again" />
                   <TextBlock Classes="meta" Text="{Binding SettingsNote}" VerticalAlignment="Center" />
                 </StackPanel>
 
@@ -342,11 +342,11 @@
                     <TextBlock Classes="section" Text="Removing" />
                     <DockPanel IsVisible="{Binding CanPublishHere}">
                       <Button DockPanel.Dock="Right" Classes="danger" Content="Remove all items…" Command="{Binding AskClearCommand}" VerticalAlignment="Center" Margin="12,0,0,0" />
-                      <TextBlock Classes="meta" TextWrapping="Wrap" VerticalAlignment="Center" Text="Empties the node. The node, its settings and its subscribers stay." />
+                      <TextBlock Classes="meta" TextWrapping="Wrap" VerticalAlignment="Center" Text="Settings and subscribers stay" />
                     </DockPanel>
                     <DockPanel IsVisible="{Binding IsService}">
                       <Button DockPanel.Dock="Right" Classes="danger" Content="Delete node…" Command="{Binding AskDeleteCommand}" VerticalAlignment="Center" Margin="12,0,0,0" />
-                      <TextBlock Classes="meta" TextWrapping="Wrap" VerticalAlignment="Center" Text="Removes the node and everything published on it. Its subscribers are told." />
+                      <TextBlock Classes="meta" TextWrapping="Wrap" VerticalAlignment="Center" Text="Subscribers are told" />
                     </DockPanel>
                   </StackPanel>
                 </Border>
@@ -379,11 +379,11 @@
                         <Border Classes="personRow" c:ActionMenu.Source="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext)}">
                           <DockPanel>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="12,0,0,0">
-                              <Button Classes="small primary" Content="Allow" IsVisible="{Binding IsPending}" ToolTip.Tip="Let them subscribe: they get what is published from now on"
+                              <Button Classes="small primary" Content="Allow" IsVisible="{Binding IsPending}" ToolTip.Tip="Allow"
                                       Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).AllowSubscriberCommand}" CommandParameter="{Binding}" />
                               <Button Classes="small" Content="Deny" IsVisible="{Binding IsPending}"
                                       Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).EndSubscriberCommand}" CommandParameter="{Binding}" />
-                              <Button Classes="small" Content="End" IsVisible="{Binding IsSettled}" ToolTip.Tip="End the subscription: nothing more is sent to them"
+                              <Button Classes="small" Content="End" IsVisible="{Binding IsSettled}" ToolTip.Tip="End subscription"
                                       Command="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext).EndSubscriberCommand}" CommandParameter="{Binding}" />
                             </StackPanel>
                             <StackPanel Spacing="1" VerticalAlignment="Center">
@@ -406,7 +406,7 @@
                         <Border Classes="personRow" c:ActionMenu.Source="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext)}">
                           <DockPanel>
                             <Button DockPanel.Dock="Right" Classes="small" Content="Change" VerticalAlignment="Center" Margin="12,0,0,0"
-                                    ToolTip.Tip="Give them another role, or take them off the list"
+                                    ToolTip.Tip="Change role"
                                     c:ActionMenu.Source="{Binding $parent[UserControl].((vm:PubSubViewModel)DataContext)}" c:ActionMenu.OnClick="True" />
                             <StackPanel Spacing="1" VerticalAlignment="Center">
                               <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Jid}" />
@@ -420,7 +420,7 @@
 
                   <TextBlock Classes="label" Text="Give somebody a role" Margin="0,12,0,4" />
                   <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                    <TextBox x:Name="NewPersonBox" Text="{Binding NewPersonJid}" PlaceholderText="Their address, such as kim@example.org" />
+                    <TextBox x:Name="NewPersonBox" Text="{Binding NewPersonJid}" PlaceholderText="Address" />
                     <ComboBox Grid.Column="1" ItemsSource="{Binding Roles}" SelectedItem="{Binding NewPersonRole}" MinWidth="200" />
                     <Button Grid.Column="2" Content="Add" Command="{Binding AddPersonCommand}" />
                   </Grid>
@@ -433,13 +433,13 @@
           <Border IsVisible="{Binding IsEditorOpen}" Background="{DynamicResource Surface.Ground}">
             <DockPanel Margin="24,14,24,16">
               <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                <Button DockPanel.Dock="Right" Classes="ghost small" Command="{Binding CloseEditorCommand}" ToolTip.Tip="Close without publishing (Esc)">
+                <Button DockPanel.Dock="Right" Classes="ghost small" Command="{Binding CloseEditorCommand}" ToolTip.Tip="Close (Esc)">
                   <c:LineIcon Data="{StaticResource Icon.Close}" Width="13" Height="13" />
                 </Button>
                 <Button DockPanel.Dock="Right" Classes="small" Content="Tidy up" Command="{Binding TidyCommand}" IsEnabled="{Binding CanPublish}" Margin="0,0,8,0"
-                        ToolTip.Tip="Lay the XML out with one element to a line. What is published stays the same." />
+                        ToolTip.Tip="Tidy XML" />
                 <Button DockPanel.Dock="Right" Classes="small" Content="Start from the last one" Command="{Binding UseLastCommand}" IsVisible="{Binding HasLast}" Margin="0,0,8,0"
-                        ToolTip.Tip="Fill in what you last published on this node from here" />
+                        ToolTip.Tip="Last published" />
                 <TextBlock Text="{Binding EditorTitle}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
               </DockPanel>
 
@@ -448,8 +448,8 @@
                   <Button Content="Cancel" Command="{Binding CloseEditorCommand}" />
                   <Button x:Name="SendButton" Classes="primary" Content="Publish" Command="{Binding PublishCommand}" IsEnabled="{Binding CanPublish}" ToolTip.Tip="Publish (Ctrl+Enter)" />
                 </StackPanel>
-                <TextBox Text="{Binding PublishItemId}" PlaceholderText="Id (optional: the service gives one)" MaxWidth="320" HorizontalAlignment="Left" MinWidth="240"
-                         ToolTip.Tip="An item published under an id that is already there takes its place" />
+                <TextBox Text="{Binding PublishItemId}" PlaceholderText="Id (optional)" MaxWidth="320" HorizontalAlignment="Left" MinWidth="240"
+                         ToolTip.Tip="Item id" />
               </DockPanel>
 
               <TextBlock DockPanel.Dock="Bottom" Classes="error" Text="{Binding EditorError}" TextWrapping="Wrap" Margin="0,8,0,0"
@@ -457,7 +457,7 @@
 
               <!-- What is wrong with the XML right now. A click goes to the place. -->
               <Button x:Name="ProblemButton" DockPanel.Dock="Bottom" Classes="link" HorizontalAlignment="Left" Margin="0,8,0,0" IsVisible="{Binding HasEditorProblem}"
-                      ToolTip.Tip="Go to the place in the text">
+                      ToolTip.Tip="Go to it">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <c:LineIcon Data="{StaticResource Icon.Alert}" Width="13" Height="13" Foreground="{DynamicResource State.Busy}" VerticalAlignment="Center" />
                   <TextBlock Text="{Binding EditorProblem}" TextWrapping="Wrap" FontSize="{StaticResource Type.Meta}" />
@@ -478,7 +478,7 @@
           <TextBlock Classes="title" Text="New node" />
           <StackPanel>
             <TextBlock Classes="label" Text="Name" />
-            <TextBox x:Name="NewNodeBox" Text="{Binding NewNodeName}" PlaceholderText="Such as lab/alerts. It cannot be changed later." />
+            <TextBox x:Name="NewNodeBox" Text="{Binding NewNodeName}" PlaceholderText="Such as lab/alerts" />
           </StackPanel>
           <CheckBox IsChecked="{Binding NewInsideParent}" Content="{Binding NewParentText}" IsVisible="{Binding HasNewParent}" />
           <CheckBox IsChecked="{Binding NewIsCollection}" Content="A collection: it holds other nodes, and no items of its own" />
@@ -496,8 +496,6 @@
       <StackPanel IsVisible="{Binding ShowsPicker}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6" Margin="16,0">
         <c:LineIcon Data="{StaticResource Icon.PubSub}" Width="28" Height="28" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
         <TextBlock Text="Pick a node" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                   Text="A node is a place things are published. Open one to read its items, publish on it, and watch what comes in." />
       </StackPanel>
     </Panel>
   </Grid>

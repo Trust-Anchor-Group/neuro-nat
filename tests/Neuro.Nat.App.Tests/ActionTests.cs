@@ -355,7 +355,7 @@ public class ActionTests
 		sniffer.ReceiveText("<message/>");
 		await Arrived(sniffer, 2606);
 		vm.Flush();
-		Assert.Equal("Jump to latest · 2 new lines", vm.NewText);
+		Assert.Equal("Jump to 2 new lines", vm.NewText);
 		bool jumped = false;
 		vm.ScrollToLatest += (_, _) => jumped = true;
 		vm.JumpToLatestCommand.Execute(null);

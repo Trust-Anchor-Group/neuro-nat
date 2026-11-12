@@ -62,7 +62,7 @@ public class AlertTests
 
 		Alert a = Assert.Single(got);
 		Assert.Equal("n1", a.Target);
-		Assert.Contains("needs you", a.Detail);
+		Assert.Contains("waiting for you", a.Detail);
 	}
 
 	[Fact]
@@ -73,7 +73,7 @@ public class AlertTests
 		NeuronMonitor monitor = m.For(account)!;
 		monitor.Preview(new WatchedNeuron { AccountId = account, BareJid = "alpha@lab.local", Name = "Alpha", State = WatchState.Live });
 
-		using AlertService alerts = new(m, new AlertSettings(), () => now, startTimer: false);
+		using AlertService alerts = new(m, new AlertSettings(), () => now, startTimer: false) { AccountConnected = _ => true };
 		List<Alert> got = [];
 		alerts.Raised += (_, a) => got.Add(a);
 
@@ -92,6 +92,26 @@ public class AlertTests
 		monitor.Preview(new WatchedNeuron { AccountId = account, BareJid = "alpha@lab.local", Name = "Alpha", State = WatchState.Live });
 		Assert.Equal(AlertKind.NeuronBack, got.Last().Kind);
 		Assert.Equal(2, got.Count);
+	}
+
+	[Fact]
+	public async Task NoNeuronIsDownWhileItsAccountIsNotConnected()
+	{
+		var (m, account) = await SetupAsync();
+		DateTime now = DateTime.Now;
+		NeuronMonitor monitor = m.For(account)!;
+		monitor.Preview(new WatchedNeuron { AccountId = account, BareJid = "alpha@lab.local", Name = "Alpha", State = WatchState.Live });
+
+		using AlertService alerts = new(m, new AlertSettings(), () => now, startTimer: false) { AccountConnected = _ => false };
+		List<Alert> got = [];
+		alerts.Raised += (_, a) => got.Add(a);
+
+		// The account lost its connection, so every Neuron through it looks offline: that is not news about the Neurons.
+		monitor.Preview(new WatchedNeuron { AccountId = account, BareJid = "alpha@lab.local", Name = "Alpha", State = WatchState.Offline });
+		now = now.AddMinutes(10);
+		alerts.CheckNeurons();
+		alerts.CheckNeurons();
+		Assert.Empty(got);
 	}
 
 	[Fact]

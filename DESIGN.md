@@ -289,7 +289,15 @@ The app uses the words its users use. These replaced older ones, and the old one
 | Software | Updates |
 | Storage | Publish/subscribe, as the name of the tab |
 
-Rules for new words: say what the thing does for the person, in a full short phrase. A button says what happens ("Mark fixed", "Put the layout back"). A count says what it counts ("3 problems", "4 of 5 Neurons reporting"). An empty screen says what is missing and how to get it. An error says what went wrong and, beside it, what fixes it. `FinishTests.EveryScreenUsesThePlansWordsAtEverySize` fails when an old word shows on a screen.
+Rules for new words: say what the thing does for the person, in a full short phrase. A button says what happens ("Mark fixed", "Put the layout back"). A count says what it counts ("3 problems", "4 of 5 Neurons reporting"). An empty screen says what is missing, in one short line. An error says what went wrong and, beside it, what fixes it. `FinishTests.EveryScreenUsesThePlansWordsAtEverySize` fails when an old word shows on a screen.
+
+**No middle dots.** Facts that sit side by side are separate pieces with space between them in the layout, or one short phrase ("5 events on Lab since 10:42, latest 4 min ago"). Never join them with a middle dot, and never swap it for another separator character. Window titles use a plain hyphen ("Events - NAT"). `TextPassTests.NoMiddleDotInWhatTheViewsShow` fails when a view or a string in the code has one.
+
+**A Neuron is named by its domain.** It goes by the roster name the user gave it, else by its domain (the part after "@"). When two Neurons would get the same name, those two show their full addresses. The full address stays in the details, in a tooltip on the name, and behind "Copy address". One function gives the name everywhere: `Engine/Events/NeuronNames.cs` (`NeuronNameConverter` in the views).
+
+**No explaining text.** Say what is there, not how it works. One short line only where an action would otherwise be unclear, and one short line in an empty state. A question before something destructive stays, kept short. A tooltip is the short name of what a button does, not a sentence. The chat header says "End-to-end encrypted" or "Not encrypted" and nothing more; the key is in the contact's details.
+
+**The account only when there are several.** With one account, no screen says which account something comes through. With several, the account goes by its short label (its display name, else its user name), never its full address, and only where it tells things apart.
 
 ## Colors
 
@@ -402,12 +410,12 @@ Copy is always there: Ctrl+C copies what is selected as text, Ctrl+Shift+C the o
 A message or an alert shows as a card in the bottom right corner of the window, or of the screen when the window is behind others or in the tray (`Views/NoticeCard.axaml`). It can be answered or dismissed from the card. Settings start with four plain choices (What needs me, Everything, Nothing, My own choice); the table of switches for each kind only shows for "My own choice". Settings never open on a wall of tick boxes.
 
 ### Empty and loading
-- **Empty:** a 24 px icon in `Ink.Tertiary`, one semi-bold line saying what is missing, one `meta` sentence saying how to get it. Centred, at most about 380 px wide, with a side margin so it wraps in a narrow pane.
+- **Empty:** a 24 px icon in `Ink.Tertiary` and one short semi-bold line saying what is missing. A `meta` line under it only when the way to fill it is not plain from the screen. Centred, at most about 380 px wide, with a side margin so it wraps in a narrow pane.
 - **Loading:** `c:Placeholder` draws grey bars where the rows will be (`Rows`, `RowHeight`), under one line saying what is being read. The screen does not jump when the rows arrive.
 - **Failure:** a `State.Bad.Subtle` band with what went wrong and the action that fixes it, in place.
 
 ### The map
-`Controls/TopologyMap.cs`, laid out by `Engine/Topology/TopologyLayout.cs`. A part of the network where something has a parent is a tree: the parent on top, what connects to it in a row under it, lines that leave the parent downwards and turn with rounded corners. Seven or more children with none of their own hang in columns under their parent, each entered from its left. Points that are only linked some other way go in rows under the tree, as near as they can be to what they link to. A part with no parents is spread by a force layout. A Neuron's card shows its health dot, its name and address, and CPU, memory and disk. Grey line: up to the parent. Blue line: the parent, and federated with it. Blue dashes: federated with each other. The panel beside the map explains this until something is selected.
+`Controls/TopologyMap.cs`, laid out by `Engine/Topology/TopologyLayout.cs`. A part of the network where something has a parent is a tree: the parent on top, what connects to it in a row under it, lines that leave the parent downwards and turn with rounded corners. Seven or more children with none of their own hang in columns under their parent, each entered from its left. Points that are only linked some other way go in rows under the tree, as near as they can be to what they link to. A part with no parents is spread by a force layout. A Neuron's card shows its health dot, its name (and its domain when the name is another one), and CPU, memory and disk. Grey line: up to the parent. Blue line: the parent, and federated with it. Blue dashes: federated with each other. The panel beside the map shows this legend until something is selected.
 
 ## Motion
 
@@ -435,7 +443,7 @@ These are the habits of the tools this app replaces. Check every new screen agai
 **Do**
 - Use the tokens, and the classes in `Controls.axaml`, before anything local.
 - Give every row a right-click menu through `IActionSource`, and every list a `find` box.
-- Say which Neuron and which account an action is for.
+- Say which Neuron an action is for, by its name. Name the account too when there are several.
 - Pair every dot and every hue with words.
 - Confirm with `Ui.Say`, and pass an undo where one click could go wrong.
 - Add width rules as `.maxwN` styles, and check the screen at 760, 1440 and 2400 px in both looks. `FinishTests` renders all of them to `.impeccable/review/`.
@@ -450,4 +458,6 @@ These are the habits of the tools this app replaces. Check every new screen agai
 - Don't set a width on a control that a small window needs to shrink.
 - Don't open a dialog window.
 - Don't use a word from the "Not" column.
+- Don't put a middle dot between facts, or a full address where a name will do.
+- Don't explain what nobody asked about.
 - Don't build dashboards out of cards, or dress the app as neon on black.

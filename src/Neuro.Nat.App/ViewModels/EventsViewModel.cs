@@ -120,9 +120,23 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 	[ObservableProperty]
 	private bool showResolved;
 
-	/// <summary>Bare JID of the one Neuron to show, set by the shell's Neuron chips; null shows all.</summary>
-	[ObservableProperty]
-	private string? neuronFilter;
+	/// <summary>The bare JIDs of the Neurons to show, set by the shell's Neuron filter. Empty shows all.</summary>
+	public IReadOnlySet<string> NeuronFilter
+	{
+		get => this.neuronFilter;
+		set
+		{
+			value ??= NeuronSet.All;
+			if (value.SameAs(this.neuronFilter))
+				return;
+
+			this.neuronFilter = value;
+			this.OnPropertyChanged();
+			this.OnNeuronFilterChanged();
+		}
+	}
+
+	private IReadOnlySet<string> neuronFilter = NeuronSet.All;
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasSelectedIssue), nameof(StreamTitle))]
@@ -185,7 +199,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 	partial void OnSelectedIssueChanged(IssueItemViewModel? value) => this.Rebuild();
 	partial void OnShowResolvedChanged(bool value) => this.RebuildIssues();
 
-	partial void OnNeuronFilterChanged(string? value)
+	private void OnNeuronFilterChanged()
 	{
 		if (this.SelectedIssue is IssueItemViewModel issue && !this.IsOnFilteredNeuron(issue))
 			this.SelectedIssue = null;
@@ -196,14 +210,19 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 	}
 
 	private bool IsOnFilteredNeuron(IssueItemViewModel issue)
-		=> this.NeuronFilter is not string jid || issue.Issue.Neurons.Contains(jid, StringComparer.OrdinalIgnoreCase);
+		=> this.NeuronFilter.Count == 0 || issue.Issue.Neurons.Any(this.NeuronFilter.Contains);
 
-	/// <summary>Errors in the last hour: everywhere, or on the filtered Neuron.</summary>
+	/// <summary>Errors in the last hour: everywhere, or on the filtered Neurons.</summary>
 	private void RefreshErrorCount(DateTime now)
 	{
-		this.ErrorsLastHour = this.NeuronFilter is string jid
-			? (this.monitors.Hub.SummarizeByNeuron(now).TryGetValue(jid, out EventHub.NeuronSummary? s) ? s.ErrorsLastHour : 0)
-			: this.issueIndex.Values.Where(i => i.Severity >= EventSeverity.Error).Sum(i => i.Issue.CountSince(now, TimeSpan.FromHours(1)));
+		if (this.NeuronFilter.Count == 0)
+		{
+			this.ErrorsLastHour = this.issueIndex.Values.Where(i => i.Severity >= EventSeverity.Error).Sum(i => i.Issue.CountSince(now, TimeSpan.FromHours(1)));
+			return;
+		}
+
+		IReadOnlyDictionary<string, EventHub.NeuronSummary> byNeuron = this.monitors.Hub.SummarizeByNeuron(now);
+		this.ErrorsLastHour = this.NeuronFilter.Sum(jid => byNeuron.TryGetValue(jid, out EventHub.NeuronSummary? s) ? s.ErrorsLastHour : 0);
 	}
 
 	[RelayCommand]
@@ -274,7 +293,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 
 	private bool Matches(NeuronEvent e)
 	{
-		if (this.NeuronFilter is string only && !string.Equals(e.Source.NeuronJid, only, StringComparison.OrdinalIgnoreCase))
+		if (!this.NeuronFilter.Admits(e.Source.NeuronJid))
 			return false;
 
 		if (this.SelectedIssue is IssueItemViewModel issue)
@@ -551,18 +570,18 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 			list.Copy("Copy as Markdown", () => ToMarkdown(e), "the event as Markdown", "Ctrl+Shift+C");
 			if (!string.IsNullOrEmpty(e.StackTrace))
 				list.Copy("Copy stack trace", () => e.StackTrace, "the stack trace");
-			list.Save("Save…", Ui.FileName("Event " + e.Source.NeuronJid, e.Timestamp), Formats(events));
+			list.Save("Save…", Ui.FileName("Event " + Converters.NeuronNameConverter.Name(e.Source.NeuronJid), e.Timestamp), Formats(events));
 
 			string jid = e.Source.NeuronJid;
-			if (this.NeuronFilter is null)
-				list.Filter("Only " + jid, () => this.Shell?.ShowEvents(jid));
+			if (!(this.NeuronFilter.Count == 1 && this.NeuronFilter.Contains(jid)))
+				list.Filter("Only this Neuron", () => this.Shell?.ShowEvents(jid));
 			if (this.SelectedIssue is null && this.issueIndex.TryGetValue(e.Fingerprint, out IssueItemViewModel? issue))
 				list.Filter("Only events like this", () => this.OpenIssue(issue));
 			if (this.SelectedIssue is null)
 				list.Filter("Hide events like this", () => this.Hide(events));
 
 			if (this.Shell is IShell shell)
-				list.Sub("Go to " + jid, ActionGroup.GoTo, shell.NeuronPlaces(jid, e.Source.AccountId, WorkspaceKind.Events));
+				list.Sub("Go to " + Converters.NeuronNameConverter.Name(jid), ActionGroup.GoTo, shell.NeuronPlaces(jid, e.Source.AccountId, WorkspaceKind.Events));
 
 			list.Do("Share to chat…", () => this.ShareTo?.Invoke("Event: " + e.Title, ToMarkdown(e)), icon: "Share");
 		}

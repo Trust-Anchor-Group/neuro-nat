@@ -507,7 +507,7 @@ public class ChatCatchUpTests
 		// The panel beside the room: everyone in it, by what they may do.
 		Assert.True(chat.IsRoomPanel);
 		Assert.Equal(["ops", "robin", "guest", "kim", "sam"], chat.Occupants.Select(o => o.Nick));
-		Assert.Equal(["Moderators", null, "Participants", null, "Visitors · can only read"], chat.Occupants.Select(o => o.Header));
+		Assert.Equal(["Moderators", null, "Participants", null, "Visitors, who can only read"], chat.Occupants.Select(o => o.Header));
 		Assert.True(Occupant(chat, "ops").IsMe);
 		Assert.Equal("Owner", Occupant(chat, "ops").Standing);
 		Capture(window, $"chat-room-{t}");

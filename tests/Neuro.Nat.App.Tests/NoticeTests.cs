@@ -242,7 +242,7 @@ public class NoticeTests
 		Assert.Equal("Two", kim.Detail);
 		Assert.True(kim.CanReply);
 		Assert.True(kim.CanMute);
-		Assert.Contains("2 new", kim.Caption);
+		Assert.Equal("2 new", kim.MoreText);
 
 		// Reading the conversation anywhere closes its pop-up.
 		s.Vm.ShowChatCommand.Execute(null);

@@ -16,7 +16,7 @@ public class AttentionTests
 		NotificationKind.RosterRequest, true, "Contact request from alice@lab.local")]
 	[InlineData("No approved Legal Identity registered for the gateway.", NotificationKind.NeuronIdentity, true, "The Neuron has no approved legal identity")]
 	[InlineData("The approved Legal Identity for the gateway **expires in 12 days**.", NotificationKind.NeuronIdentity, true, "The Neuron's legal identity expires in 12 days")]
-	[InlineData("Legal identity application received: [`2f1c@legal.lab.local`](https://lab.local/ValidateLegalId.md?ID=2f1c)", NotificationKind.LegalIdApplication, true, "Legal identity application to review")]
+	[InlineData("Legal identity application received: [`2f1c@legal.lab.local`](https://lab.local/ValidateLegalId.md?ID=2f1c)", NotificationKind.LegalIdApplication, false, "Identity application waiting for automatic review")]
 	[InlineData("Legal identity application has been automatically approved: [`x@legal`](https://lab.local/x) (by `Peer review`)", NotificationKind.LegalIdDecision, false, "Legal identity approved automatically")]
 	[InlineData("**Reminder**: Smart Contract [c@legal](https://lab.local/SignatureRequest.md?RequestId=1) is waiting for your signature.", NotificationKind.SignatureRequest, true, "Reminder: a contract waits for the Neuron's signature")]
 	[InlineData("Unable to upload backup to `backup@other`.", NotificationKind.Backup, true, "Backup upload failed")]

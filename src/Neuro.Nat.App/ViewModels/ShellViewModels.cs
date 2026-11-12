@@ -17,7 +17,7 @@ public enum PlaceKind
 	Settings,
 }
 
-/// <summary>One Neuron in the top bar: its state, its errors this hour, and whether the screens are filtered to it.</summary>
+/// <summary>One Neuron in the top bar's Neuron filter: its state, its errors this hour, and whether it is ticked.</summary>
 public sealed partial class NeuronChipViewModel(string bareJid) : ObservableObject
 {
 	public string BareJid { get; } = bareJid;
@@ -48,7 +48,7 @@ public sealed partial class NeuronChipViewModel(string bareJid) : ObservableObje
 			WatchState.Waiting => "Waiting for it to come online",
 			WatchState.Discovering => "Checking what it is",
 			WatchState.Subscribing => "Starting to listen",
-			WatchState.Forbidden => "No access: this account is not an administrator there",
+			WatchState.Forbidden => "No access",
 			WatchState.Offline => "Offline",
 			WatchState.Failed => "Could not listen",
 			_ => string.Empty,
@@ -59,7 +59,7 @@ public sealed partial class NeuronChipViewModel(string bareJid) : ObservableObje
 			1 => "1 error in the last hour",
 			_ => $"{this.ErrorsLastHour:N0} errors in the last hour",
 		};
-		this.Tip = $"{state}. {errors}. Click to show only this Neuron.";
+		this.Tip = $"{state}. {errors}.";
 	}
 
 	private static int Rank(WatchState s) => s switch
@@ -193,6 +193,6 @@ public sealed partial class SearchViewModel(Func<IEnumerable<SearchItem>> source
 
 		this.Selected = this.Results.FirstOrDefault();
 		this.HasResults = this.Results.Count > 0;
-		this.MoreText = all.Count > max ? $"The first {max} of {all.Count}. Type more to narrow it down." : string.Empty;
+		this.MoreText = all.Count > max ? $"The first {max} of {all.Count}" : string.Empty;
 	}
 }

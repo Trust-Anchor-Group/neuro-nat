@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             x:Class="Neuro.Nat.App.Controls.NeuronPicker"
+             x:DataType="vm:NeuronPickerViewModel">
+
+  <UserControl.Styles>
+    <!-- The button: a pill like the filter chips, tinted while the screens show only some Neurons -->
+    <Style Selector="Button.picker">
+      <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
+      <Setter Property="Padding" Value="10,3,9,3" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Meta}" />
+    </Style>
+    <Style Selector="Button.picker c|LineIcon">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
+    </Style>
+    <Style Selector="Button.picker.filtered /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+    </Style>
+    <Style Selector="Button.picker.filtered c|LineIcon">
+      <Setter Property="Foreground" Value="{DynamicResource Accent.Ink}" />
+    </Style>
+    <Style Selector="Button.picker:pressed">
+      <Setter Property="RenderTransform" Value="none" />
+    </Style>
+
+    <!-- The list: rows less tall than elsewhere, so many Neurons fit -->
+    <Style Selector="ListBox.picks ListBoxItem">
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+
+    <!-- The tick box: drawn here, from the tokens -->
+    <Style Selector="Border.tick">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius.Small}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line.Strong}" />
+      <Setter Property="Background" Value="{DynamicResource Surface.Panel}" />
+    </Style>
+    <Style Selector="Border.tick c|LineIcon">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border.tick.on">
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+      <Setter Property="Background" Value="{DynamicResource Accent}" />
+    </Style>
+    <Style Selector="Border.tick.on c|LineIcon">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <Button x:Name="PickerButton" Classes="picker" Classes.filtered="{Binding IsFiltered}"
+            ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <c:LineIcon Data="{StaticResource Icon.Filter}" Width="13" Height="13" VerticalAlignment="Center" />
+        <TextBlock x:Name="PickerText" Text="{Binding Text}" MaxWidth="220" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <c:LineIcon Data="{StaticResource Icon.ChevronDown}" Width="12" Height="12" VerticalAlignment="Center" />
+      </StackPanel>
+    </Button>
+
+    <Popup x:Name="Drop" PlacementTarget="{Binding #PickerButton}" Placement="BottomEdgeAlignedLeft" VerticalOffset="6"
+           IsLightDismissEnabled="True" ShouldUseOverlayLayer="True" IsOpen="{Binding IsOpen, Mode=TwoWay}">
+      <Border x:Name="DropPanel" Classes="float" Width="300">
+        <DockPanel>
+          <!-- Type to narrow the list -->
+          <Panel DockPanel.Dock="Top" Margin="8,8,8,4">
+            <TextBox x:Name="PickerSearch" Text="{Binding Query}" PlaceholderText="Find a Neuron" MinHeight="30" Padding="30,5,10,5"
+                     AutomationProperties.Name="Find a Neuron" />
+            <c:LineIcon Data="{StaticResource Icon.Search}" Width="14" Height="14" Foreground="{DynamicResource Ink.Tertiary}"
+                        HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False" />
+          </Panel>
+
+          <!-- All, None, and how many are ticked -->
+          <DockPanel DockPanel.Dock="Top" Margin="12,2,12,6">
+            <Button x:Name="AllButton" Classes="link" Content="All" Command="{Binding AllCommand}" VerticalAlignment="Center"
+                    ToolTip.Tip="Tick every Neuron in the list" />
+            <Button x:Name="NoneButton" Classes="link" Content="None" Command="{Binding NoneCommand}" VerticalAlignment="Center" Margin="14,0,0,0"
+                    ToolTip.Tip="Take every tick away: the screens show all Neurons" />
+            <TextBlock Classes="meta" Text="{Binding CountText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+          </DockPanel>
+          <Border DockPanel.Dock="Top" Classes="divider" Height="1" Background="{DynamicResource Line}" />
+
+          <TextBlock DockPanel.Dock="Top" Classes="meta" Text="No Neuron matches" Margin="12,12" IsVisible="{Binding IsEmpty}" />
+
+          <!-- The Neurons: virtualised, so 300 open as fast as 3 -->
+          <ListBox x:Name="PickerList" Classes="rows picks" ItemsSource="{Binding Shown}" SelectedItem="{Binding Highlighted, Mode=TwoWay}"
+                   MaxHeight="320" Margin="4" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   c:ActionMenu.Source="{Binding Actions}" AutomationProperties.Name="Neurons">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:NeuronChipViewModel">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                  <Border Classes="tick" Classes.on="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <c:LineIcon Data="{StaticResource Icon.Check}" Width="12" Height="12" StrokeWidth="2.2"
+                                Foreground="{DynamicResource Ink.OnAccent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Ellipse Grid.Column="1" Classes="dot" VerticalAlignment="Center" Margin="0,0,8,0"
+                           Classes.ok="{Binding IsOk}" Classes.busy="{Binding IsBusy}" Classes.bad="{Binding IsBad}" />
+                  <TextBlock Grid.Column="2" Text="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Classes="num" Text="{Binding ErrorsLastHour}" IsVisible="{Binding HasErrors}" FontWeight="SemiBold"
+                             Foreground="{DynamicResource State.Bad}" VerticalAlignment="Center" Margin="10,0,2,0" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+    </Popup>
+  </Panel>
+</UserControl>

@@ -4,6 +4,7 @@ using System.Xml;
 using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.Attention;
 using Neuro.Nat.Engine.Sniffing;
+using Neuro.Nat.Engine.Storage;
 using Waher.Networking.XMPP;
 using Waher.Networking.XMPP.Concentrator;
 using Waher.Networking.XMPP.Events;
@@ -37,17 +38,37 @@ public sealed class NeuronMonitor : IAsyncDisposable
 	private readonly AccountSession session;
 	private readonly EventHub hub;
 	private readonly ConcurrentDictionary<string, Watch> watches = new(StringComparer.OrdinalIgnoreCase);
-	private readonly ConcurrentDictionary<string, bool> isNeuron = new(StringComparer.OrdinalIgnoreCase);
+	/// <summary>What contacts answered when asked whether they are Neurons. Kept in <see cref="knownStore"/>.</summary>
+	private readonly ConcurrentDictionary<string, bool> known = new(StringComparer.OrdinalIgnoreCase);
+	private readonly IKnownNeuronStore knownStore;
+	private readonly Func<string, bool>? isOwnAddress;
 	private readonly Timer renewTimer;
 	private XmppClient? client;
 	private ConcentratorClient? concentrator;
 	private Waher.Networking.XMPP.Sensor.SensorClient? sensor;
 	private Waher.Networking.XMPP.Control.ControlClient? control;
 
-	public NeuronMonitor(AccountSession session, EventHub hub)
+	/// <param name="known">Where answers to "are you a Neuron?" are kept. In memory when not given.</param>
+	/// <param name="isOwnAddress">True for a bare JID that belongs to another of the user's accounts.</param>
+	public NeuronMonitor(AccountSession session, EventHub hub, IKnownNeuronStore? known = null, Func<string, bool>? isOwnAddress = null)
 	{
 		this.session = session;
 		this.hub = hub;
+		this.knownStore = known ?? new InMemoryKnownNeuronStore();
+		this.isOwnAddress = isOwnAddress;
+		this.Discover = this.DiscoverAsync;
+
+		// Neurons known from before show at once, as offline until they are seen online.
+		foreach ((string jid, bool neuron) in this.knownStore.Load(session.Profile.Id))
+		{
+			if (this.IsOwn(jid))
+				continue;
+
+			this.known[jid] = neuron;
+			if (neuron)
+				this.GetWatch(jid).Update(i => i with { State = WatchState.Offline });
+		}
+
 		session.ClientCreated += this.Session_ClientCreated;
 		session.StatusChanged += this.Session_StatusChanged;
 		this.renewTimer = new Timer(_ => _ = this.RenewAsync(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
@@ -67,12 +88,67 @@ public sealed class NeuronMonitor : IAsyncDisposable
 
 	public AccountSession Session => this.session;
 
-	/// <summary>Neurons known for this account.</summary>
-	public IReadOnlyList<WatchedNeuron> Neurons => [.. this.watches.Values.Select(w => w.Info).Where(n => n.State != WatchState.NotANeuron).OrderBy(n => n.Label)];
+	/// <summary>
+	/// Neurons known for this account: contacts that answered that they are Neurons, and those
+	/// added on purpose that have not answered yet. Never the user's own addresses.
+	/// </summary>
+	public IReadOnlyList<WatchedNeuron> Neurons => [.. this.watches.Values.Where(this.IsListed).Select(w => w.Info).OrderBy(n => n.Label)];
+
+	/// <summary>
+	/// Asks a full JID whether it is a Neuron: true or false, or null when it did not answer.
+	/// Replaced in tests, so no live Neuron is needed.
+	/// </summary>
+	internal Func<string, Task<bool?>> Discover { get; set; }
+
+	private bool IsListed(Watch w)
+	{
+		string jid = w.Info.BareJid;
+		if (w.Info.State == WatchState.NotANeuron || this.IsOwn(jid))
+			return false;
+
+		return this.known.TryGetValue(jid, out bool neuron) ? neuron : w.Wanted;
+	}
+
+	/// <summary>True for the account's own address and the user's other accounts.</summary>
+	private bool IsOwn(string bareJid)
+	{
+		return string.Equals(bareJid, this.client?.BareJID, StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(bareJid, this.session.Profile.UserName + "@" + this.session.Profile.EffectiveDomain, StringComparison.OrdinalIgnoreCase) ||
+			this.isOwnAddress?.Invoke(bareJid) == true;
+	}
+
+	/// <summary>Keeps what a contact answered, in memory and in the store.</summary>
+	private void Remember(string bareJid, bool neuron)
+	{
+		if (this.IsOwn(bareJid) || (this.known.TryGetValue(bareJid, out bool was) && was == neuron))
+			return;
+
+		this.known[bareJid] = neuron;
+		_ = this.StoreAsync(() => this.knownStore.SetAsync(this.session.Profile.Id, bareJid, neuron));
+	}
+
+	private void Forget(string bareJid)
+	{
+		if (this.known.TryRemove(bareJid, out _))
+			_ = this.StoreAsync(() => this.knownStore.ForgetAsync(this.session.Profile.Id, bareJid));
+	}
+
+	private async Task StoreAsync(Func<Task> work)
+	{
+		try
+		{
+			await work();
+		}
+		catch (Exception ex)
+		{
+			this.session.Sniffer.Exception(ex);
+		}
+	}
 
 	/// <summary>Adds a Neuron without network traffic, for previews and UI tests.</summary>
 	internal void Preview(WatchedNeuron n)
 	{
+		this.known[n.BareJid] = true;
 		this.watches[n.BareJid] = new Watch(n);
 		this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 	}
@@ -105,8 +181,21 @@ public sealed class NeuronMonitor : IAsyncDisposable
 	public async Task AddNeuronAsync(string bareJid)
 	{
 		XmppClient c = this.client ?? throw new InvalidOperationException("The account is not connected.");
+		bareJid = bareJid.Trim();
+		if (this.IsOwn(bareJid))
+			throw new InvalidOperationException("That is one of your own addresses, not a Neuron.");
+
 		await c.RequestPresenceSubscription(bareJid);
-		this.GetWatch(bareJid);
+		this.Want(bareJid);
+	}
+
+	/// <summary>Follows a Neuron on purpose: it shows, as waiting, until it has answered what it is.</summary>
+	internal void Want(string bareJid)
+	{
+		if (this.IsOwn(bareJid))
+			return;
+
+		this.GetWatch(bareJid).Wanted = true;
 		this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 	}
 
@@ -156,50 +245,79 @@ public sealed class NeuronMonitor : IAsyncDisposable
 			// Presence may have arrived before the roster; look at what the client already knows.
 			foreach (RosterItem item in c.Roster)
 			{
-				this.Client_OnRosterItemChanged(c, item);
+				this.RosterItemChanged(item.BareJid, item.State, item.Name);
 				if (item.HasLastPresence && item.LastPresence.IsOnline)
-					_ = this.CheckAsync(item.BareJid, item.LastPresenceFullJid);
+					_ = this.PresenceAsync(item.BareJid, item.LastPresenceFullJid, true);
 			}
 		}
 		else if (status != ConnectionStatus.Connected)
-		{
-			foreach (Watch w in this.watches.Values)
-				w.Update(i => i with { State = WatchState.Offline, FullJid = null, LiveSince = null }, clearSniffer: true);
-			this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
-		}
+			this.ConnectionLost();
+	}
+
+	/// <summary>The account lost its connection: every Neuron is offline until seen again.</summary>
+	internal void ConnectionLost()
+	{
+		foreach (Watch w in this.watches.Values)
+			w.Update(i => i with { State = WatchState.Offline, FullJid = null, LiveSince = null }, clearSniffer: true);
+		this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	private Task Client_OnRosterItemChanged(object sender, RosterItem item)
 	{
-		if (item.State is SubscriptionState.To or SubscriptionState.Both || this.watches.ContainsKey(item.BareJid))
+		this.RosterItemChanged(item.BareJid, item.State, item.Name);
+		return Task.CompletedTask;
+	}
+
+	/// <summary>
+	/// A contact whose presence this account sees is followed, so it can be asked what it is
+	/// when it comes online. It is listed only once it has answered that it is a Neuron.
+	/// </summary>
+	internal void RosterItemChanged(string bareJid, SubscriptionState state, string? name)
+	{
+		if (string.IsNullOrEmpty(bareJid) || this.IsOwn(bareJid))
+			return;
+
+		if (state is SubscriptionState.To or SubscriptionState.Both || this.watches.ContainsKey(bareJid))
 		{
-			Watch w = this.GetWatch(item.BareJid);
-			w.Update(i => i with { Name = string.IsNullOrWhiteSpace(item.Name) ? null : item.Name });
+			Watch w = this.GetWatch(bareJid);
+			w.Update(i => i with { Name = string.IsNullOrWhiteSpace(name) ? null : name });
 			this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 		}
-
-		return Task.CompletedTask;
 	}
 
 	private Task Client_OnRosterItemRemoved(object sender, RosterItem item)
 	{
-		if (this.watches.TryRemove(item.BareJid, out Watch? w))
+		this.RosterItemRemoved(item.BareJid);
+		return Task.CompletedTask;
+	}
+
+	/// <summary>A contact left the roster: stop following it, and forget what it answered.</summary>
+	internal void RosterItemRemoved(string bareJid)
+	{
+		this.Forget(bareJid);
+		if (this.watches.TryRemove(bareJid, out Watch? w))
 		{
 			_ = this.UnregisterAsync(w);
 			this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 		}
-
-		return Task.CompletedTask;
 	}
 
 	private Task Client_OnPresence(object sender, PresenceEventArgs e)
 	{
-		if (string.IsNullOrEmpty(e.FromBareJID) || string.Equals(e.FromBareJID, this.client?.BareJID, StringComparison.OrdinalIgnoreCase))
+		_ = this.PresenceAsync(e.FromBareJID, e.From, e.IsOnline);
+		return Task.CompletedTask;
+	}
+
+	/// <summary>A contact came online (it is asked what it is) or went offline.</summary>
+	internal Task PresenceAsync(string bareJid, string fullJid, bool online)
+	{
+		if (string.IsNullOrEmpty(bareJid) || this.IsOwn(bareJid))
 			return Task.CompletedTask;
 
-		if (e.IsOnline)
-			_ = this.CheckAsync(e.FromBareJID, e.From);
-		else if (this.watches.TryGetValue(e.FromBareJID, out Watch? w) && string.Equals(w.Info.FullJid, e.From, StringComparison.OrdinalIgnoreCase))
+		if (online)
+			return this.CheckAsync(bareJid, fullJid);
+
+		if (this.watches.TryGetValue(bareJid, out Watch? w) && string.Equals(w.Info.FullJid, fullJid, StringComparison.OrdinalIgnoreCase))
 		{
 			w.Update(i => i with { State = WatchState.Offline, FullJid = null, LiveSince = null }, clearSniffer: true);
 			this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
@@ -242,28 +360,40 @@ public sealed class NeuronMonitor : IAsyncDisposable
 	public async Task<bool> IsNeuronSenderAsync(string fullJid)
 	{
 		string bare = XmppClient.GetBareJID(fullJid);
-		if (this.watches.TryGetValue(bare, out Watch? w) && w.Info.State is WatchState.Live or WatchState.Subscribing or WatchState.Forbidden)
-			return true;
-		if (w?.Info.State == WatchState.NotANeuron)
+		if (this.IsOwn(bare))
 			return false;
-		if (this.isNeuron.TryGetValue(bare, out bool known))
+		if (this.known.TryGetValue(bare, out bool known))
 			return known;
 
 		return await this.IsNeuronAsync(fullJid);
 	}
 
+	/// <summary>Asks a JID whether it is a Neuron, and remembers a clear answer.</summary>
 	private async Task<bool> IsNeuronAsync(string jid)
 	{
-		XmppClient? c = this.client;
-		if (c is null || string.IsNullOrEmpty(jid))
+		if (string.IsNullOrEmpty(jid))
 			return false;
 
-		ServiceDiscoveryEventArgs disco = await c.ServiceDiscoveryAsync(jid);
-		bool result = disco.Ok && disco.HasAnyFeature(ConcentratorServer.NamespacesConcentrator);
-		if (disco.Ok)
-			this.isNeuron[XmppClient.GetBareJID(jid)] = result;
+		string bare = XmppClient.GetBareJID(jid);
+		if (this.IsOwn(bare))
+			return false;
 
-		return result;
+		bool? answer = await this.Discover(jid);
+		if (answer is bool neuron)
+			this.Remember(bare, neuron);
+
+		return answer == true;
+	}
+
+	/// <summary>Service discovery: a Neuron's client hosts a concentrator. Null when it does not answer.</summary>
+	private async Task<bool?> DiscoverAsync(string jid)
+	{
+		XmppClient? c = this.client;
+		if (c is null)
+			return null;
+
+		ServiceDiscoveryEventArgs disco = await c.ServiceDiscoveryAsync(jid);
+		return disco.Ok ? disco.HasAnyFeature(ConcentratorServer.NamespacesConcentrator) : null;
 	}
 
 	private async Task Client_OnChatMessage(object sender, MessageEventArgs e)
@@ -285,17 +415,7 @@ public sealed class NeuronMonitor : IAsyncDisposable
 			if (n is null)
 				return;
 
-			bool neuron;
-			if (this.watches.TryGetValue(bare, out Watch? w) && w.Info.State is WatchState.Live or WatchState.Subscribing or WatchState.Forbidden)
-				neuron = true;
-			else if (w?.Info.State == WatchState.NotANeuron)
-				neuron = false;
-			else if (this.isNeuron.TryGetValue(bare, out bool known))
-				neuron = known;
-			else
-				neuron = await this.IsNeuronAsync(e.From);
-
-			if (neuron)
+			if (await this.IsNeuronSenderAsync(e.From))
 				this.NotificationReceived?.Invoke(this, n);
 		}
 		catch (Exception ex)
@@ -391,17 +511,38 @@ public sealed class NeuronMonitor : IAsyncDisposable
 
 		try
 		{
+			// Someone who has answered that they are not a Neuron is not asked again.
+			if (this.known.TryGetValue(bareJid, out bool was) && !was)
+			{
+				w.Update(i => i with { FullJid = fullJid, State = WatchState.NotANeuron });
+				this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
+				return;
+			}
+
 			w.Update(i => i with { FullJid = fullJid, State = WatchState.Discovering, Error = null });
 			this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 
-			if (!await this.IsNeuronAsync(fullJid))
+			bool? answer = await this.Discover(fullJid);
+			if (answer is bool neuron)
+				this.Remember(bareJid, neuron);
+
+			if (answer != true)
 			{
-				w.Update(i => i with { State = WatchState.NotANeuron });
+				// A known Neuron, or one added on purpose, that does not answer has a problem.
+				// Anyone else is simply not shown.
+				bool expected = this.known.TryGetValue(bareJid, out bool k) ? k : w.Wanted;
+				w.Update(i => answer is null && expected
+					? i with { State = WatchState.Failed, Error = "It did not say what it is." }
+					: i with { State = WatchState.NotANeuron });
 				this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 				return;
 			}
 
 			await this.RegisterAsync(w, fullJid);
+		}
+		catch (Exception ex)
+		{
+			this.session.Sniffer.Exception(ex);
 		}
 		finally
 		{
@@ -582,6 +723,9 @@ public sealed class NeuronMonitor : IAsyncDisposable
 		public string? SnifferId { get; private set; }
 		public DateTime? Expires { get; private set; }
 		public string? FullJid { get; private set; }
+
+		/// <summary>Added on purpose: listed, as waiting, before it has answered what it is.</summary>
+		public bool Wanted { get; set; }
 
 		/// <summary>Up to when history has been read (local time).</summary>
 		public DateTime? HistoryUntil { get; set; }

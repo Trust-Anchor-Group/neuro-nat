@@ -134,6 +134,44 @@ public sealed class AttentionInbox : IAsyncDisposable
 		}
 	}
 
+	/// <summary>
+	/// Moves a legal identity application to another review state. When it comes to need a person,
+	/// it is unread again (unless handled). Returns the changed item, or null when nothing changed.
+	/// </summary>
+	public NeuronNotification? SetReview(string id, IdentityReview review, string? applicant = null)
+	{
+		NeuronNotification? changed = null;
+
+		lock (this.sync)
+		{
+			int i = this.items.FindIndex(n => n.Id == id);
+			if (i < 0)
+				return null;
+
+			NeuronNotification old = this.items[i];
+			if (old.Kind != NotificationKind.LegalIdApplication)
+				return null;
+
+			string? who = string.IsNullOrWhiteSpace(applicant) ? old.Applicant : applicant;
+			if (old.Review == review && old.Applicant == who)
+				return null;
+
+			changed = NeuronNotification.Classify(old with
+			{
+				Review = review,
+				Applicant = who,
+				State = review == IdentityReview.NeedsReview && old.Review != IdentityReview.NeedsReview && old.State != AttentionState.Handled
+					? AttentionState.Unread
+					: old.State,
+			});
+			this.items[i] = changed;
+		}
+
+		this.Touch();
+		this.Changed?.Invoke(this, changed);
+		return changed;
+	}
+
 	/// <summary>Marks every unread item read.</summary>
 	public void MarkAllRead()
 	{
@@ -286,7 +324,8 @@ public sealed class JsonAttentionStore(string filePath) : IAttentionStore
 
 	private sealed record Stored(
 		string Id, Guid AccountId, string NeuronJid, string? MessageId, DateTime Received, DateTime? Updated,
-		string Markdown, string Text, AttentionState State, DateTime? HandledAt);
+		string Markdown, string Text, AttentionState State, DateTime? HandledAt,
+		IdentityReview? Review = null, string? Applicant = null);
 
 	public IReadOnlyList<NeuronNotification> Load()
 	{
@@ -310,6 +349,8 @@ public sealed class JsonAttentionStore(string filePath) : IAttentionStore
 					Text = s.Text,
 					State = s.State,
 					HandledAt = s.HandledAt,
+					Review = s.Review,
+					Applicant = s.Applicant,
 				})];
 			}
 			catch (JsonException)
@@ -329,7 +370,7 @@ public sealed class JsonAttentionStore(string filePath) : IAttentionStore
 			if (!string.IsNullOrEmpty(folder))
 				Directory.CreateDirectory(folder);
 
-			List<Stored> list = [.. items.Select(n => new Stored(n.Id, n.AccountId, n.NeuronJid, n.MessageId, n.Received, n.Updated, n.Markdown, n.Text, n.State, n.HandledAt))];
+			List<Stored> list = [.. items.Select(n => new Stored(n.Id, n.AccountId, n.NeuronJid, n.MessageId, n.Received, n.Updated, n.Markdown, n.Text, n.State, n.HandledAt, n.Review, n.Applicant))];
 			string tmp = this.FilePath + ".tmp";
 			File.WriteAllText(tmp, JsonSerializer.Serialize(list, options));
 			File.Move(tmp, this.FilePath, true);

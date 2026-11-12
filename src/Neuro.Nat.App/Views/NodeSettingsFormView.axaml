@@ -8,7 +8,7 @@
   <StackPanel Spacing="14">
     <StackPanel>
       <TextBlock Classes="label" Text="Title" />
-      <TextBox Text="{Binding Title}" PlaceholderText="A name people understand, such as Alerts from the lab" />
+      <TextBox Text="{Binding Title}" PlaceholderText="Such as Alerts from the lab" />
     </StackPanel>
 
     <StackPanel>
@@ -33,8 +33,6 @@
         <TextBox Text="{Binding MaxItems}" Width="84" PlaceholderText="No limit" HorizontalContentAlignment="Right" />
         <TextBlock Text="items" VerticalAlignment="Center" />
       </StackPanel>
-      <TextBlock Classes="meta" Margin="28,0,0,0" TextWrapping="Wrap" IsVisible="{Binding !KeepItems}"
-                 Text="Without it, only whoever subscribes at the moment something is published gets it." />
     </StackPanel>
 
     <StackPanel>

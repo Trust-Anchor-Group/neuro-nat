@@ -66,7 +66,7 @@ public sealed record IdentityFact(string Name, string Value, bool Mono = false);
 public sealed record PendingApplicationRow(PendingApplication Model, string WhenText, string ReviewUrl)
 {
 	public string Name => this.Model.Name ?? this.Model.Organization ?? "No name given";
-	public string Details => string.Join(" · ", new[] { this.Model.Account, this.Model.Country, this.WhenText }.Where(s => !string.IsNullOrEmpty(s)));
+	public string Details => string.Join(", ", new[] { this.Model.Account, this.Model.Country, this.WhenText }.Where(s => !string.IsNullOrEmpty(s)));
 }
 
 /// <summary>A field of the application form.</summary>
@@ -223,10 +223,10 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 	public string RetireLabel => this.IsApplication ? "Withdraw" : "Retire";
 
 	public string ConfirmText => this.Confirming == "compromised"
-		? "Report this identity as compromised? Use it when its keys may be in someone else's hands. Contracts it signed are flagged, and it can never sign again."
+		? "Report this identity as compromised? It can never sign again."
 		: this.IsApplication
-			? "Withdraw this application? The operators will no longer see it, and it can never be approved."
-			: "Retire this identity? It stays on record, but can never sign again. Apply for a new one to replace it.";
+			? "Withdraw this application? It can never be approved."
+			: "Retire this identity? It can never sign again.";
 
 	public string ConfirmButton => this.Confirming == "compromised" ? "Report compromised" : this.IsApplication ? "Withdraw application" : "Retire identity";
 
@@ -449,7 +449,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 		{
 			IdentityRowViewModel r = this.Rows.FirstOrDefault(x => x.Key == key) ?? new IdentityRowViewModel(key, kind, accountId);
 			AccountProfile? p = profiles.TryGetValue(accountId, out AccountProfile? x) ? x : null;
-			r.AccountLabel = p?.Label ?? string.Empty;
+			r.AccountLabel = p?.ShortLabel ?? string.Empty;
 			r.AccountColorIndex = p?.ColorIndex ?? 0;
 			keep.Add(r);
 			return r;
@@ -472,7 +472,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 			{
 				Guid id = s.Profile.Id;
 				IdentityRowViewModel a = Row("account:" + id, IdentityRowKind.Account, id);
-				a.Title = s.Profile.Label;
+				a.Title = s.Profile.ShortLabel;
 				IReadOnlyList<LegalIdentity> list = this.mine.TryGetValue(id, out IReadOnlyList<LegalIdentity>? l) ? l : [];
 				int approved = list.Count(i => i.State == IdentityState.Approved);
 				int waiting = list.Count(i => i.State == IdentityState.Created);
@@ -483,7 +483,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 					: !this.identities.IsAvailable(id) ? "Looking for the identity service…"
 					: this.loadErrors.TryGetValue(id, out string? err) ? err
 					: list.Count == 0 ? "No legal identity yet"
-					: string.Join(" · ", new[] { approved > 0 ? $"{approved} approved" : null, waiting > 0 ? $"{waiting} waiting for review" : null,
+					: string.Join(", ", new[] { approved > 0 ? $"{approved} approved" : null, waiting > 0 ? $"{waiting} waiting for review" : null,
 						approved + waiting == 0 ? "None in use" : null, history.Length > 0 ? history : null }.Where(x => x is not null));
 				a.HasState = false;
 
@@ -514,7 +514,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 				string jid = n.BareJid.ToLowerInvariant();
 				IdentityRowViewModel r = Row("neuron:" + n.AccountId + ":" + jid, IdentityRowKind.Neuron, n.AccountId);
 				r.NeuronJid = n.BareJid;
-				r.Title = n.Label;
+				r.Title = Converters.NeuronNameConverter.Name(n.BareJid);
 				NeuronIdentity? nid = this.neuronIds.TryGetValue((n.AccountId, jid), out NeuronIdentity? x) ? x : null;
 				IReadOnlyList<PendingApplication>? apps = this.pending.TryGetValue((n.AccountId, jid), out IReadOnlyList<PendingApplication>? y) ? y : null;
 
@@ -612,7 +612,8 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 			return;
 
 		AccountSession? session = this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == r.AccountId);
-		string accountText = session is null ? string.Empty : $"{session.Profile.Label} · {session.BareJid ?? session.Profile.UserName + "@" + session.Profile.Host}";
+		bool several = this.accounts.Sessions.Count > 1;
+		string accountText = session is null || !several ? string.Empty : session.Profile.ShortLabel;
 
 		switch (r.Kind)
 		{
@@ -624,8 +625,8 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 				this.DetailNote = !this.CanApply
 					? r.Meta
 					: EngineRuntime.KeepsKeys
-						? "The Neuron's operators review the application. Its signing keys are made on this computer and kept encrypted here, so this is the computer that can sign with it."
-						: "The Neuron's operators review the application. On this platform the signing keys are kept for this session only: after a restart the identity can no longer sign.";
+						? null
+						: "Signing keys last for this session only.";
 				break;
 
 			case IdentityRowKind.Identity when r.Identity is LegalIdentity i:
@@ -673,7 +674,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 
 			case IdentityRowKind.Neuron when r.NeuronJid is string jid:
 				this.DetailTitle = r.Title;
-				this.DetailSubtitle = $"{jid} · through {session?.Profile.Label ?? "an account"}";
+				this.DetailSubtitle = several && session is not null ? $"{jid} through {session.Profile.ShortLabel}" : jid;
 				(this.DetailState, this.DetailTone) = (r.StateLabel, r.Tone);
 				string web = this.WebBase(r.AccountId, jid);
 				this.NeuronWebBase = web;
@@ -722,7 +723,7 @@ public sealed partial class IdentitiesViewModel : ObservableObject, IDisposable
 				else
 					this.PendingSummary = "Asking the Neuron…";
 
-				this.DetailNote = "Approve or reject applications on the Neuron's own admin pages; they open in your browser.";
+				this.DetailNote = "Review on the Neuron's admin pages";
 				break;
 		}
 	}

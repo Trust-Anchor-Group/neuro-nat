@@ -47,7 +47,7 @@ public sealed partial class PubSubItemRow : ObservableObject
 
 	public string Title => this.Item.ItemId;
 
-	public string Meta => string.Join(" · ", new[]
+	public string Meta => string.Join(" at ", new[]
 	{
 		this.Item.Publisher is null ? null : "by " + this.Item.Publisher,
 		this.Item.Published is DateTime t ? (t.Date == DateTime.Today ? t.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) : t.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)) : null,
@@ -216,7 +216,7 @@ public sealed partial class PubSubViewModel
 		this.HasMore = matching.Count > shown.Count || !this.haveAll;
 		this.ItemsEmptyText = this.HasItems || this.ItemsError is not null ? string.Empty
 			: this.allItems.Count == 0 ? "Nothing is published on this node."
-			: "No item matches. The filter looks at ids, who published, and what the items say.";
+			: "No item matches.";
 
 		string count = Ui.Count(shown.Count, "item");
 		this.ItemsFooter = !this.HasItems ? string.Empty

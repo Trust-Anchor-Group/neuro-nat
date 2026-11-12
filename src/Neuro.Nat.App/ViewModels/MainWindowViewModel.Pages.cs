@@ -69,7 +69,7 @@ public sealed partial class MainWindowViewModel
 		this.Page = p;
 		this.Fleet.SelectedRow = row;
 		this.NeuronEvents.SelectedIssue = null;
-		this.NeuronEvents.NeuronFilter = row.BareJid;
+		this.NeuronEvents.NeuronFilter = NeuronSet.Of(row.BareJid);
 		this.RefreshPage(everything: true);
 		this.ShowPageTab(tab is WorkspaceKind t && IsPageScreen(t) ? t : WorkspaceKind.Neuron);
 	}
@@ -267,8 +267,8 @@ public sealed partial class MainWindowViewModel
 
 		p.HasLinks = p.Links.Count > 0;
 		p.LinksNote = p.HasLinks ? string.Empty
-			: this.Topology.IsScanning ? "Asking your Neurons how they are connected…"
-			: this.Topology.HasScan ? "No parent and no federated servers were reported."
+			: this.Topology.IsScanning ? "Asking…"
+			: this.Topology.HasScan ? "Nothing reported"
 			: "Not asked yet.";
 	}
 

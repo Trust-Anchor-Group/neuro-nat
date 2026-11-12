@@ -95,7 +95,7 @@
     <Border Classes="treePane" c:Pane.Key="sources" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel Margin="12,14,8,12">
         <DockPanel DockPanel.Dock="Top" Margin="6,0,4,10">
-          <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding LoadTreeCommand}" ToolTip.Tip="Read the sources again" IsVisible="{Binding HasNeuron}">
+          <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding LoadTreeCommand}" ToolTip.Tip="Refresh" IsVisible="{Binding HasNeuron}">
             <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <TextBlock Classes="section" Text="Sources" VerticalAlignment="Center" />
@@ -107,7 +107,7 @@
             <c:LineIcon Classes="btn" Data="{StaticResource Icon.Close}" />
           </Button>
           <TextBox Classes="find" Text="{Binding SearchText}" PlaceholderText="Find nodes in every source…" MinHeight="30" Padding="10,5"
-                   ToolTip.Tip="Find nodes by name (Ctrl+F). Enter searches.">
+                   ToolTip.Tip="Find nodes (Ctrl+F)">
             <TextBox.KeyBindings>
               <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
               <KeyBinding Gesture="Escape" Command="{Binding ClearSearchCommand}" />
@@ -192,17 +192,19 @@
               <TextBlock Text="Warning" Foreground="{DynamicResource Severity.Warning}" />
             </Border>
           </StackPanel>
-          <TextBlock Classes="meta" TextTrimming="CharacterEllipsis">
-            <Run Text="{Binding NodeType}" /><Run Text=" · " /><Run Text="{Binding NodeWhere}" /><Run Text="  " /><Run Text="{Binding NodeChanged}" />
-          </TextBlock>
+          <StackPanel Orientation="Horizontal" Spacing="16">
+            <TextBlock Classes="meta" Text="{Binding NodeType}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="meta" Text="{Binding NodeWhere}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="meta" Text="{Binding NodeChanged}" />
+          </StackPanel>
         </StackPanel>
 
         <!-- Toolbar: only while looking at the node -->
         <WrapPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10" IsVisible="{Binding IsDetails}">
-          <Button Classes="ghost" Command="{Binding EditCommand}" ToolTip.Tip="Edit the node's parameters" Margin="0,0,6,6">
+          <Button Classes="ghost" Command="{Binding EditCommand}" ToolTip.Tip="Edit" Margin="0,0,6,6">
             <TextBlock Text="Edit" FontSize="{StaticResource Type.Meta}" />
           </Button>
-          <Button Classes="ghost" Command="{Binding LoadAddableCommand}" ToolTip.Tip="Add a node under this one" Margin="0,0,6,6">
+          <Button Classes="ghost" Command="{Binding LoadAddableCommand}" ToolTip.Tip="Add a node" Margin="0,0,6,6">
             <Button.Flyout>
               <MenuFlyout ItemsSource="{Binding AddableTypes}" Placement="BottomEdgeAlignedLeft">
                 <MenuFlyout.ItemContainerTheme>
@@ -219,26 +221,26 @@
               <TextBlock Classes="btnLabel" Text="Add" />
             </StackPanel>
           </Button>
-          <Button Classes="ghost" Command="{Binding MoveUpCommand}" IsVisible="{Binding CanMove}" ToolTip.Tip="Move up among its siblings" Margin="0,0,6,6">
+          <Button Classes="ghost" Command="{Binding MoveUpCommand}" IsVisible="{Binding CanMove}" ToolTip.Tip="Move up" Margin="0,0,6,6">
             <TextBlock Text="Move up" FontSize="{StaticResource Type.Meta}" />
           </Button>
-          <Button Classes="ghost" Command="{Binding MoveDownCommand}" IsVisible="{Binding CanMove}" ToolTip.Tip="Move down among its siblings" Margin="0,0,6,6">
+          <Button Classes="ghost" Command="{Binding MoveDownCommand}" IsVisible="{Binding CanMove}" ToolTip.Tip="Move down" Margin="0,0,6,6">
             <TextBlock Text="Move down" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <Button Classes="ghost" Command="{Binding ReadCommand}" CommandParameter="momentary" IsVisible="{Binding CanRead}" Margin="0,0,6,6"
-                  ToolTip.Tip="Read the node's sensor data now">
+                  ToolTip.Tip="Read">
             <TextBlock Text="Read" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <Button Classes="ghost" Command="{Binding ReadCommand}" CommandParameter="all" IsVisible="{Binding CanRead}" Margin="0,0,6,6"
-                  ToolTip.Tip="Read all sensor data, including history">
+                  ToolTip.Tip="Read history">
             <TextBlock Text="Read history" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <Button Classes="ghost" Command="{Binding ControlCommand}" IsVisible="{Binding CanControl}" Margin="0,0,6,6"
-                  ToolTip.Tip="Set the node's control parameters">
+                  ToolTip.Tip="Control">
             <TextBlock Text="Control" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <Button Classes="ghost" Command="{Binding CopyCommand}" Margin="0,0,6,6"
-                  ToolTip.Tip="Copy this node and everything under it, to paste here or on another Neuron">
+                  ToolTip.Tip="Copy with everything under it">
             <TextBlock Text="Copy" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <Button Classes="ghost" Command="{Binding PasteCommand}" IsVisible="{Binding HasClipboard}" Margin="0,0,6,6"
@@ -246,13 +248,13 @@
             <TextBlock Text="Paste" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <Button Classes="ghost" Command="{Binding SniffCommand}" IsVisible="{Binding CanSniff}" Margin="0,0,6,6"
-                  ToolTip.Tip="Watch this node's traffic live. Only the Neuron's administrators may do this.">
+                  ToolTip.Tip="Watch traffic">
             <StackPanel Classes="btn">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Sniffer}" />
               <TextBlock Classes="btnLabel" Text="Watch traffic" />
             </StackPanel>
           </Button>
-          <Button Classes="ghost" Command="{Binding ShareCommand}" ToolTip.Tip="Send this node's details to a coworker or a room" Margin="0,0,6,6">
+          <Button Classes="ghost" Command="{Binding ShareCommand}" ToolTip.Tip="Share" Margin="0,0,6,6">
             <StackPanel Classes="btn">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
               <TextBlock Classes="btnLabel" Text="Share" />
@@ -262,7 +264,7 @@
             <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <Button Classes="danger" Classes.armed="{Binding DeleteArmed}" Command="{Binding DeleteCommand}" Margin="0,0,6,6"
-                  ToolTip.Tip="Delete the node and everything under it. Asks once more first.">
+                  ToolTip.Tip="Delete">
             <StackPanel Classes="btn">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Trash}" />
               <TextBlock Classes="btnLabel" Text="Delete" />
@@ -368,13 +370,13 @@
           <DockPanel IsVisible="{Binding IsReadout}">
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-                <Button Classes="ghost" Command="{Binding CopyReadoutCommand}" ToolTip.Tip="Copy all readings, ready to paste into a spreadsheet">
+                <Button Classes="ghost" Command="{Binding CopyReadoutCommand}" ToolTip.Tip="Copy readings">
                   <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
                 </Button>
-                <Button Classes="ghost" Command="{Binding SaveReadoutCommand}" ToolTip.Tip="Save all readings to a file">
+                <Button Classes="ghost" Command="{Binding SaveReadoutCommand}" ToolTip.Tip="Save readings">
                   <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
                 </Button>
-                <ToggleButton Classes="ghost" IsChecked="{Binding IsWatching}" ToolTip.Tip="Read these values again every 5 seconds and mark the ones that change">
+                <ToggleButton Classes="ghost" IsChecked="{Binding IsWatching}" ToolTip.Tip="Read every 5 seconds">
                   <StackPanel Classes="btn">
                     <c:LineIcon Classes="btn" Data="{StaticResource Icon.Eye}" />
                     <TextBlock Classes="btnLabel" Text="Watch" />
@@ -417,10 +419,10 @@
           <DockPanel IsVisible="{Binding IsReport}">
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-                <Button Classes="ghost" Command="{Binding CopyReportCommand}" ToolTip.Tip="Copy the report's tables, ready to paste into a spreadsheet">
+                <Button Classes="ghost" Command="{Binding CopyReportCommand}" ToolTip.Tip="Copy tables">
                   <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
                 </Button>
-                <Button Classes="ghost" Command="{Binding SaveReportCommand}" ToolTip.Tip="Save the report's tables to a file">
+                <Button Classes="ghost" Command="{Binding SaveReportCommand}" ToolTip.Tip="Save tables">
                   <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
                 </Button>
                 <Button Content="Change values" Command="{Binding CloseReportCommand}" />
@@ -443,8 +445,6 @@
       <!-- A data source -->
       <StackPanel IsVisible="{Binding !HasNode}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="400" Spacing="6">
         <TextBlock Text="Pick a node" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                   Text="Open a data source on the left to see its nodes. A node shows its parameters, messages and commands here, and you can edit it, add nodes under it or delete it with the Neuron's own forms." />
       </StackPanel>
     </Panel>
 
@@ -468,7 +468,7 @@
                   <Ellipse Classes="dot" Classes.ok="{Binding IsLive}" Classes.bad="{Binding HasProblem}" VerticalAlignment="Center" />
                   <TextBlock Text="{Binding NodeLabel}" VerticalAlignment="Center" FontWeight="SemiBold" />
                   <TextBlock Classes="meta" Text="{Binding NeuronLabel}" VerticalAlignment="Center" />
-                  <Button Classes="ghost" Padding="3" MinHeight="0" VerticalAlignment="Center" ToolTip.Tip="Stop watching this node's traffic"
+                  <Button Classes="ghost" Padding="3" MinHeight="0" VerticalAlignment="Center" ToolTip.Tip="Stop watching"
                           Command="{Binding $parent[UserControl].((vm:SourcesViewModel)DataContext).CloseSnifferCommand}" CommandParameter="{Binding}">
                     <c:LineIcon Data="{StaticResource Icon.Close}" Width="12" Height="12" />
                   </Button>

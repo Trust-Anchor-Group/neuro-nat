@@ -17,7 +17,7 @@ public enum NotificationKind
 	/// <summary>Someone asks to add the Neuron to their contacts.</summary>
 	RosterRequest,
 
-	/// <summary>A legal identity application waits for review.</summary>
+	/// <summary>A legal identity application. Needs a person only when its automatic review leaves claims unchecked.</summary>
 	LegalIdApplication,
 
 	/// <summary>A legal identity was approved or rejected without a person.</summary>
@@ -83,6 +83,19 @@ public enum AttentionState
 	Handled,
 }
 
+/// <summary>Where a legal identity application stands with the Neuron's automatic review.</summary>
+public enum IdentityReview
+{
+	/// <summary>Received; the automatic review has not reported yet. Quiet.</summary>
+	Waiting,
+
+	/// <summary>The review left claims unchecked and rejected none, or it never reported: a person reviews it.</summary>
+	NeedsReview,
+
+	/// <summary>The automatic review decided it: approved or rejected. Quiet.</summary>
+	Settled,
+}
+
 /// <summary>A label and value from the first table in a notification.</summary>
 public sealed record NotificationField(string Key, string Value);
 
@@ -141,6 +154,12 @@ public sealed record NeuronNotification
 	public AttentionState State { get; init; }
 	public DateTime? HandledAt { get; init; }
 
+	/// <summary>For a legal identity application: where its automatic review stands. Null for other kinds.</summary>
+	public IdentityReview? Review { get; init; }
+
+	/// <summary>For a legal identity application: the applicant's bare JID, once the review named it.</summary>
+	public string? Applicant { get; init; }
+
 	/// <summary>Still waiting for a person.</summary>
 	public bool IsOpen => this.NeedsAction && this.State != AttentionState.Handled;
 
@@ -161,15 +180,38 @@ public sealed record NeuronNotification
 	public static NeuronNotification Classify(NeuronNotification n)
 	{
 		NotificationClassifier.Result r = NotificationClassifier.Classify(n.Markdown);
+		if (r.Kind != NotificationKind.LegalIdApplication)
+		{
+			return n with
+			{
+				Kind = r.Kind,
+				Severity = r.Severity,
+				NeedsAction = r.NeedsAction,
+				Title = r.Title,
+				Subject = r.Subject,
+				Fields = r.Fields,
+				Links = r.Links,
+				Review = null,
+				Applicant = null,
+			};
+		}
+
+		IdentityReview review = n.Review ?? IdentityReview.Waiting;
 		return n with
 		{
 			Kind = r.Kind,
 			Severity = r.Severity,
-			NeedsAction = r.NeedsAction,
-			Title = r.Title,
-			Subject = r.Subject,
+			NeedsAction = review == IdentityReview.NeedsReview,
+			Title = review switch
+			{
+				IdentityReview.NeedsReview => "Identity application needs your review",
+				IdentityReview.Settled => "Identity application reviewed automatically",
+				_ => r.Title,
+			},
+			Subject = string.IsNullOrWhiteSpace(n.Applicant) ? r.Subject : n.Applicant,
 			Fields = r.Fields,
 			Links = r.Links,
+			Review = review,
 		};
 	}
 }

@@ -275,7 +275,7 @@ public class ShellRenderTests
 		// One chip: only that Neuron's events and issues remain.
 		vm.ToggleNeuronCommand.Execute(vm.NeuronChips.First(c => c.BareJid == "gamma@lab.local"));
 		Capture(window, $"events-chip-{theme.ToLowerInvariant()}-1440");
-		Assert.Equal("gamma@lab.local", vm.Events.NeuronFilter);
+		Assert.Equal(["gamma@lab.local"], vm.Events.NeuronFilter);
 		Assert.NotEmpty(vm.Events.Stream);
 		Assert.All(vm.Events.Stream, e => Assert.Equal("gamma@lab.local", e.Source.NeuronJid));
 		Assert.True(vm.Events.Stream.Count < everything);
@@ -284,7 +284,7 @@ public class ShellRenderTests
 
 		// The same chip again, or All Neurons, shows everything.
 		vm.ShowAllNeuronsCommand.Execute(null);
-		Assert.Null(vm.Events.NeuronFilter);
+		Assert.Empty(vm.Events.NeuronFilter);
 		Assert.Equal(everything, vm.Events.Stream.Count);
 
 		// The search box narrows as you type and goes where you choose.

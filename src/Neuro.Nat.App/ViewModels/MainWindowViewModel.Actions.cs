@@ -340,7 +340,11 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 
 			case NeuronChipViewModel chip:
 				ActionList forChip = [];
-				forChip.Filter(chip.IsSelected ? "Show all Neurons" : "Show only this Neuron", () => this.ToggleNeuron(chip));
+				string chipJid = chip.BareJid;
+				if (!string.Equals(this.LensJid, chipJid, StringComparison.OrdinalIgnoreCase))
+					forChip.Filter("Only this Neuron", () => this.LensJid = chipJid);
+				if (!this.IsAllNeurons)
+					forChip.Filter("Show all Neurons", () => this.SetLens([]));
 				forChip.AddRange(this.NeuronActions(chip.BareJid, null, WorkspaceKind.Events));
 				return forChip;
 

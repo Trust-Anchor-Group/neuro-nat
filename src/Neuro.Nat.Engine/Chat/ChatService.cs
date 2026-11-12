@@ -22,7 +22,8 @@ public sealed record Contact(
 	string? Status,
 	bool IsNeuron)
 {
-	public string Label => string.IsNullOrWhiteSpace(this.Name) ? this.BareJid : this.Name;
+	/// <summary>The name on screen. A Neuron goes by its domain when it has no roster name.</summary>
+	public string Label => this.IsNeuron ? NeuronNames.Of(this.Name, this.BareJid) : string.IsNullOrWhiteSpace(this.Name) ? this.BareJid : this.Name;
 }
 
 /// <summary>
@@ -417,7 +418,7 @@ public sealed partial class ChatService : IAsyncDisposable
 			this.requests.Add(new SubscriptionRequest(e.AccountId, e.Presence.FromBareJID, DateTime.Now)
 			{
 				Presence = e.Presence,
-				AccountLabel = this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == e.AccountId)?.Profile.Label,
+				AccountLabel = this.accounts.Sessions.Count > 1 ? this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == e.AccountId)?.Profile.ShortLabel : null,
 			});
 		}
 

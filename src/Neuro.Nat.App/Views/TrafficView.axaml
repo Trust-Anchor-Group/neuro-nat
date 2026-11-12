@@ -65,51 +65,51 @@
     <!-- Toolbar: what to show, find, and what to do with it -->
     <Grid x:Name="Toolbar" DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="6" Margin="0,0,0,8">
       <StackPanel Orientation="Horizontal">
-        <ToggleButton Classes="seg first kind" Content="Sent" IsChecked="{Binding ShowSent}" ToolTip.Tip="Show what this app sent" />
-        <ToggleButton Classes="seg kind" Content="Received" IsChecked="{Binding ShowReceived}" Margin="-1,0,0,0" ToolTip.Tip="Show what the server sent" />
-        <ToggleButton Classes="seg kind" Content="Notes" IsChecked="{Binding ShowInformation}" Margin="-1,0,0,0" ToolTip.Tip="Show notes from the connection, such as signing in" />
-        <ToggleButton Classes="seg last kind" Content="Problems" IsChecked="{Binding ShowProblems}" Margin="-1,0,0,0" ToolTip.Tip="Show warnings, errors and exceptions" />
+        <ToggleButton Classes="seg first kind" Content="Sent" IsChecked="{Binding ShowSent}" ToolTip.Tip="Sent" />
+        <ToggleButton Classes="seg kind" Content="Received" IsChecked="{Binding ShowReceived}" Margin="-1,0,0,0" ToolTip.Tip="Received" />
+        <ToggleButton Classes="seg kind" Content="Notes" IsChecked="{Binding ShowInformation}" Margin="-1,0,0,0" ToolTip.Tip="Notes" />
+        <ToggleButton Classes="seg last kind" Content="Problems" IsChecked="{Binding ShowProblems}" Margin="-1,0,0,0" ToolTip.Tip="Problems" />
       </StackPanel>
 
       <Grid x:Name="FindRow" Grid.Column="1" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="4" MaxWidth="420" HorizontalAlignment="Left">
         <TextBox x:Name="FindBox" Classes="find trafficFind" Text="{Binding FindText}" PlaceholderText="Find in traffic…" MinHeight="28" Padding="10,4"
-                 ToolTip.Tip="Find text in the lines (Ctrl+F). Enter goes to the next match, Shift+Enter to the one before." />
+                 ToolTip.Tip="Find (Ctrl+F)" />
         <TextBlock Grid.Column="1" Classes="meta num" Text="{Binding FindStatus}" VerticalAlignment="Center" Margin="4,0" IsVisible="{Binding HasFind}" />
-        <Button Grid.Column="2" Classes="ghost small" Padding="5" Command="{Binding FindNextCommand}" CommandParameter="back" IsVisible="{Binding HasFind}" ToolTip.Tip="The match before (Shift+Enter)">
+        <Button Grid.Column="2" Classes="ghost small" Padding="5" Command="{Binding FindNextCommand}" CommandParameter="back" IsVisible="{Binding HasFind}" ToolTip.Tip="Previous (Shift+Enter)">
           <c:LineIcon Data="{StaticResource Icon.ChevronDown}" Width="14" Height="14">
             <c:LineIcon.RenderTransform>
               <RotateTransform Angle="180" />
             </c:LineIcon.RenderTransform>
           </c:LineIcon>
         </Button>
-        <Button Grid.Column="3" Classes="ghost small" Padding="5" Command="{Binding FindNextCommand}" IsVisible="{Binding HasFind}" ToolTip.Tip="The next match (Enter)">
+        <Button Grid.Column="3" Classes="ghost small" Padding="5" Command="{Binding FindNextCommand}" IsVisible="{Binding HasFind}" ToolTip.Tip="Next (Enter)">
           <c:LineIcon Data="{StaticResource Icon.ChevronDown}" Width="14" Height="14" />
         </Button>
       </Grid>
 
       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
-        <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause the view. Traffic is still captured and shows when you resume.">
+        <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause">
           <StackPanel Classes="btn">
             <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />
             <TextBlock Classes="btnLabel" Text="{Binding PauseText}" />
           </StackPanel>
         </ToggleButton>
-        <ToggleButton Classes="ghost" IsChecked="{Binding OpenAll}" ToolTip.Tip="Show every line as tidy XML, one element per row, instead of one row per line">
+        <ToggleButton Classes="ghost" IsChecked="{Binding OpenAll}" ToolTip.Tip="Tidy XML">
           <StackPanel Classes="btn">
             <c:LineIcon Classes="btn" Data="{StaticResource Icon.Sniffer}" />
             <TextBlock Classes="btnLabel" Text="Tidy XML" />
           </StackPanel>
         </ToggleButton>
-        <Button Classes="ghost" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the selected lines, or every line shown when none is selected">
+        <Button Classes="ghost" Command="{Binding CopyCommand}" ToolTip.Tip="Copy">
           <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
         </Button>
-        <Button Classes="ghost" Command="{Binding SaveCommand}" ToolTip.Tip="Save the selected lines to a file, or every line shown when none is selected">
+        <Button Classes="ghost" Command="{Binding SaveCommand}" ToolTip.Tip="Save">
           <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
         </Button>
         <Button Classes="ghost" Command="{Binding ClearCommand}" ToolTip.Tip="Clear the view">
           <c:LineIcon Classes="btn" Data="{StaticResource Icon.Eraser}" />
         </Button>
-        <Button x:Name="WindowButton" Classes="ghost" Command="{Binding OpenWindowCommand}" ToolTip.Tip="Open this traffic in a window of its own">
+        <Button x:Name="WindowButton" Classes="ghost" Command="{Binding OpenWindowCommand}" ToolTip.Tip="New window">
           <c:LineIcon Classes="btn" Data="{StaticResource Icon.Window}" />
         </Button>
       </StackPanel>
@@ -120,7 +120,7 @@
         <!-- How much is kept, and how to keep more -->
         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="14,3,6,3" IsVisible="{Binding !IsEmpty}">
           <DockPanel>
-            <Button DockPanel.Dock="Right" Classes="ghost small" ToolTip.Tip="How many lines to keep before the oldest are dropped">
+            <Button DockPanel.Dock="Right" Classes="ghost small" ToolTip.Tip="Lines to keep">
               <Button.Flyout>
                 <MenuFlyout Placement="TopEdgeAlignedRight">
                   <MenuItem Header="Keep 2,000 lines" Command="{Binding SetLimitCommand}">
@@ -137,7 +137,7 @@
               <TextBlock Text="Keep more" />
             </Button>
             <Button DockPanel.Dock="Right" Classes="ghost small" Content="Show everything" Command="{Binding ShowEverythingCommand}" IsVisible="{Binding IsFiltered}"
-                    ToolTip.Tip="Turn all four kinds of lines back on" />
+                    ToolTip.Tip="Show all" />
             <TextBlock Classes="meta num" Text="{Binding LimitNote}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                        Classes.warn="{Binding HasDropped}" />
           </DockPanel>
@@ -158,7 +158,7 @@
                     <TextBlock Classes="mono tertiary" Margin="0,0,12,0" Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss.fff}'}" />
                     <TextBlock Grid.Column="1" Classes="dir" Text="{Binding Tag}" ToolTip.Tip="{Binding TagTip}"
                                Foreground="{Binding Direction, Converter={x:Static conv:SnifferDirectionBrushConverter.Instance}}" />
-                    <Button Grid.Column="2" Classes="ghost fold" IsVisible="{Binding CanOpen}" ToolTip.Tip="Open or close up this line (Enter, or double-click)"
+                    <Button Grid.Column="2" Classes="ghost fold" IsVisible="{Binding CanOpen}" ToolTip.Tip="Open or close (Enter)"
                             Command="{Binding $parent[UserControl].((vm:SnifferViewModel)DataContext).ToggleCommand}" CommandParameter="{Binding}">
                       <Panel>
                         <c:LineIcon Data="{StaticResource Icon.ChevronRight}" Width="12" Height="12" IsVisible="{Binding !IsOpen}" />
@@ -176,7 +176,7 @@
           <!-- New lines wait here while the view is scrolled up -->
           <Button Classes="primary" IsVisible="{Binding HasNew}" Command="{Binding JumpToLatestCommand}"
                   HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,22,10" Padding="12,4" CornerRadius="{StaticResource Radius.Pill}"
-                  ToolTip.Tip="Go to the newest line and follow new ones again">
+                  ToolTip.Tip="Go to newest">
             <TextBlock Text="{Binding NewText}" FontSize="{StaticResource Type.Meta}" />
           </Button>
 

@@ -218,7 +218,7 @@ public sealed partial class SnifferViewModel : ObservableObject, IDisposable, IA
 	public bool HasDropped => this.Dropped > 0;
 
 	public string LimitNote => this.Dropped > 0
-		? $"Keeping the last {this.Limit:N0} lines. {this.Dropped:N0} older {(this.Dropped == 1 ? "line was" : "lines were")} dropped."
+		? $"The last {this.Limit:N0} lines, {this.Dropped:N0} older {(this.Dropped == 1 ? "line was" : "lines were")} dropped"
 		: $"{this.all.Count:N0} of up to {this.Limit:N0} lines";
 
 	[RelayCommand]
@@ -264,7 +264,7 @@ public sealed partial class SnifferViewModel : ObservableObject, IDisposable, IA
 	private int newCount;
 
 	public bool HasNew => this.NewCount > 0;
-	public string NewText => this.NewCount == 1 ? "Jump to latest · 1 new line" : $"Jump to latest · {this.NewCount:N0} new lines";
+	public string NewText => this.NewCount == 1 ? "Jump to 1 new line" : $"Jump to {this.NewCount:N0} new lines";
 
 	/// <summary>Raised when the view should scroll to its newest line.</summary>
 	public event EventHandler? ScrollToLatest;

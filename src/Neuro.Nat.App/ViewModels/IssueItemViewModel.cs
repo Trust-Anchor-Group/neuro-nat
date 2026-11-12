@@ -22,6 +22,10 @@ public sealed partial class IssueItemViewModel(Issue issue) : ObservableObject
 	[ObservableProperty]
 	private string meta = string.Empty;
 
+	/// <summary>"12 events on Lab since 10:42, latest 4 min ago"</summary>
+	[ObservableProperty]
+	private string countText = string.Empty;
+
 	[ObservableProperty]
 	private int[] histogram = [];
 
@@ -86,9 +90,11 @@ public sealed partial class IssueItemViewModel(Issue issue) : ObservableObject
 			: $"{(this.Trend > 0 ? "Rising" : "Falling")}: {recent} in the last 30 minutes, {before} in the 30 before";
 
 		int neurons = i.Neurons.Count;
-		string where = neurons == 1 ? i.Neurons[0] : $"{neurons} Neurons";
+		string where = neurons == 1 ? Converters.NeuronNameConverter.Name(i.Neurons[0]) : $"{neurons} Neurons";
 		string since = i.FirstSeen.Date == now.Date ? i.FirstSeen.ToString("HH:mm") : i.FirstSeen.ToString("yyyy-MM-dd HH:mm");
-		this.Meta = $"{where} · since {since} · last {RelativeTime.Format(i.LastSeen, now)}";
+		string phrase = $"on {where} since {since}, latest {RelativeTime.Format(i.LastSeen, now)}";
+		this.Meta = "O" + phrase[1..];
+		this.CountText = (i.Count == 1 ? "1 event " : $"{i.Count:N0} events ") + phrase;
 	}
 }
 

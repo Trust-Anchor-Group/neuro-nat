@@ -279,7 +279,7 @@ public class PubSubRebuiltTests
 		Dispatcher.UIThread.RunJobs();
 		Assert.Equal("a-5", p.Items[0].Title);
 		Assert.True(p.Items[0].IsNew);
-		Assert.StartsWith("by robin@lab.tagroot.io · ", p.Items[0].Meta);
+		Assert.StartsWith("by robin@lab.tagroot.io at ", p.Items[0].Meta);
 		Capture(window, "pubsub-watching-light-1440");
 
 		// An item published again under its id takes the place of the old one.
@@ -803,7 +803,7 @@ public class PubSubRebuiltTests
 		Capture(window, $"pubsub-storage-picture-{t}-1440");
 
 		PubSubItemRow details = await Only("urn:xmpp:avatar:metadata");
-		Assert.Equal(("image/png", "24 × 24 · 119 bytes"), (details.Fields[0].Label, details.Fields[0].Value));
+		Assert.Equal(("image/png", "24 × 24, 119 bytes"), (details.Fields[0].Label, details.Fields[0].Value));
 
 		Assert.Equal(("Nickname", "Ops on call"), ((await Only("http://jabber.org/protocol/nick")).Kind, p.Items[0].Summary));
 		Assert.Equal(("Mood", "Relieved: The deploy went through"), ((await Only("http://jabber.org/protocol/mood")).Kind, p.Items[0].Summary));

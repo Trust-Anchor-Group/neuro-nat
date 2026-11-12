@@ -200,7 +200,7 @@ public class NeuronPageTests
 		Capture(window, $"neuron-overview-{t}-1440");
 
 		// The events of all Neurons are untouched by the page's own filter.
-		Assert.Null(vm.Events.NeuronFilter);
+		Assert.Empty(vm.Events.NeuronFilter);
 
 		// Events: the same screen as the Events place, for this Neuron only.
 		vm.ShowPageTabCommand.Execute(WorkspaceKind.NeuronEvents);
@@ -256,7 +256,7 @@ public class NeuronPageTests
 		Assert.False(page.HostsAccount);
 		vm.OpenNeuron("lab.tagroot.io");
 		Assert.True(vm.Page!.HostsAccount);
-		Assert.Equal("lab.tagroot.io", vm.NeuronEvents.NeuronFilter);
+		Assert.Equal(["lab.tagroot.io"], vm.NeuronEvents.NeuronFilter);
 		Assert.Single(vm.Page.Waiting);
 
 		// Another Neuron has a console of its own.

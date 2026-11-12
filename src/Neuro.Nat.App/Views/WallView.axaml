@@ -100,8 +100,6 @@
       <Panel x:Name="TileHost">
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding !HasTiles}" Spacing="8">
           <TextBlock Text="No Neurons yet" FontSize="26" FontWeight="SemiBold" HorizontalAlignment="Center" />
-          <TextBlock Text="They show here as soon as an account that administers one is connected." FontSize="15"
-                     Foreground="{DynamicResource Ink.Secondary}" HorizontalAlignment="Center" />
         </StackPanel>
         <!-- However many there are, all of them show: with more than fit, the tiles get smaller together. -->
         <Viewbox x:Name="TileBox" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="{Binding HasTiles}">

@@ -19,6 +19,9 @@ public sealed partial class NeuronPageViewModel(Guid accountId, string bareJid) 
 
 	[ObservableProperty] private string label = bareJid;
 	[ObservableProperty] private string accountLabel = string.Empty;
+
+	/// <summary>Whether the account is worth naming: only when there are several.</summary>
+	[ObservableProperty] private bool showAccount;
 	[ObservableProperty] private int accountColorIndex;
 	[ObservableProperty] private bool isOk;
 	[ObservableProperty] private bool isBusy;
@@ -65,6 +68,7 @@ public sealed partial class NeuronPageViewModel(Guid accountId, string bareJid) 
 	{
 		this.Label = row.Label;
 		this.AccountLabel = row.AccountLabel;
+		this.ShowAccount = row.ShowAccount;
 		this.AccountColorIndex = row.AccountColorIndex;
 		this.IsLive = row.State == WatchState.Live;
 		this.IsOk = this.IsLive;

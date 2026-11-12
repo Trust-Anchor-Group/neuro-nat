@@ -224,7 +224,7 @@ public sealed class Conversation
 /// <summary>Someone asks to see an account's presence (to be added as a contact).</summary>
 public sealed record SubscriptionRequest(Guid AccountId, string BareJid, DateTime Received)
 {
-	/// <summary>The account that is asked, by its name in NAT.</summary>
+	/// <summary>The account that is asked, by its short name. Null when there is only one account.</summary>
 	public string? AccountLabel { get; init; }
 
 	internal Waher.Networking.XMPP.Events.PresenceEventArgs? Presence { get; init; }

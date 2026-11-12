@@ -68,7 +68,7 @@ public sealed record WatchedNeuron
 
 	public string? HistoryError { get; init; }
 
-	/// <summary>One line for chips and tooltips, for example "Listening · 239 earlier events loaded".</summary>
+	/// <summary>One line for chips and tooltips, for example "Listening, 239 earlier events loaded".</summary>
 	public string StatusText
 	{
 		get
@@ -87,9 +87,9 @@ public sealed record WatchedNeuron
 
 			string history = this.HistoryState switch
 			{
-				HistoryState.Loading => this.HistoryCount > 0 ? $" · reading earlier events ({this.HistoryCount})" : " · reading earlier events",
-				HistoryState.Loaded => this.HistoryCount == 1 ? " · 1 earlier event loaded" : $" · {this.HistoryCount} earlier events loaded",
-				HistoryState.Failed => " · earlier events incomplete",
+				HistoryState.Loading => this.HistoryCount > 0 ? $", reading earlier events ({this.HistoryCount})" : ", reading earlier events",
+				HistoryState.Loaded => this.HistoryCount == 1 ? ", 1 earlier event loaded" : $", {this.HistoryCount} earlier events loaded",
+				HistoryState.Failed => ", earlier events incomplete",
 				_ => string.Empty,
 			};
 
@@ -100,5 +100,6 @@ public sealed record WatchedNeuron
 	/// <summary>Details for the tooltip: errors, or what the history covers.</summary>
 	public string? Details => this.Error ?? this.HistoryError ?? (this.HistoryFrom is DateTime f ? $"History read from {f:yyyy-MM-dd HH:mm}. Warnings and worse only." : null);
 
-	public string Label => string.IsNullOrWhiteSpace(this.Name) ? this.BareJid : this.Name;
+	/// <summary>The name on screen: the roster name, else the domain. See <see cref="NeuronNames"/>.</summary>
+	public string Label => NeuronNames.Of(this.Name, this.BareJid);
 }

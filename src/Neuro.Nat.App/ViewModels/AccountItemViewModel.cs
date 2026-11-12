@@ -150,8 +150,8 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 		this.IsFailed = s == ConnectionStatus.Failed;
 		this.LastError = this.Session.LastError;
 		this.Sniffer.EmptyText = string.IsNullOrEmpty(this.LastError)
-			? "Connect the account to see everything it sends and receives, live."
-			: "Fix the problem above, then connect to see the traffic.";
+			? "Not connected"
+			: "Fix the problem above, then connect.";
 		this.StatusText = s switch
 		{
 			ConnectionStatus.Connected => this.Session.ConnectedSinceUtc is DateTime t
@@ -160,7 +160,7 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 			ConnectionStatus.Connecting => "Connecting…",
 			ConnectionStatus.Authenticating => "Logging in…",
 			ConnectionStatus.Reconnecting => "Connection lost, retrying…",
-			ConnectionStatus.Failed => "Failed · " + ShortCause(this.Session.LoginProblem, this.Session.LastError),
+			ConnectionStatus.Failed => Capitalized(ShortCause(this.Session.LoginProblem, this.Session.LastError)),
 			_ => "Offline",
 		};
 		this.ShortStatus = s switch
@@ -175,8 +175,8 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 			or LoginProblem.CredentialsExpired or LoginProblem.Other;
 		this.RecoveryHint = !this.IsFailed ? null : this.Session.LoginProblem switch
 		{
-			LoginProblem.TemporarilyBlocked => "The Neuron's login auditor has blocked this computer after repeated failed logins. Retrying only extends the block. Wait until the time above, or ask an administrator of the Neuron to unblock it.",
-			LoginProblem.AccountDisabled => "The account is disabled on the Neuron. An administrator of the Neuron can enable it again.",
+			LoginProblem.TemporarilyBlocked => "Blocked after repeated failed logins. Retrying extends the block.",
+			LoginProblem.AccountDisabled => "An administrator of the Neuron can enable it again.",
 			_ => null,
 		};
 		this.ShowConnect = this.CanConnect();
@@ -224,6 +224,8 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 	[ObservableProperty]
 	private string? recoveryHint;
 
+	private static string Capitalized(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
+
 	/// <summary>A few words on why the account is not connected, for list rows.</summary>
 	private static string ShortCause(LoginProblem problem, string? error)
 	{
@@ -268,8 +270,8 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 
 	// ---- Change password: on the Neuron and in the saved login, in one go -------------------
 
-	/// <summary>"Signs in as admin on alpha.lab.local:5222. The password is kept encrypted for your user."</summary>
-	public string SignInText => $"Signs in as {this.Session.Profile.UserName} on {this.Endpoint}. The password is kept encrypted for your user on this computer.";
+	/// <summary>"Signs in as admin on alpha.lab.local:5222"</summary>
+	public string SignInText => $"Signs in as {this.Session.Profile.UserName} on {this.Endpoint}";
 
 	[ObservableProperty] private bool isChangingPassword;
 	[ObservableProperty] private bool isPasswordBusy;

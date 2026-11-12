@@ -77,7 +77,7 @@ public static partial class NotificationClassifier
 		}
 
 		if (l.StartsWith("legal identity application received", StringComparison.Ordinal))
-			return R(NotificationKind.LegalIdApplication, EventSeverity.Info, true, "Legal identity application to review", FirstLinkText());
+			return R(NotificationKind.LegalIdApplication, EventSeverity.Info, false, "Identity application waiting for automatic review", FirstLinkText());
 
 		if (l.StartsWith("legal identity application has been automatically approved", StringComparison.Ordinal))
 			return R(NotificationKind.LegalIdDecision, EventSeverity.Info, false, "Legal identity approved automatically", FirstLinkText());

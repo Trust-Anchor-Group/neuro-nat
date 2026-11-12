@@ -82,13 +82,13 @@
       <DockPanel Margin="12,14,12,12">
         <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
           <ToggleButton DockPanel.Dock="Right" Classes="ghost" IsChecked="{Binding ShowResolved}"
-                        ToolTip.Tip="Also show muted and fixed problems">
+                        ToolTip.Tip="Show fixed">
             <TextBlock Text="Show fixed" FontSize="{StaticResource Type.Meta}" />
           </ToggleButton>
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center" Margin="0,0,8,0">
             <TextBlock Classes="section" Text="Problems" />
             <TextBlock Grid.Column="1" Classes="meta num" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                       ToolTip.Tip="Errors and critical events in the last hour, all Neurons">
+                       ToolTip.Tip="Errors in the last hour">
               <Run Text="{Binding ErrorsLastHour}" /><Run Text=" errors last hour" />
             </TextBlock>
           </Grid>
@@ -140,8 +140,6 @@
           <StackPanel IsVisible="{Binding !HasIssues}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="300" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Events}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
             <TextBlock Text="No open problems" FontWeight="SemiBold" HorizontalAlignment="Center" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                       Text="Warnings, errors and critical events from your Neurons are grouped here: one problem for each thing that goes wrong, across all your Neurons." />
           </StackPanel>
         </Panel>
       </DockPanel>
@@ -172,18 +170,18 @@
                 </Panel>
               </ToggleButton>
             </StackPanel>
-            <TextBox Classes="streamFilter find" Text="{Binding SearchText}" PlaceholderText="Filter messages, modules, Neurons…" MinHeight="28" Padding="10,4"
-                     ToolTip.Tip="Filter the events (Ctrl+F)" />
-            <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause the stream (events are still collected)">
+            <TextBox Classes="streamFilter find" Text="{Binding SearchText}" PlaceholderText="Filter…" MinHeight="28" Padding="10,4"
+                     ToolTip.Tip="Filter (Ctrl+F)" />
+            <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />
                 <TextBlock Classes="btnLabel wideOnly" Text="Pause" />
               </StackPanel>
             </ToggleButton>
-            <Button Classes="ghost roomy" Command="{Binding CopyStreamCommand}" ToolTip.Tip="Copy the selected events, or every event shown when none is selected">
+            <Button Classes="ghost roomy" Command="{Binding CopyStreamCommand}" ToolTip.Tip="Copy">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
             </Button>
-            <Button Classes="ghost roomy" Command="{Binding SaveStreamCommand}" ToolTip.Tip="Save the selected events to a file, or every event shown when none is selected">
+            <Button Classes="ghost roomy" Command="{Binding SaveStreamCommand}" ToolTip.Tip="Save">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
             </Button>
           </StackPanel>
@@ -204,7 +202,7 @@
             <Button Content="Reopen" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ReopenCommand}" CommandParameter="{Binding}"
                     IsVisible="{Binding State, Converter={x:Static conv:EventConverters.IsResolvedOrMuted}}" />
             <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ShareIssueCommand}" CommandParameter="{Binding}"
-                    ToolTip.Tip="Send this problem to a coworker or a room">
+                    ToolTip.Tip="Share">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
                 <TextBlock Classes="btnLabel" Text="Share" />
@@ -220,9 +218,7 @@
           </StackPanel>
           <StackPanel Spacing="2" VerticalAlignment="Center" ClipToBounds="True" Margin="0,0,12,0">
             <TextBlock Classes="section" Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
-            <TextBlock Classes="meta num" TextTrimming="CharacterEllipsis">
-              <Run Text="{Binding Count}" /><Run Text=" events · " /><Run Text="{Binding Meta}" />
-            </TextBlock>
+            <TextBlock Classes="meta num" Text="{Binding CountText}" TextTrimming="CharacterEllipsis" />
           </StackPanel>
         </DockPanel>
         </Panel>
@@ -237,7 +233,7 @@
               <TextBlock Classes="th" Text="Time" />
               <TextBlock Grid.Column="1" Classes="th" Text="Level" />
               <TextBlock Grid.Column="2" Classes="th colNeuron" Text="Neuron" />
-              <TextBlock Grid.Column="3" Classes="th colModule" Text="Where" ToolTip.Tip="The part of the Neuron that logged the event" />
+              <TextBlock Grid.Column="3" Classes="th colModule" Text="Where" ToolTip.Tip="Module" />
               <TextBlock Grid.Column="4" Classes="th" Text="Message" />
             </Grid>
           </Border>
@@ -257,7 +253,8 @@
                     <TextBlock Text="{Binding Severity, Converter={x:Static conv:SeverityTextConverter.Instance}}"
                                Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
                   </Border>
-                  <TextBlock Grid.Column="2" Classes="mono colNeuron" Text="{Binding Source.NeuronJid}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Classes="mono colNeuron" Text="{Binding Source.NeuronJid, Converter={x:Static conv:NeuronNameConverter.Instance}}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Source.NeuronJid}" />
                   <TextBlock Grid.Column="3" Classes="meta colModule" Text="{Binding Module}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                              ToolTip.Tip="{Binding Module}" />
                   <TextBlock Grid.Column="4" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -269,7 +266,7 @@
           <!-- New events wait here while the stream is scrolled down -->
           <Button Classes="primary" IsVisible="{Binding HasHeld}" Command="{Binding ShowHeldCommand}"
                   HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="12,4" CornerRadius="{StaticResource Radius.Pill}"
-                  ToolTip.Tip="Show the newest events and go back to the top">
+                  ToolTip.Tip="Show newest">
             <TextBlock Text="{Binding HeldText}" FontSize="{StaticResource Type.Meta}" />
           </Button>
 
@@ -287,10 +284,8 @@
             <c:LineIcon Data="{StaticResource Icon.Events}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
             <TextBlock Text="Waiting for events" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding HasNeurons}" />
             <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding HasNeurons}"
-                       Text="Events appear here the moment a Neuron logs them. Try All to include informational events." />
+                       Text="Try All to include information." />
             <TextBlock Text="No Neurons found yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding !HasNeurons}" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !HasNeurons}"
-                       Text="NAT streams events from every Neuron in your accounts' rosters where the account is an administrator (a notification address, or a user with the Admin privilege). Neurons that send you notifications are picked up automatically." />
           </StackPanel>
         </Panel>
         </DockPanel>
@@ -304,16 +299,16 @@
         <DockPanel DataContext="{Binding SelectedEvent}" x:DataType="ev:NeuronEvent" x:CompileBindings="True">
           <Border DockPanel.Dock="Top" Padding="14,10" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Classes="ghost" ToolTip.Tip="Everything you can do with this event. The same list as a right-click on its row."
+              <Button DockPanel.Dock="Right" Classes="ghost" ToolTip.Tip="More"
                       c:ActionMenu.Source="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext)}" c:ActionMenu.OnClick="True">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
               </Button>
               <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).ShareSelectedEventCommand}"
-                      ToolTip.Tip="Send this event to a coworker or a room">
+                      ToolTip.Tip="Share">
                 <TextBlock Text="Share" FontSize="{StaticResource Type.Meta}" />
               </Button>
               <Button DockPanel.Dock="Right" Classes="ghost" Command="{Binding $parent[UserControl].((vm:EventsViewModel)DataContext).CopySelectedEventCommand}"
-                      ToolTip.Tip="Copy the event as Markdown, for chat or a ticket">
+                      ToolTip.Tip="Copy as Markdown">
                 <TextBlock Text="Copy as Markdown" FontSize="{StaticResource Type.Meta}" />
               </Button>
               <StackPanel Orientation="Horizontal" Spacing="10">
@@ -321,7 +316,7 @@
                   <TextBlock Text="{Binding Severity, Converter={x:Static conv:SeverityTextConverter.Instance}}"
                              Foreground="{Binding Severity, Converter={x:Static conv:SeverityBrushConverter.Instance}}" />
                 </Border>
-                <TextBlock Classes="mono" Text="{Binding Source.NeuronJid}" VerticalAlignment="Center" />
+                <TextBlock Classes="mono" Text="{Binding Source.NeuronJid, Converter={x:Static conv:NeuronNameConverter.Instance}}" VerticalAlignment="Center" ToolTip.Tip="{Binding Source.NeuronJid}" />
                 <TextBlock Classes="meta" Text="{Binding Timestamp, Converter={x:Static conv:EventConverters.Time}}" VerticalAlignment="Center" />
               </StackPanel>
             </DockPanel>

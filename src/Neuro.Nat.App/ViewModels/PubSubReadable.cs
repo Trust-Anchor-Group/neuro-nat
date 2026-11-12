@@ -71,7 +71,7 @@ public sealed record Readable(string Kind, string? Summary, IReadOnlyList<Readab
 			string w = (string?)info.Attribute("width") ?? string.Empty;
 			string h = (string?)info.Attribute("height") ?? string.Empty;
 			string pixels = w.Length > 0 && h.Length > 0 ? w + " × " + h : string.Empty;
-			fields.Add(new ReadableField(type, string.Join(" · ", new[] { pixels, size }.Where(s => s.Length > 0))));
+			fields.Add(new ReadableField(type, string.Join(", ", new[] { pixels, size }.Where(s => s.Length > 0))));
 		}
 
 		return new Readable("Avatar details", fields.Count == 0 ? "No picture is set" : null, fields);

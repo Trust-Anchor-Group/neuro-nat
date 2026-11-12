@@ -67,8 +67,6 @@
           <StackPanel IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="280" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Updates}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
             <TextBlock Text="No Neurons yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                       Text="Neurons where your accounts are administrators show their software and updates here." />
           </StackPanel>
         </Panel>
       </DockPanel>
@@ -83,11 +81,11 @@
             <Button Classes="ghost" Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Ask the Neuron again">
               <TextBlock Text="Refresh" FontSize="{StaticResource Type.Meta}" />
             </Button>
-            <Button Command="{Binding CheckCommand}" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Ask the update service for new packages">
+            <Button Command="{Binding CheckCommand}" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Check for updates">
               <TextBlock Text="Check for updates" FontSize="{StaticResource Type.Meta}" />
             </Button>
             <Button Classes="danger" Content="Upgrade…" Command="{Binding AskUpgradeCommand}" IsEnabled="{Binding !IsBusy}"
-                    ToolTip.Tip="Install downloaded packages. The Neuron restarts." />
+                    ToolTip.Tip="Upgrade and restart" />
           </StackPanel>
           <StackPanel Spacing="4" Margin="0,0,16,0">
             <TextBlock Classes="title" Text="{Binding Selected.Label}" TextWrapping="Wrap" IsVisible="{Binding !IsPinned}" />
@@ -102,10 +100,10 @@
                 CornerRadius="{StaticResource Radius}" Padding="14,12" Margin="0,0,0,16">
           <StackPanel Spacing="10">
             <TextBlock TextWrapping="Wrap"
-                       Text="Upgrading installs the downloaded packages and restarts the Neuron. Everyone connected to it is disconnected for a while." />
+                       Text="Upgrade and restart the Neuron?" />
             <WrapPanel>
               <TextBox Text="{Binding UpgradePackage}" PlaceholderText="Every installed package" Width="240" MinHeight="30" Margin="0,0,12,8"
-                       ToolTip.Tip="Leave empty to upgrade everything, or name one installed package" />
+                       ToolTip.Tip="Package" />
               <CheckBox IsChecked="{Binding UpgradeBackup}" Content="Back up first" Margin="0,0,12,8" VerticalAlignment="Center" />
             </WrapPanel>
             <DockPanel>
@@ -128,7 +126,7 @@
             <Border IsVisible="{Binding HasPending}" Background="{DynamicResource Accent.Subtle}" CornerRadius="8" Padding="16,12">
               <DockPanel>
                 <Button DockPanel.Dock="Right" Content="Cancel the update" Command="{Binding CancelPendingCommand}" IsEnabled="{Binding !IsBusy}"
-                        VerticalAlignment="Center" Margin="12,0,0,0" ToolTip.Tip="Stops an automatic update that is waiting to install" />
+                        VerticalAlignment="Center" Margin="12,0,0,0" ToolTip.Tip="Cancel the update" />
                 <StackPanel Spacing="3">
                   <TextBlock Text="An update is waiting" FontWeight="SemiBold" />
                   <TextBlock Classes="meta" Text="{Binding PendingText}" TextWrapping="Wrap" />
@@ -145,7 +143,7 @@
                 <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBox Text="{Binding AutoMinutes}" Width="80" MinHeight="30" HorizontalContentAlignment="Right"
-                             ToolTip.Tip="Minutes between a package arriving and installing it. 0 turns it off." />
+                             ToolTip.Tip="Minutes, 0 is off" />
                     <TextBlock Text="minutes" VerticalAlignment="Center" />
                     <Button Content="Save" Command="{Binding SaveAutoCommand}" IsEnabled="{Binding !IsBusy}" />
                   </StackPanel>
@@ -174,7 +172,7 @@
             <StackPanel Spacing="8">
               <TextBlock Classes="section" Text="Downloaded packages" />
               <TextBlock Classes="meta" TextWrapping="Wrap" IsVisible="{Binding !HasPackages}"
-                         Text="None. Packages arrive from the update service on the Neuron's parent broker; Check for updates asks it now." />
+                         Text="None" />
               <ItemsControl ItemsSource="{Binding Packages}" IsVisible="{Binding HasPackages}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="sw:SoftwarePackage">
@@ -185,7 +183,7 @@
                           <TextBlock Text="Installed" Foreground="{DynamicResource Ink.Secondary}" />
                         </Border>
                         <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="meta" Margin="0,3,0,0" TextTrimming="CharacterEllipsis">
-                          <Run Text="{Binding Size}" /><Run Text=" · published " /><Run Text="{Binding Published}" /><Run Text=" · from " /><Run Text="{Binding From}" />
+                          <Run Text="{Binding Size}" /><Run Text=", published " /><Run Text="{Binding Published}" /><Run Text=" from " /><Run Text="{Binding From}" />
                         </TextBlock>
                       </Grid>
                     </Border>
@@ -214,7 +212,6 @@
 
       <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360" Spacing="6">
         <TextBlock Text="Pick a Neuron" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="Its build, packages and update settings open here." />
       </StackPanel>
     </Panel>
   </Grid>

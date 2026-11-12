@@ -226,7 +226,7 @@ public sealed partial class ChatViewModel
 		this.SetMode(ComposerMode.Edit, m);
 		this.draftBeforeEdit = before;
 		this.BannerTitle = "Changing your message";
-		this.BannerText = "Enter saves, Esc leaves it as it was.";
+		this.BannerText = "Enter saves, Esc cancels";
 		this.Draft = m.Markdown;
 		this.Caret = this.Draft.Length;
 		this.ComposerFocusWanted?.Invoke();
@@ -321,13 +321,13 @@ public sealed partial class ChatViewModel
 		this.Ask = m.IsMine
 			? new AskViewModel("Delete this message for everyone?", _ => this.DeleteNow(c, m))
 			{
-				Text = "\"" + OneLine(m.Markdown) + "\" is taken back where their app supports it; in other apps it changes to a line saying it was deleted. This cannot be undone.",
+				Text = "This cannot be undone.",
 				ConfirmText = "Delete for everyone",
 				IsDanger = true,
 			}
 			: new AskViewModel("Remove this message from your history?", _ => this.DeleteNow(c, m))
 			{
-				Text = "Only your copy goes: " + who + " keeps theirs.",
+				Text = who + " keeps their copy.",
 				ConfirmText = "Remove",
 				IsDanger = true,
 			};

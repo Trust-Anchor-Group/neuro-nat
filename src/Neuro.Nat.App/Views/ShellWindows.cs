@@ -171,7 +171,7 @@ public static class ShellWindows
 		WallViewModel vm = mainVm.Wall;
 		Window window = new()
 		{
-			Title = "Wall · NAT",
+			Title = "Wall - NAT",
 			Icon = main.Icon,
 			Width = 1280,
 			Height = 720,

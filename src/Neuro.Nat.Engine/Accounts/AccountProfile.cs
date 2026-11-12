@@ -54,6 +54,10 @@ public sealed record AccountProfile
 	[System.Text.Json.Serialization.JsonIgnore]
 	public string Label => string.IsNullOrWhiteSpace(this.DisplayName) ? this.UserName + "@" + this.EffectiveDomain : this.DisplayName;
 
+	/// <summary>The short name on screen: the display name, else the user name. Never the full address.</summary>
+	[System.Text.Json.Serialization.JsonIgnore]
+	public string ShortLabel => string.IsNullOrWhiteSpace(this.DisplayName) ? this.UserName : this.DisplayName;
+
 	/// <summary>The XMPP domain actually used.</summary>
 	[System.Text.Json.Serialization.JsonIgnore]
 	public string EffectiveDomain => string.IsNullOrWhiteSpace(this.Domain) ? this.Host : this.Domain;

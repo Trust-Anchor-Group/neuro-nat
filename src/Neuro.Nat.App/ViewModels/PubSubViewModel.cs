@@ -141,7 +141,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 	public string NodeTitle => this.SelectedNode?.Label ?? string.Empty;
 
 	public string NodeMeta => this.SelectedNode is not { } n ? string.Empty
-		: string.Join(" · ", new[] { n.Sub, n.IsCollection ? "A collection: it holds other nodes" : null, n.Info.IsPersonal ? "In your personal storage" : "On " + n.Info.Service }.Where(s => !string.IsNullOrWhiteSpace(s)));
+		: string.Join(". ", new[] { n.Sub, n.IsCollection ? "A collection" : null, n.Info.IsPersonal ? "In your personal storage" : "On " + n.Info.Service }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
 	/// <summary>Nothing is open on the right: no node, and no new node being made.</summary>
 	public bool ShowsPicker => !this.HasNode && !this.IsCreating;
@@ -161,8 +161,8 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 
 	public string NodesEmptyText => this.Error is not null ? string.Empty
 		: this.looking ? "Looking for the publish/subscribe service…"
-		: this.roots.Count == 0 ? this.IsPersonal ? "Nothing is stored here yet. Apps put your picture, your nickname and the like here." : "No nodes here yet. Make one with New node."
-		: this.WatchingOnly ? "You watch no nodes. Open a node and switch Watch on, and what is published shows up as it happens."
+		: this.roots.Count == 0 ? this.IsPersonal ? "Nothing stored yet" : "No nodes yet"
+		: this.WatchingOnly ? "You watch no nodes"
 		: "No node matches.";
 
 	partial void OnAccountChanged(DeviceAccountChoice? value)
@@ -210,7 +210,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 		foreach (AccountSession s in this.accounts.Sessions)
 		{
 			if (!this.AccountChoices.Any(c => c.Id == s.Profile.Id))
-				this.AccountChoices.Add(new DeviceAccountChoice(s.Profile.Id, s.Profile.Label));
+				this.AccountChoices.Add(new DeviceAccountChoice(s.Profile.Id, s.Profile.ShortLabel));
 		}
 	}
 
@@ -246,7 +246,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 		this.wantedNode = null;
 		if (this.Loaded().FirstOrDefault(r => r.Node == node) is not PubSubNodeRow row)
 		{
-			Ui.Say(node + " is not among the nodes that show here. It may be inside a collection that is closed.");
+			Ui.Say(node + " is not among the nodes that show here");
 			return;
 		}
 
@@ -570,8 +570,8 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 	public bool IsWatching => this.SelectedNode?.IsWatched == true;
 
 	public string WatchTip => this.IsWatching
-		? "You subscribe to this node: what is published shows up here as it happens. Click to stop."
-		: "Subscribe to this node, so what is published shows up here as it happens.";
+		? "Stop watching"
+		: "Watch";
 
 	/// <summary>What became of asking to watch, when it was not a plain yes.</summary>
 	[ObservableProperty] private string? watchNote;

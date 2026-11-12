@@ -63,12 +63,12 @@
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" IsVisible="{Binding IsOpen}">
             <ToggleButton Classes="seg first" IsChecked="{Binding IsMine, Mode=OneWay}"
                           Command="{Binding SetModeCommand}" CommandParameter="{x:Static vm:IdentitiesMode.Mine}"
-                          ToolTip.Tip="Your accounts' legal identities">
+                          ToolTip.Tip="Your identities">
               <TextBlock Text="Mine" />
             </ToggleButton>
             <ToggleButton Classes="seg last" IsChecked="{Binding IsNeurons, Mode=OneWay}" Margin="-1,0,0,0"
                           Command="{Binding SetModeCommand}" CommandParameter="{x:Static vm:IdentitiesMode.Neurons}"
-                          ToolTip.Tip="The Neurons' own identities, and applications waiting for review">
+                          ToolTip.Tip="Neurons' identities">
               <TextBlock Text="Neurons" />
             </ToggleButton>
           </StackPanel>
@@ -78,8 +78,8 @@
           </StackPanel>
         </DockPanel>
 
-        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding FilterText}" PlaceholderText="Filter by name, account or state…" MinHeight="28" Padding="10,4" Margin="2,0,2,10"
-                 ToolTip.Tip="Filter the list (Ctrl+F)" />
+        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding FilterText}" PlaceholderText="Filter…" MinHeight="28" Padding="10,4" Margin="2,0,2,10"
+                 ToolTip.Tip="Filter (Ctrl+F)" />
 
         <CheckBox DockPanel.Dock="Bottom" Margin="6,10,0,0" IsChecked="{Binding ShowRetired}"
                   IsVisible="{Binding ShowsRetiredToggle}">
@@ -111,7 +111,7 @@
                             Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}, ConverterParameter=subtle}">
                       <TextBlock Text="{Binding StateLabel}" Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
                     </Border>
-                    <Border Grid.Column="1" Grid.RowSpan="2" Classes="badge" IsVisible="{Binding HasBadge}" ToolTip.Tip="Applications waiting for review">
+                    <Border Grid.Column="1" Grid.RowSpan="2" Classes="badge" IsVisible="{Binding HasBadge}" ToolTip.Tip="Waiting for review">
                       <TextBlock Text="{Binding Badge}" />
                     </Border>
                     <TextBlock Grid.Row="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
@@ -130,11 +130,7 @@
           <StackPanel IsVisible="{Binding IsEmptyUnfiltered}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="290" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Identities}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
             <TextBlock Text="No accounts yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsMine}" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding IsMine}"
-                       Text="Add an account under Accounts. Its legal identities on its Neuron show up here." />
             <TextBlock Text="No Neurons yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsNeurons}" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding IsNeurons}"
-                       Text="Neurons where your accounts are administrators show their own identity here, and the applications waiting for review." />
           </StackPanel>
         </Panel>
       </DockPanel>
@@ -148,16 +144,16 @@
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
             <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowsIdentity}">
-              <Button Classes="ghost" Command="{Binding CopyIdCommand}" ToolTip.Tip="Copy the identity's id">
+              <Button Classes="ghost" Command="{Binding CopyIdCommand}" ToolTip.Tip="Copy id">
                 <TextBlock Text="Copy id" FontSize="{StaticResource Type.Meta}" />
               </Button>
-              <Button Classes="ghost" Command="{Binding ValidateCommand}" ToolTip.Tip="Check its signatures and that the Neuron vouches for it">
+              <Button Classes="ghost" Command="{Binding ValidateCommand}" ToolTip.Tip="Check">
                 <TextBlock Text="Check" FontSize="{StaticResource Type.Meta}" />
               </Button>
               <Button Content="{Binding RetireLabel}" IsVisible="{Binding CanRetire}" Command="{Binding AskRetireCommand}" CommandParameter="obsolete"
-                      ToolTip.Tip="Stop using it. It stays on record, but can no longer sign." />
+                      ToolTip.Tip="Retire" />
               <Button Classes="danger" Content="Compromised…" IsVisible="{Binding CanReportCompromised}" Command="{Binding AskRetireCommand}" CommandParameter="compromised"
-                      ToolTip.Tip="Its keys may be in someone else's hands" />
+                      ToolTip.Tip="Report compromised" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowsPetition}">
               <Button Content="Decline" Command="{Binding RespondCommand}" CommandParameter="decline" />
@@ -312,8 +308,6 @@
 
       <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
         <TextBlock Text="Pick an identity, an account or a Neuron" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                   Text="Pick an account to apply for a legal identity on its Neuron. Requests to see your identities wait at the top until you answer them." />
       </StackPanel>
     </Panel>
   </Grid>

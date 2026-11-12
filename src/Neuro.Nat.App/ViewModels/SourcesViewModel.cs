@@ -291,7 +291,7 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 				{
 					if (Contains(n.LocalId, text) || Contains(n.NodeId, text) || Contains(n.DisplayName, text) || Contains(n.NodeType, text))
 					{
-						this.SearchResults.Add(new NodeItemViewModel(this, null, n) { Meta = src.Label + " · " + (string.IsNullOrEmpty(n.DisplayName) ? ShortType(n.NodeType) : n.DisplayName) });
+						this.SearchResults.Add(new NodeItemViewModel(this, null, n) { Meta = (string.IsNullOrEmpty(n.DisplayName) ? ShortType(n.NodeType) : n.DisplayName) + " in " + src.Label });
 						if (this.SearchResults.Count >= 500)
 							break;
 					}
@@ -472,7 +472,7 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		{
 			this.watchTimer?.Stop();
 			if (this.IsReadout && this.readout is not null && this.ReadoutRows.Count > 0)
-				this.ReadoutStatus = CountText(this.ReadoutRows.Count(x => !x.IsProblem)) + " · no longer watching";
+				this.ReadoutStatus = CountText(this.ReadoutRows.Count(x => !x.IsProblem)) + ", no longer watching";
 			return;
 		}
 
@@ -506,7 +506,7 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		if (since < WatchEvery.TotalSeconds || this.readout is { IsFinished: false })
 		{
 			if (this.readout is { IsFinished: true } && this.watchFailures == 0)
-				this.ReadoutStatus = "Watching · " + CountText(this.ReadoutRows.Count(x => !x.IsProblem)) + " · read " + AgoText(since);
+				this.ReadoutStatus = "Watching " + CountText(this.ReadoutRows.Count(x => !x.IsProblem)) + ", read " + AgoText(since);
 			return;
 		}
 
@@ -532,7 +532,7 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 			Merge(this.ReadoutRows, RowsOf(r));
 			this.watchFailures = 0;
 			this.watchedAt = DateTime.UtcNow;
-			this.ReadoutStatus = "Watching · " + CountText(r.Fields.Count) + " · read just now";
+			this.ReadoutStatus = "Watching " + CountText(r.Fields.Count) + ", read just now";
 		}
 		catch (Exception ex)
 		{
@@ -544,7 +544,7 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 				this.ReadoutStatus = "Stopped watching: " + ex.Message;
 			}
 			else
-				this.ReadoutStatus = "Watching · the last reading did not arrive, trying again";
+				this.ReadoutStatus = "The last reading did not arrive, trying again";
 		}
 		finally
 		{
@@ -710,8 +710,8 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		// The Neuron being browsed stays in the list while it reconnects, so the tree is kept.
 		List<NeuronChoice> live = [.. this.monitors.Neurons
 			.Where(n => n.State == WatchState.Live || (keep is not null && n.AccountId == keep.AccountId && string.Equals(n.BareJid, keep.BareJid, StringComparison.OrdinalIgnoreCase)))
-			.Select(n => new NeuronChoice(n.AccountId, n.BareJid, n.Label,
-				profiles.TryGetValue(n.AccountId, out AccountProfile? p) ? p.Label : string.Empty,
+			.Select(n => new NeuronChoice(n.AccountId, n.BareJid, Converters.NeuronNameConverter.Name(n.BareJid),
+				profiles.TryGetValue(n.AccountId, out AccountProfile? p) ? p.ShortLabel : string.Empty,
 				profiles.TryGetValue(n.AccountId, out AccountProfile? q) ? q.ColorIndex : 0))
 			.OrderBy(n => n.Label, StringComparer.OrdinalIgnoreCase)];
 
@@ -757,7 +757,7 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		{
 			// On a Neuron's page: only that Neuron, and nothing while it is away.
 			NeuronChoice? mine = this.Neurons.FirstOrDefault(n => n.AccountId == pinnedAccount && string.Equals(n.BareJid, pinnedJid, StringComparison.OrdinalIgnoreCase));
-			this.PinnedNote = mine is null ? pinnedJid + " is not online through this account, so its sources cannot be read. They show here when it is back." : null;
+			this.PinnedNote = mine is null ? Converters.NeuronNameConverter.Name(pinnedJid) + " is offline" : null;
 			if (!ReferenceEquals(mine, this.SelectedNeuron))
 			{
 				this.SelectedNeuron = mine;
@@ -856,7 +856,7 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		NodeInformation n = item.Node;
 		this.NodeTitle = item.Label;
 		this.NodeType = string.IsNullOrWhiteSpace(n.DisplayName) ? ShortType(n.NodeType) : n.DisplayName;
-		this.NodeWhere = string.IsNullOrEmpty(n.Partition) ? n.SourceId : n.SourceId + " · " + n.Partition;
+		this.NodeWhere = string.IsNullOrEmpty(n.Partition) ? "In " + n.SourceId : "In " + n.SourceId + ", partition " + n.Partition;
 		this.NodeChanged = n.LastChanged == DateTime.MinValue ? string.Empty : "Changed " + Local(n.LastChanged).ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture);
 		this.NodeHasProblem = item.HasProblem;
 		this.NodeHasWarning = item.HasWarning;
@@ -1495,7 +1495,7 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		if (!this.DeleteArmed)
 		{
 			this.DeleteArmed = true;
-			this.Say($"Delete {item.Label} and everything under it? Click Delete again to go ahead.", true);
+			this.Say($"Delete {item.Label} and everything under it? Click Delete again.", true);
 			return;
 		}
 

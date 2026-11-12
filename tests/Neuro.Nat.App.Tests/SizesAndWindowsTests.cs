@@ -281,7 +281,7 @@ public class SizesAndWindowsTests
 			Assert.True(eventsVm.IsExtra);
 			Assert.True(eventsVm.IsEvents);
 			Assert.Equal(Gbg, eventsVm.LensJid);
-			Assert.Equal("Events · NAT", eventsVm.WindowTitle);
+			Assert.Equal("Events - NAT", eventsVm.WindowTitle);
 			Assert.Same(vm.Settings, eventsVm.Settings);
 			Assert.False(eventsVm.CanGoBack);
 			eventsAddress = eventsVm.Address;
@@ -303,7 +303,7 @@ public class SizesAndWindowsTests
 			MainWindowViewModel prodVm = Assert.IsType<MainWindowViewModel>(ShellWindows.Extras[1].DataContext);
 			Assert.True(prodVm.IsNeuronPage);
 			Assert.Equal(Prod, prodVm.Page!.BareJid);
-			Assert.Equal("Production · NAT", prodVm.WindowTitle);
+			Assert.Equal("Production - NAT", prodVm.WindowTitle);
 			GettingAroundTests.Capture(ShellWindows.Extras[1], $"windows-neuron-{t}");
 
 			vm.ShowChatCommand.Execute(null);

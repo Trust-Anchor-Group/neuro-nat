@@ -231,7 +231,7 @@ public sealed partial class WallViewModel : ObservableObject
 
 		while (this.arrived.TryDequeue(out NeuronEvent? e))
 		{
-			string neuron = rows.FirstOrDefault(r => string.Equals(r.BareJid, e.Source.NeuronJid, StringComparison.OrdinalIgnoreCase))?.Label ?? e.Source.NeuronJid;
+			string neuron = rows.FirstOrDefault(r => string.Equals(r.BareJid, e.Source.NeuronJid, StringComparison.OrdinalIgnoreCase))?.Label ?? Converters.NeuronNameConverter.Name(e.Source.NeuronJid);
 			this.Latest.Insert(0, new WallEventViewModel(e, neuron));
 		}
 

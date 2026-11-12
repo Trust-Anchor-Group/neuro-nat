@@ -20,14 +20,15 @@ public sealed partial class MainWindowViewModel
 
 	/// <summary>
 	/// What the window shows, as a line of text that <see cref="GoTo"/> understands: the screen,
-	/// the account and the address it is about, and the Neuron the screens are filtered to.
+	/// the account and the address it is about, and the Neurons the screens are filtered to,
+	/// between commas. An address from before there were several holds one Neuron there.
 	/// </summary>
 	public string Address
 	{
 		get
 		{
 			Stop here = this.Here();
-			return string.Join('|', here.Screen, here.Account?.ToString("N") ?? string.Empty, here.Jid ?? string.Empty, this.LensJid ?? string.Empty);
+			return string.Join('|', here.Screen, here.Account?.ToString("N") ?? string.Empty, here.Jid ?? string.Empty, NeuronSet.ToText(this.LensJids));
 		}
 	}
 
@@ -44,14 +45,12 @@ public sealed partial class MainWindowViewModel
 
 		Guid? account = parts.Length > 1 && Guid.TryParse(parts[1], out Guid id) ? id : null;
 		string? jid = parts.Length > 2 && parts[2].Length > 0 ? parts[2] : null;
-		string? lens = parts.Length > 3 && parts[3].Length > 0 ? parts[3] : null;
+		IReadOnlySet<string> lens = NeuronSet.Parse(parts.Length > 3 ? parts[3] : null);
 
-		// The main window keeps the Neuron it is filtered to in Settings; the others keep theirs here.
-		if (lens is not null && this.IsExtra && !string.Equals(this.LensJid, lens, StringComparison.OrdinalIgnoreCase))
-		{
-			this.wantedLens = lens;
-			this.SyncNeurons();
-		}
+		// The main window keeps the Neurons it is filtered to in Settings; the others keep theirs here.
+		// A Neuron ticked that is not there yet counts as soon as it is.
+		if (lens.Count > 0 && this.IsExtra)
+			this.SetLens(lens, remember: false);
 
 		// A conversation is found by who it is with, should the account it was in have been added anew.
 		if (PlaceOf(screen) == PlaceKind.Chat && jid is not null && !this.Accounts.Any(a => a.Session.Profile.Id == account))

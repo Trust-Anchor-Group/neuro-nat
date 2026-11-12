@@ -33,8 +33,11 @@ public sealed record UiSettings
 {
 	public LookChoice Look { get; init; } = LookChoice.System;
 
-	/// <summary>The one Neuron the screens were showing, by its address. Null for all of them.</summary>
+	/// <summary>The one Neuron the screens were showing, as it was kept before several could be. Read, and no longer written.</summary>
 	public string? Neuron { get; init; }
+
+	/// <summary>The Neurons the screens were showing, by their addresses. Null or empty for all of them.</summary>
+	public List<string>? Neurons { get; init; }
 
 	/// <summary>Text size in percent: 90, 100, 115 or 130.</summary>
 	public int TextSize { get; init; } = 100;
@@ -126,7 +129,7 @@ public sealed record ShortcutGroup(string Name, IReadOnlyList<ShortcutRow> Rows)
 public sealed partial class SettingsViewModel(ChatService chat) : ObservableObject
 {
 	/// <summary>Said in Settings where there is no encrypted database to keep things in.</summary>
-	public const string NothingKept = "On this computer NAT keeps nothing between runs yet: accounts, chats and settings are gone when it quits.";
+	public const string NothingKept = "Nothing is kept between runs on this computer.";
 
 	/// <summary>A line about what is kept, when it needs saying. Null when everything is kept.</summary>
 	[ObservableProperty]
@@ -144,7 +147,7 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 		new ShortcutGroup("Getting around",
 		[
 			new ShortcutRow("Ctrl+K", "Search for a screen, a Neuron, a person, a problem or something to do"),
-			new ShortcutRow("Alt+Left, Alt+Right", "Back and forward through where you have been. The mouse's side buttons do the same."),
+			new ShortcutRow("Alt+Left, Alt+Right", "Back and forward"),
 			new ShortcutRow("Ctrl+1 to Ctrl+5", "Inbox, Neurons, Events, Chat, Console"),
 			new ShortcutRow("Ctrl+,", "Settings"),
 			new ShortcutRow("Ctrl+F", "Filter or find on the screen in front"),
@@ -206,23 +209,23 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 	/// <summary>Raised once what was kept from the last run has been read.</summary>
 	public event EventHandler? Loaded;
 
-	/// <summary>The Neuron the screens showed last time, when it was one.</summary>
-	public string? Neuron => this.ui.Neuron;
+	/// <summary>The Neurons the screens showed last time; empty for all. A single Neuron kept by an older version counts as one.</summary>
+	public IReadOnlySet<string> Neurons => this.ui.Neurons is { Count: > 0 } kept ? NeuronSet.Of(kept) : this.ui.Neuron is string one ? NeuronSet.Of(one) : NeuronSet.All;
 
-	/// <summary>Keeps which Neuron the screens show, for the next run.</summary>
-	public void RememberNeuron(string? bareJid)
+	/// <summary>Keeps which Neurons the screens show, for the next run. Empty for all.</summary>
+	public void RememberNeurons(IReadOnlySet<string> bareJids)
 	{
-		if (string.Equals(this.ui.Neuron, bareJid, StringComparison.OrdinalIgnoreCase))
+		if (bareJids.SameAs(this.Neurons))
 			return;
 
-		this.ui = this.ui with { Neuron = bareJid };
+		this.ui = this.ui with { Neuron = null, Neurons = bareJids.Count == 0 ? null : [.. bareJids.Order(StringComparer.OrdinalIgnoreCase)] };
 		try
 		{
 			this.uiStore?.Save(this.ui);
 		}
 		catch (Exception ex)
 		{
-			AppLog.Error("Could not save which Neuron is shown.", ex);
+			AppLog.Error("Could not save which Neurons are shown.", ex);
 		}
 	}
 
@@ -290,9 +293,9 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 
 	public string StatusHint => this.Status switch
 	{
-		OwnStatus.Away => "Contacts see you as away. Pop-ups and sounds still reach you.",
-		OwnStatus.DoNotDisturb => "Pop-ups and sounds wait. The counts keep running, and contacts see you as busy.",
-		_ => "Contacts see you as online, and pop-ups and sounds reach you.",
+		OwnStatus.Away => "Contacts see you as away",
+		OwnStatus.DoNotDisturb => "Pop-ups and sounds wait",
+		_ => string.Empty,
 	};
 
 	[RelayCommand]
@@ -382,10 +385,10 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 	public bool IsAlertsOwn => !this.IsAlertsEverything && !this.IsAlertsNeedsMe && !this.IsAlertsNothing;
 
 	public string AlertsHint
-		=> this.IsAlertsEverything ? "A pop-up and a sound for everything, also for what is only information: updates, restarts, backups."
-		: this.IsAlertsNeedsMe ? "A pop-up and a sound for chat messages, requests, notifications that need someone, errors, and a Neuron that stops answering. What is only information just counts in the Inbox."
-		: this.IsAlertsNothing ? "No pop-ups and no sounds. Everything still counts in the Inbox and on the tray icon."
-		: "Choose for each kind below.";
+		=> this.IsAlertsEverything ? "Also for information"
+		: this.IsAlertsNeedsMe ? "Messages, requests, errors and Neurons that stop answering"
+		: this.IsAlertsNothing ? "Everything still counts in the Inbox"
+		: "Choose for each kind below";
 
 	/// <summary>One of the plain choices: "everything", "needsMe", "nothing", or "own" for the table.</summary>
 	[RelayCommand]

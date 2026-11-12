@@ -183,6 +183,7 @@ public sealed class AlertService : IDisposable
 	private readonly Func<DateTime> clock;
 	private readonly DateTime started;
 	private readonly HashSet<string> seenNotifications = [];
+	private readonly HashSet<string> neededYou = [];
 	private readonly Dictionary<string, (IssueState State, int Count)> issues = [];
 	private readonly Dictionary<(Guid, string), (WatchState State, DateTime Since, bool Alerted)> neurons = [];
 	private readonly List<Alert> recent = [];
@@ -195,9 +196,14 @@ public sealed class AlertService : IDisposable
 		this.Settings = settings;
 		this.clock = clock ?? (() => DateTime.Now);
 		this.started = this.clock();
+		this.AccountConnected = id => monitors.For(id)?.Session.Status == Accounts.ConnectionStatus.Connected;
 
 		foreach (NeuronNotification n in monitors.Attention.Items)
+		{
 			this.seenNotifications.Add(n.Id);
+			if (n.NeedsAction)
+				this.neededYou.Add(n.Id);
+		}
 		foreach (Issue i in monitors.Hub.Issues())
 			this.issues[i.Fingerprint] = (i.State, i.Count);
 		foreach (WatchedNeuron n in monitors.Neurons)
@@ -417,14 +423,34 @@ public sealed class AlertService : IDisposable
 
 	private void Attention_Changed(object? sender, NeuronNotification n)
 	{
+		bool isNew, nowNeedsYou;
 		lock (this.sync)
 		{
-			if (!this.seenNotifications.Add(n.Id))
-				return;   // Already known: a correction, or a state change.
+			isNew = this.seenNotifications.Add(n.Id);
+
+			// An item that did not need anyone and now does, such as an identity application its
+			// automatic review left for a person, alerts once, as a new item would.
+			nowNeedsYou = n.NeedsAction && this.neededYou.Add(n.Id) && n.State != AttentionState.Handled;
+		}
+
+		if (!isNew)
+		{
+			// Already known: a correction, or a state change. Only coming to need someone counts.
+			if (nowNeedsYou && this.Settings.Notifications)
+				this.RaiseNotification(n);
+			return;
 		}
 
 		if (!this.Settings.Notifications || n.Received < this.started.AddMinutes(-1))
 			return;
+
+		// An identity application is quiet until its review says it needs someone.
+		if (n.Kind == NotificationKind.LegalIdApplication)
+		{
+			if (n.IsOpen)
+				this.RaiseNotification(n);
+			return;
+		}
 
 		bool worth = n.IsOpen || n.Severity >= EventSeverity.Warning || this.Settings.InformationalNotifications;
 		if (!worth)
@@ -435,8 +461,27 @@ public sealed class AlertService : IDisposable
 			Id = "n:" + n.Id,
 			Kind = AlertKind.Notification,
 			Title = n.Title,
-			Detail = this.NeuronLabel(n.AccountId, n.NeuronJid) + (n.IsOpen ? " · needs you" : string.Empty),
+			Detail = this.NeuronLabel(n.AccountId, n.NeuronJid) + (n.IsOpen ? " is waiting for you" : string.Empty),
 			NeedsYou = n.IsOpen,
+			Severity = n.Severity,
+			At = this.clock(),
+			AccountId = n.AccountId,
+			NeuronJid = n.NeuronJid,
+			Target = n.Id,
+		});
+	}
+
+	/// <summary>The alert for a known item that has just come to need someone.</summary>
+	private void RaiseNotification(NeuronNotification n)
+	{
+		string neuron = this.NeuronLabel(n.AccountId, n.NeuronJid);
+		this.Raise(new Alert
+		{
+			Id = "n:" + n.Id,
+			Kind = AlertKind.Notification,
+			Title = n.Title,
+			Detail = string.IsNullOrWhiteSpace(n.Subject) ? neuron : n.Subject + " on " + neuron,
+			NeedsYou = true,
 			Severity = n.Severity,
 			At = this.clock(),
 			AccountId = n.AccountId,
@@ -474,7 +519,7 @@ public sealed class AlertService : IDisposable
 			Id = "i:" + i.Fingerprint + ":" + i.Count,
 			Kind = AlertKind.Error,
 			Title = (cameBack ? "Back again: " : "New: ") + i.Title,
-			Detail = where.Count == 1 ? where[0] : $"{where.Count} Neurons",
+			Detail = where.Count == 1 ? NeuronNames.For(this.monitors.Neurons, where[0]) : $"{where.Count} Neurons",
 			Severity = i.Severity,
 			At = this.clock(),
 			NeuronJid = where.Count == 1 ? where[0] : null,
@@ -515,6 +560,9 @@ public sealed class AlertService : IDisposable
 	private void Monitors_NeuronsChanged(object? sender, EventArgs e) => this.CheckNeurons();
 
 	/// <summary>Looks for Neurons that have been down long enough, or came back. Also runs on a timer.</summary>
+	/// <summary>Whether an account is connected. Only then can a Neuron be known to be down. Tests replace it.</summary>
+	internal Func<Guid, bool> AccountConnected { get; init; }
+
 	public void CheckNeurons()
 	{
 		DateTime now = this.clock();
@@ -531,8 +579,10 @@ public sealed class AlertService : IDisposable
 					continue;
 				}
 
+				// While the account itself is not connected, NAT cannot know whether the Neuron is down: no alert.
+				bool accountConnected = this.AccountConnected(n.AccountId);
 				bool isUp = n.State is WatchState.Live;
-				bool isDown = n.State is WatchState.Offline or WatchState.Failed;
+				bool isDown = accountConnected && n.State is WatchState.Offline or WatchState.Failed;
 				bool wasDown = was.State is WatchState.Offline or WatchState.Failed;
 
 				if (was.State != n.State)
@@ -563,7 +613,7 @@ public sealed class AlertService : IDisposable
 	{
 		Id = (kind == AlertKind.NeuronDown ? "down:" : "up:") + n.AccountId + ":" + n.BareJid + ":" + now.Ticks,
 		Kind = kind,
-		Title = kind == AlertKind.NeuronDown ? $"{n.Label} is not answering" : $"{n.Label} answers again",
+		Title = kind == AlertKind.NeuronDown ? $"{this.NeuronLabel(n.AccountId, n.BareJid)} is not answering" : $"{this.NeuronLabel(n.AccountId, n.BareJid)} answers again",
 		Detail = kind == AlertKind.NeuronDown ? n.Error ?? "Its event stream stopped." : null,
 		Severity = kind == AlertKind.NeuronDown ? EventSeverity.Error : EventSeverity.Info,
 		At = now,
@@ -572,8 +622,9 @@ public sealed class AlertService : IDisposable
 		Target = n.BareJid,
 	};
 
+	/// <summary>The Neuron's name on screen: its roster name or its domain, or its full address when two would look the same.</summary>
 	private string NeuronLabel(Guid accountId, string jid)
-		=> this.monitors.Neurons.FirstOrDefault(n => n.AccountId == accountId && string.Equals(n.BareJid, jid, StringComparison.OrdinalIgnoreCase))?.Label ?? jid;
+		=> NeuronNames.For(this.monitors.Neurons.OrderByDescending(n => n.AccountId == accountId), jid);
 
 	public void Dispose()
 	{

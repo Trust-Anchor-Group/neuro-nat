@@ -76,7 +76,7 @@ public sealed partial class NodeSettingsForm : ObservableObject
 	/// <summary>What is wrong with what was typed. Null when it can be sent.</summary>
 	public string? Problem
 		=> this.MaxItems.Trim().Length > 0 && (!int.TryParse(this.MaxItems.Trim(), NumberStyles.Integer, CultureInfo.CurrentCulture, out int n) || n < 1)
-			? "How many items to keep has to be a whole number, 1 or more. Leave it empty to let the service decide."
+			? "How many items to keep has to be a whole number, 1 or more."
 			: null;
 
 	/// <summary>The settings as the form has them now.</summary>
@@ -220,7 +220,7 @@ public sealed partial class PubSubViewModel
 				await this.LoadItemsAsync();
 		})
 		{
-			Text = "Everything published on the node goes, for everyone. The node, its settings and its subscribers stay. This cannot be undone. Type the node's name to go on.",
+			Text = "This cannot be undone. Type the node's name to go on.",
 			Placeholder = n.Node,
 			MustMatch = n.Node,
 			ConfirmText = "Remove all items",
@@ -242,7 +242,7 @@ public sealed partial class PubSubViewModel
 			this.Forget(n);
 		})
 		{
-			Text = (n.IsCollection ? "The collection and the nodes inside it go" : "The node and everything published on it go") + ", and its subscribers are told. This cannot be undone. Type the node's name to go on.",
+			Text = (n.IsCollection ? "The nodes inside it go too. " : string.Empty) + "This cannot be undone. Type the node's name to go on.",
 			Placeholder = n.Node,
 			MustMatch = n.Node,
 			ConfirmText = "Delete node",
@@ -321,7 +321,7 @@ public sealed partial class PubSubViewModel
 		}
 		catch (Exception)
 		{
-			this.NewNote = "The service did not say what it gives a new node, so these are the usual settings.";
+			this.NewNote = "The service did not say what it gives a new node. These are the usual settings.";
 		}
 	}
 

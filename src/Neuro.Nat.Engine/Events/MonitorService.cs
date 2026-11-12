@@ -1,5 +1,6 @@
 using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.Attention;
+using Neuro.Nat.Engine.Storage;
 
 namespace Neuro.Nat.Engine.Events;
 
@@ -12,12 +13,17 @@ public sealed class MonitorService : IAsyncDisposable
 	private readonly AccountManager accounts;
 	private readonly Dictionary<Guid, NeuronMonitor> monitors = [];
 	private readonly object sync = new();
+	private readonly IKnownNeuronStore known;
+	private IReadOnlyList<AccountSession> sessions = [];
 
-	public MonitorService(AccountManager accounts, EventHub hub, AttentionInbox? attention = null)
+	/// <param name="known">Where answers to "are you a Neuron?" are kept, so they survive a restart. In memory when not given.</param>
+	public MonitorService(AccountManager accounts, EventHub hub, AttentionInbox? attention = null, IKnownNeuronStore? known = null)
 	{
 		this.accounts = accounts;
 		this.Hub = hub;
 		this.Attention = attention ?? new AttentionInbox();
+		this.known = known ?? new InMemoryKnownNeuronStore();
+		this.IdentityReviews = new IdentityReviews(this.Attention, hub, this.CanReadEvents);
 		accounts.SessionsChanged += this.Accounts_SessionsChanged;
 		this.Sync();
 	}
@@ -26,6 +32,9 @@ public sealed class MonitorService : IAsyncDisposable
 
 	/// <summary>Notifications from every Neuron, for the Attention list.</summary>
 	public AttentionInbox Attention { get; }
+
+	/// <summary>Decides which legal identity applications need a person, from the Neuron's automatic review.</summary>
+	public IdentityReviews IdentityReviews { get; }
 
 	/// <summary>Raised when any Neuron appears, disappears or changes state. Any thread.</summary>
 	public event EventHandler? NeuronsChanged;
@@ -60,6 +69,19 @@ public sealed class MonitorService : IAsyncDisposable
 			return this.monitors.TryGetValue(accountId, out NeuronMonitor? m) ? m : null;
 	}
 
+	/// <summary>Stands in for the watch states in tests: whether a Neuron's events can be read.</summary>
+	internal Func<Guid, string, bool>? ReadsEventsForTests { get; set; }
+
+	/// <summary>True when some account streams this Neuron's events, so its review events can arrive.</summary>
+	/// <summary>
+	/// False only when no account can read the Neuron's events: none streams them, and none is on the way to.
+	/// A stream that is still being set up (as at start) counts as readable, so its review gets the time to arrive.
+	/// </summary>
+	private bool CanReadEvents(Guid accountId, string neuronJid)
+		=> this.ReadsEventsForTests?.Invoke(accountId, neuronJid) ?? this.Neurons.Any(n =>
+			n.State is WatchState.Live or WatchState.Subscribing or WatchState.Discovering or WatchState.Waiting &&
+			string.Equals(n.BareJid, neuronJid, StringComparison.OrdinalIgnoreCase));
+
 	private void Accounts_SessionsChanged(object? sender, EventArgs e) => this.Sync();
 
 	private void Sync()
@@ -69,13 +91,14 @@ public sealed class MonitorService : IAsyncDisposable
 		lock (this.sync)
 		{
 			IReadOnlyList<AccountSession> sessions = this.accounts.Sessions;
+			this.sessions = sessions;
 
 			foreach (AccountSession s in sessions)
 			{
 				if (this.monitors.ContainsKey(s.Profile.Id))
 					continue;
 
-				NeuronMonitor m = new(s, this.Hub);
+				NeuronMonitor m = new(s, this.Hub, this.known, this.IsOwnAddress);
 				m.NeuronsChanged += (_, _) => this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 				m.SubscriptionRequested += (_, p) => this.SubscriptionRequested?.Invoke(this, (s.Profile.Id, p));
 				m.NotificationReceived += (_, n) => this.Attention.Add(n);
@@ -95,9 +118,25 @@ public sealed class MonitorService : IAsyncDisposable
 		this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>True when a bare JID is one of the user's own accounts. Reads a copy, so it takes no lock.</summary>
+	private bool IsOwnAddress(string bareJid)
+	{
+		foreach (AccountSession s in this.sessions)
+		{
+			if (string.Equals(s.BareJid, bareJid, StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(s.Profile.UserName + "@" + s.Profile.EffectiveDomain, bareJid, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public async ValueTask DisposeAsync()
 	{
 		this.accounts.SessionsChanged -= this.Accounts_SessionsChanged;
+		this.IdentityReviews.Dispose();
 
 		List<NeuronMonitor> all;
 		lock (this.sync)

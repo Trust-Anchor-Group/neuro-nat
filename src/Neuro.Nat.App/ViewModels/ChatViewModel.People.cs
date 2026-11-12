@@ -252,7 +252,6 @@ public sealed partial class ChatViewModel
 			this.LoadDetails();
 		})
 		{
-			Text = "The name is yours: only you see it, in every app that uses this account. Leave it empty to show their address.",
 			Placeholder = "Name",
 			Input = p.Name,
 			ConfirmText = "Rename",
@@ -269,7 +268,7 @@ public sealed partial class ChatViewModel
 			this.Refresh();
 		})
 		{
-			Text = "You stop seeing when they are online, and they stop seeing you. What you wrote to each other stays here.",
+			Text = "What you wrote to each other stays here.",
 			ConfirmText = "Remove from contacts",
 			IsDanger = true,
 		};

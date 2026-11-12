@@ -417,7 +417,7 @@ public class GettingAroundTests
 			using Neuro.Nat.Engine.Alerts.AlertService alerts = new(first.Monitors, new Neuro.Nat.Engine.Alerts.AlertSettings());
 			first.Vm.Settings.Attach(alerts, new Neuro.Nat.Engine.Alerts.JsonAlertSettingsStore(Path.Combine(dir, "alerts.json")), new JsonUiSettingsStore(file));
 			first.Vm.ToggleNeuronCommand.Execute(first.Vm.NeuronChips.Single(c => c.BareJid == Gbg));
-			Assert.Equal(Gbg, new JsonUiSettingsStore(file).Load().Neuron);
+			Assert.Equal([Gbg], new JsonUiSettingsStore(file).Load().Neurons!);
 		}
 
 		// The next run: the Neuron is picked again as soon as it is among the Neurons.
@@ -431,7 +431,7 @@ public class GettingAroundTests
 
 		// All Neurons is remembered too.
 		second.Vm.ShowAllNeuronsCommand.Execute(null);
-		Assert.Null(new JsonUiSettingsStore(file).Load().Neuron);
+		Assert.Null(new JsonUiSettingsStore(file).Load().Neurons);
 	}
 
 	// ----- Go to -----

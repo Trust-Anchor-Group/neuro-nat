@@ -20,22 +20,22 @@
           </StackPanel>
         </Button>
         <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ShareCommand}" CommandParameter="{Binding}"
-                ToolTip.Tip="Send this notification to a coworker or a room">
+                ToolTip.Tip="Share">
           <StackPanel Classes="btn">
             <c:LineIcon Classes="btn" Data="{StaticResource Icon.Share}" />
             <TextBlock Classes="btnLabel" Text="Share" />
           </StackPanel>
         </Button>
         <Button Classes="ghost" Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).CopyCommand}" CommandParameter="{Binding}"
-                ToolTip.Tip="Copy as Markdown, for chat or a ticket">
+                ToolTip.Tip="Copy as Markdown">
           <StackPanel Classes="btn">
             <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
             <TextBlock Classes="btnLabel" Text="Copy" />
           </StackPanel>
         </Button>
-        <Button Content="Reopen" IsVisible="{Binding IsHandled}" ToolTip.Tip="Put it back among what needs you"
+        <Button Content="Reopen" IsVisible="{Binding IsHandled}" ToolTip.Tip="Reopen"
                 Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ReopenCommand}" CommandParameter="{Binding}" />
-        <Button Classes="primary" Content="Done" IsVisible="{Binding IsOpen}" ToolTip.Tip="You have dealt with it: it leaves the Inbox"
+        <Button Classes="primary" Content="Done" IsVisible="{Binding IsOpen}" ToolTip.Tip="Mark done"
                 Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).MarkHandledCommand}" CommandParameter="{Binding}" />
       </StackPanel>
 

@@ -207,7 +207,7 @@ public sealed class WatchAgent : IDisposable
 			parts.Add($"{down} Neuron{(down == 1 ? "" : "s")} down");
 		if (quiet)
 			parts.Add("do not disturb is on");
-		this.tray.ToolTipText = parts.Count == 0 ? "NAT · all quiet" : "NAT · " + string.Join(", ", parts);
+		this.tray.ToolTipText = parts.Count == 0 ? "NAT: all quiet" : "NAT: " + string.Join(", ", parts);
 
 		if (this.quietItem is not null)
 			this.quietItem.IsChecked = quiet;

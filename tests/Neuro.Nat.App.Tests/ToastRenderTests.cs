@@ -24,7 +24,7 @@ public class ToastRenderTests
 		NoticeViewModel[] notices =
 		[
 			new(new Alert { Id = "1", Kind = AlertKind.Error, Severity = EventSeverity.Error, Title = "New: Unable to upload backup to backup@vault.prod.example", Detail = "Production", At = DateTime.Now }),
-			new(new Alert { Id = "2", Kind = AlertKind.Notification, Severity = EventSeverity.Info, Title = "Legal identity application received", Detail = "Lab · needs you", At = DateTime.Now }),
+			new(new Alert { Id = "2", Kind = AlertKind.Notification, Severity = EventSeverity.Info, Title = "Legal identity application received", Detail = "Lab is waiting for you", At = DateTime.Now }),
 			new(new Alert { Id = "3", Kind = AlertKind.NeuronDown, Severity = EventSeverity.Error, Title = "Gothenburg edge is not answering", Detail = "Its event stream stopped.", At = DateTime.Now }),
 			new(new Alert { Id = "4", Kind = AlertKind.Message, Title = "Kim Lindqvist", Detail = "Did the backup on gamma finish? I see the 02:00 one failed and nothing after it.", At = DateTime.Now })
 			{

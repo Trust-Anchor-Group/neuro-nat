@@ -113,56 +113,56 @@
         <!-- Column headers -->
         <Border DockPanel.Dock="Top" Padding="14,9" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
           <Grid Classes="cols" ColumnDefinitions="2.4*,1.3*,Auto,Auto,Auto,Auto,72,84,84">
-            <Button Classes="th" Command="{Binding SortByCommand}" CommandParameter="name" ToolTip.Tip="Sort by name. Click again for the other way round.">
+            <Button Classes="th" Command="{Binding SortByCommand}" CommandParameter="name" ToolTip.Tip="Sort by name">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="Neuron" />
                 <TextBlock Classes="th arrow" Text="{Binding NameArrow}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="1" Classes="th" Command="{Binding SortByCommand}" CommandParameter="stream" ToolTip.Tip="Sort by the state of the event stream. Click again for the other way round.">
+            <Button Grid.Column="1" Classes="th" Command="{Binding SortByCommand}" CommandParameter="stream" ToolTip.Tip="Sort by stream">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="Stream" />
                 <TextBlock Classes="th arrow" Text="{Binding StreamArrow}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="2" Classes="th colWide colVersion" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="version" ToolTip.Tip="Sort by version. Click again for the other way round.">
+            <Button Grid.Column="2" Classes="th colWide colVersion" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="version" ToolTip.Tip="Sort by version">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="Version" />
                 <TextBlock Classes="th arrow" Text="{Binding VersionArrow}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="3" Classes="th colCpu" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="cpu" ToolTip.Tip="Sort by CPU: the busiest first. Click again for the other way round.">
+            <Button Grid.Column="3" Classes="th colCpu" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="cpu" ToolTip.Tip="Sort by CPU">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="CPU" />
                 <TextBlock Classes="th cpuLong" Text="last 30 min" FontWeight="Normal" />
                 <TextBlock Classes="th arrow" Text="{Binding CpuArrow}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="4" Classes="th colMem" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="memory" ToolTip.Tip="Sort by memory in use: the most first. Click again for the other way round.">
+            <Button Grid.Column="4" Classes="th colMem" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="memory" ToolTip.Tip="Sort by memory">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="Memory" />
                 <TextBlock Classes="th arrow" Text="{Binding MemoryArrow}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="5" Classes="th colWide colDisk" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="disk" ToolTip.Tip="Sort by free disk: the least first. Click again for the other way round.">
+            <Button Grid.Column="5" Classes="th colWide colDisk" HorizontalContentAlignment="Left" Command="{Binding SortByCommand}" CommandParameter="disk" ToolTip.Tip="Sort by free disk">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="Disk" />
                 <TextBlock Classes="th arrow" Text="{Binding DiskArrow}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="6" Classes="th" Command="{Binding SortByCommand}" CommandParameter="errors" ToolTip.Tip="Sort by errors in the last hour: the most first. Click again for the other way round." HorizontalAlignment="Right">
+            <Button Grid.Column="6" Classes="th" Command="{Binding SortByCommand}" CommandParameter="errors" ToolTip.Tip="Sort by errors" HorizontalAlignment="Right">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="Errors 1 h" />
                 <TextBlock Classes="th arrow" Text="{Binding ErrorsArrow}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="7" Classes="th" Command="{Binding SortByCommand}" CommandParameter="issues" ToolTip.Tip="Sort by open problems: the most first. Click again for the other way round." HorizontalAlignment="Right">
+            <Button Grid.Column="7" Classes="th" Command="{Binding SortByCommand}" CommandParameter="issues" ToolTip.Tip="Sort by open problems" HorizontalAlignment="Right">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="Open problems" />
                 <TextBlock Classes="th arrow" Text="{Binding IssuesArrow}" />
               </StackPanel>
             </Button>
-            <Button Grid.Column="8" Classes="th" Command="{Binding SortByCommand}" CommandParameter="last" ToolTip.Tip="Sort by the last event: the latest first. Click again for the other way round." HorizontalAlignment="Right">
+            <Button Grid.Column="8" Classes="th" Command="{Binding SortByCommand}" CommandParameter="last" ToolTip.Tip="Sort by last event" HorizontalAlignment="Right">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Classes="th" Text="Last event" />
                 <TextBlock Classes="th arrow" Text="{Binding LastArrow}" />
@@ -176,8 +176,7 @@
                    c:ActionMenu.Source="{Binding}" c:ActionMenu.Bar="{Binding #Bar}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:FleetRowViewModel">
-                <Grid Classes="cols" ColumnDefinitions="2.4*,1.3*,Auto,Auto,Auto,Auto,72,84,84" RowDefinitions="Auto,Auto"
-                      ToolTip.Tip="Double-click to open this Neuron's page. Right-click for everything else.">
+                <Grid Classes="cols" ColumnDefinitions="2.4*,1.3*,Auto,Auto,Auto,Auto,72,84,84" RowDefinitions="Auto,Auto">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                     <Ellipse Classes="dot" VerticalAlignment="Center"
                              Classes.ok="{Binding State, Converter={x:Static conv:EventConverters.IsLive}}"
@@ -185,22 +184,22 @@
                              Classes.bad="{Binding State, Converter={x:Static conv:EventConverters.IsProblem}}" />
                     <StackPanel Grid.Column="1" Spacing="2">
                       <Button Classes="link" Command="{Binding $parent[UserControl].((vm:FleetViewModel)DataContext).OpenCommand}" CommandParameter="{Binding}"
-                              ToolTip.Tip="Open this Neuron's page">
+                              ToolTip.Tip="{Binding BareJid}">
                         <TextBlock Classes="mono" Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                       </Button>
                       <DockPanel>
-                        <Border DockPanel.Dock="Left" Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center" Margin="0,0,5,0"
+                        <Border DockPanel.Dock="Left" Width="14" Height="14" CornerRadius="4" VerticalAlignment="Center" Margin="0,0,5,0" IsVisible="{Binding ShowAccount}"
                                 Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
                           <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="9" FontWeight="SemiBold"
                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                      Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
                         </Border>
                         <!-- What the last check for updates came to. It keeps its place; the account's name gives way. -->
-                        <Border DockPanel.Dock="Right" Classes="pill" Margin="8,0,0,0" IsVisible="{Binding HasUpdateNote}" ToolTip.Tip="What the last check for updates came to"
+                        <Border DockPanel.Dock="Right" Classes="pill" Margin="8,0,0,0" IsVisible="{Binding HasUpdateNote}"
                                 Background="{Binding UpdateTone, Converter={x:Static conv:ToneBrushConverter.Instance}, ConverterParameter=subtle}">
                           <TextBlock Text="{Binding UpdateNote}" Foreground="{Binding UpdateTone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
                         </Border>
-                        <TextBlock Classes="meta" Text="{Binding AccountLabel}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Classes="meta" Text="{Binding AccountLabel}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding ShowAccount}" />
                       </DockPanel>
                     </StackPanel>
                   </Grid>
@@ -234,14 +233,11 @@
               </MultiBinding>
             </StackPanel.IsVisible>
             <TextBlock Text="No Neuron matches the filter" FontWeight="SemiBold" HorizontalAlignment="Center" />
-            <TextBlock Classes="meta" Text="Clear the filter box to see them all." HorizontalAlignment="Center" />
           </StackPanel>
 
           <StackPanel IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Fleet}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
             <TextBlock Text="No Neurons found yet" FontWeight="SemiBold" HorizontalAlignment="Center" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                       Text="Every Neuron in your accounts' rosters appears here, with its event stream, version, CPU, memory, disk and how many errors it logged in the last hour. Neurons that send you notifications are picked up automatically." />
           </StackPanel>
         </Panel>
       </DockPanel>

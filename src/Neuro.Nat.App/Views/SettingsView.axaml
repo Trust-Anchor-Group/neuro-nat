@@ -74,7 +74,7 @@
               </StackPanel>
             </ToggleButton>
           </WrapPanel>
-          <TextBlock Classes="hint" Text="{Binding StatusHint}" />
+          <TextBlock Classes="hint" Text="{Binding StatusHint}" IsVisible="{Binding StatusHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </Border>
 
@@ -82,8 +82,6 @@
       <Border Classes="card">
         <StackPanel Spacing="10">
           <TextBlock Classes="section" Text="Pop-ups and sounds" />
-          <TextBlock Classes="hint"
-                     Text="A pop-up shows in the corner of the window, or in the corner of the screen when the window is behind others or closed to the tray. Whatever you turn off here still counts in the Inbox." />
 
           <WrapPanel Orientation="Horizontal">
             <ToggleButton x:Name="AlertsNeedsMe" Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsAlertsNeedsMe, Mode=OneWay}"
@@ -122,12 +120,12 @@
             <TextBlock Grid.Column="2" Classes="caption" Text="SOUND" HorizontalAlignment="Center" Margin="0,0,0,6" />
 
             <Border Grid.Row="1" Classes="rule" />
-            <TextBlock Grid.Row="1" Classes="what" Text="Chat messages, from people and from rooms as each room is set" />
+            <TextBlock Grid.Row="1" Classes="what" Text="Chat messages" />
             <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding PopMessages}" AutomationProperties.Name="Pop-up for chat messages" />
             <CheckBox Grid.Row="1" Grid.Column="2" IsChecked="{Binding SoundMessages}" AutomationProperties.Name="Sound for chat messages" />
 
             <Border Grid.Row="2" Classes="rule" />
-            <TextBlock Grid.Row="2" Classes="what" Text="Requests: contact requests, room invitations, questions from devices, requests for your identity" />
+            <TextBlock Grid.Row="2" Classes="what" Text="Requests" />
             <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding PopRequests}" AutomationProperties.Name="Pop-up for requests" />
             <CheckBox Grid.Row="2" Grid.Column="2" IsChecked="{Binding SoundRequests}" AutomationProperties.Name="Sound for requests" />
 
@@ -140,13 +138,13 @@
             <TextBlock Grid.Row="4" Classes="what" Text="New errors, and errors that come back" />
             <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding PopErrors}" AutomationProperties.Name="Pop-up for errors" />
             <CheckBox Grid.Row="4" Grid.Column="2" IsChecked="{Binding SoundErrors}" AutomationProperties.Name="Sound for errors and Neurons going down"
-                      ToolTip.Tip="One switch for errors and for Neurons going down: they share the same sound" />
+                      ToolTip.Tip="Shared with errors" />
 
             <Border Grid.Row="5" Classes="rule" />
             <TextBlock Grid.Row="5" Classes="what" Text="A Neuron stops answering, and when it is back" />
             <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding PopNeuronDown}" AutomationProperties.Name="Pop-up for Neurons going down" />
             <CheckBox Grid.Row="5" Grid.Column="2" IsChecked="{Binding SoundErrors}" AutomationProperties.Name="Sound for errors and Neurons going down"
-                      ToolTip.Tip="One switch for errors and for Neurons going down: they share the same sound" />
+                      ToolTip.Tip="Shared with errors" />
 
             <Border Grid.Row="6" Classes="rule" />
             <TextBlock Grid.Row="6" Classes="what" Text="Information only: updates, restarts, backups" />
@@ -154,17 +152,15 @@
             <CheckBox Grid.Row="6" Grid.Column="2" IsChecked="{Binding SoundInformation}" AutomationProperties.Name="Sound for information" />
           </Grid>
 
-          <TextBlock Classes="hint"
-                     Text="A person or a room can be muted on its own, from the bell at the top of its conversation or from its pop-up. A message that mentions you in a room always gets through, unless the room is muted." />
 
           <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0" IsVisible="{Binding CanTest}">
-            <Button Command="{Binding TestMessageCommand}" ToolTip.Tip="Shows a made-up message pop-up and plays the message sound">
+            <Button Command="{Binding TestMessageCommand}" ToolTip.Tip="Try a message">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Chat}" />
                 <TextBlock Text="Try a message" />
               </StackPanel>
             </Button>
-            <Button Command="{Binding TestAlertCommand}" ToolTip.Tip="Shows a made-up alert from a Neuron and plays the alert sound">
+            <Button Command="{Binding TestAlertCommand}" ToolTip.Tip="Try an alert">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Alert}" />
                 <TextBlock Text="Try an alert" />
@@ -202,7 +198,6 @@
             </ToggleButton>
           </WrapPanel>
           <CheckBox x:Name="LessMotionBox" IsChecked="{Binding LessMotion}" Content="Less motion" />
-          <TextBlock Classes="hint" Margin="28,-6,0,0" Text="Nothing fades or slides in. Motion is also off when Windows is set to show no animations." />
         </StackPanel>
       </Border>
 
@@ -211,7 +206,6 @@
         <StackPanel Spacing="10">
           <StackPanel Spacing="4">
             <TextBlock Classes="section" Text="Text size" />
-            <TextBlock Classes="hint" Text="Everything grows with the text, so nothing is cut off. Ctrl+plus and Ctrl+minus change it from anywhere, Ctrl+0 puts it back." />
           </StackPanel>
           <WrapPanel Orientation="Horizontal">
             <ToggleButton Classes="choice" Margin="0,0,8,8" IsChecked="{Binding IsTextSmall, Mode=OneWay}" Command="{Binding SetTextSizeCommand}">
@@ -232,10 +226,9 @@
             </ToggleButton>
           </WrapPanel>
           <CheckBox IsChecked="{Binding CompactRows}" Content="Compact rows" />
-          <TextBlock Classes="hint" Margin="28,-6,0,0" Text="Rows in lists take less height, so more of them fit on the screen." />
           <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
             <Button x:Name="ResetLayoutButton" Classes="small" Command="{Binding ResetLayoutCommand}" Content="Put the layout back" IsEnabled="{Binding HasOwnLayout}" />
-            <TextBlock Classes="hint" VerticalAlignment="Center" Text="Panes you made wider or narrower, and how the Neurons list is sorted." />
+            <TextBlock Classes="hint" VerticalAlignment="Center" Text="Pane widths and sorting" />
           </StackPanel>
         </StackPanel>
       </Border>
@@ -245,11 +238,7 @@
         <StackPanel Spacing="10">
           <TextBlock Classes="section" Text="When the window closes" />
           <CheckBox IsChecked="{Binding KeepRunningInTray}" Content="Keep watching from the tray" />
-          <TextBlock Classes="hint" Margin="28,-6,0,0"
-                     Text="Closing the window then hides it. Pop-ups and sounds keep coming, and the dot in the tray icon shows how things stand. Quit from the tray icon's menu." />
           <CheckBox IsChecked="{Binding StartWithSystem}" Content="Start when I sign in to Windows" IsVisible="{Binding CanAutostart}" />
-          <TextBlock Classes="hint" Margin="28,-6,0,0" IsVisible="{Binding CanAutostart}"
-                     Text="Starts in the tray, without opening the window." />
         </StackPanel>
       </Border>
 
@@ -258,7 +247,6 @@
         <StackPanel Spacing="12">
           <StackPanel Spacing="4">
             <TextBlock Classes="section" Text="Keyboard" />
-            <TextBlock Classes="hint" Text="Every right-click menu shows the shortcut next to the action it belongs to. These are all of them." />
           </StackPanel>
           <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.Shortcuts}" Grid.IsSharedSizeScope="True">
             <ItemsControl.ItemTemplate>

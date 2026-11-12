@@ -55,17 +55,17 @@ public sealed partial class AttentionItemViewModel(string id) : ObservableObject
 		this.IsHandled = n.State == AttentionState.Handled;
 		this.NeuronJid = n.NeuronJid;
 		this.NeuronLabel = neuronLabel;
-		this.AccountLabel = account?.Label ?? string.Empty;
+		this.AccountLabel = account?.ShortLabel ?? string.Empty;
 		this.AccountColorIndex = account?.ColorIndex ?? 0;
 		this.Subject = n.Subject;
-		this.Meta = string.IsNullOrEmpty(n.Subject) ? neuronLabel : neuronLabel + " · " + n.Subject;
+		this.Meta = string.IsNullOrEmpty(n.Subject) ? neuronLabel : n.Subject + " on " + neuronLabel;
 		this.TimeText = RelativeTime.Format(n.Updated ?? n.Received, now);
 
 		string when = n.Received.ToString("ddd d MMM, HH:mm:ss", System.Globalization.CultureInfo.CurrentCulture);
 		if (n.Updated is DateTime u)
-			when += " · corrected " + u.ToString("HH:mm:ss", System.Globalization.CultureInfo.CurrentCulture);
+			when += ". Corrected at " + u.ToString("HH:mm:ss", System.Globalization.CultureInfo.CurrentCulture);
 		if (n.State == AttentionState.Handled && n.HandledAt is DateTime h)
-			when += " · handled " + RelativeTime.Format(h, now);
+			when += ". Handled " + RelativeTime.Format(h, now);
 		this.WhenText = when;
 
 		this.Markdown = n.Markdown;
@@ -172,9 +172,11 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 	{
 		DateTime now = DateTime.Now;
 		IReadOnlyList<NeuronNotification> all = this.monitors.Attention.Items;
-		Dictionary<(Guid, string), string> labels = this.monitors.Neurons
+		IReadOnlyList<WatchedNeuron> known = this.monitors.Neurons;
+		IReadOnlyDictionary<string, string> names = NeuronNames.Distinct(known);
+		Dictionary<(Guid, string), string> labels = known
 			.GroupBy(n => (n.AccountId, n.BareJid.ToLowerInvariant()))
-			.ToDictionary(g => g.Key, g => g.First().Label);
+			.ToDictionary(g => g.Key, g => names[g.First().BareJid]);
 		Dictionary<Guid, AccountProfile> profiles = this.accounts.Sessions.ToDictionary(s => s.Profile.Id, s => s.Profile);
 		string search = this.SearchText.Trim();
 
@@ -185,7 +187,7 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 		List<AttentionItemViewModel> keep = [];
 		foreach (NeuronNotification n in shown)
 		{
-			string label = labels.TryGetValue((n.AccountId, n.NeuronJid.ToLowerInvariant()), out string? l) ? l : n.NeuronJid;
+			string label = labels.TryGetValue((n.AccountId, n.NeuronJid.ToLowerInvariant()), out string? l) ? l : NeuronNames.For(known, n.NeuronJid);
 
 			if (search.Length > 0 &&
 				!n.Title.Contains(search, StringComparison.OrdinalIgnoreCase) &&

@@ -77,13 +77,13 @@
         <Border DockPanel.Dock="Top" Margin="-12,-14,-12,10" Padding="8,0,8,0" Height="38" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
           <DockPanel>
             <Panel DockPanel.Dock="Right" VerticalAlignment="Center">
-              <Button Classes="ghost" Command="{Binding ToggleAddCommand}" ToolTip.Tip="Add a contact by their address" IsVisible="{Binding ShowPeople}">
+              <Button Classes="ghost" Command="{Binding ToggleAddCommand}" ToolTip.Tip="Add a contact" IsVisible="{Binding ShowPeople}">
                 <StackPanel Classes="btn">
                   <c:LineIcon Classes="btn" Data="{StaticResource Icon.Plus}" />
                   <TextBlock Classes="btnLabel" Text="Add" />
                 </StackPanel>
               </Button>
-              <Button Classes="ghost" Command="{Binding ToggleJoinCommand}" ToolTip.Tip="Join a group chat room, or create one" IsVisible="{Binding ShowRooms}">
+              <Button Classes="ghost" Command="{Binding ToggleJoinCommand}" ToolTip.Tip="Join or create a room" IsVisible="{Binding ShowRooms}">
                 <StackPanel Classes="btn">
                   <c:LineIcon Classes="btn" Data="{StaticResource Icon.Plus}" />
                   <TextBlock Classes="btnLabel" Text="Join" />
@@ -91,15 +91,15 @@
               </Button>
             </Panel>
             <StackPanel Orientation="Horizontal">
-              <Button Classes="tab" Classes.current="{Binding ShowPeople}" Command="{Binding ShowPeopleTabCommand}" ToolTip.Tip="The people you write to, one at a time">
+              <Button Classes="tab" Classes.current="{Binding ShowPeople}" Command="{Binding ShowPeopleTabCommand}" ToolTip.Tip="People">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <TextBlock Text="People" VerticalAlignment="Center" />
-                  <Border Classes="unread" IsVisible="{Binding HasPeopleUnread}" ToolTip.Tip="Unread messages from people">
+                  <Border Classes="unread" IsVisible="{Binding HasPeopleUnread}" ToolTip.Tip="Unread">
                     <TextBlock Text="{Binding PeopleUnread}" />
                   </Border>
                 </StackPanel>
               </Button>
-              <Button Classes="tab" Classes.current="{Binding ShowRooms}" Command="{Binding ShowRoomsTabCommand}" ToolTip.Tip="Group chats you have joined">
+              <Button Classes="tab" Classes.current="{Binding ShowRooms}" Command="{Binding ShowRoomsTabCommand}" ToolTip.Tip="Rooms">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <TextBlock Text="Rooms" VerticalAlignment="Center" />
                   <Border Classes="unread" IsVisible="{Binding HasRoomsUnread}" ToolTip.Tip="Unread messages in rooms">
@@ -127,14 +127,14 @@
         <Border DockPanel.Dock="Top" Classes="panel" Padding="12" Margin="0,0,0,10" IsVisible="{Binding IsJoinOpen}">
           <StackPanel Spacing="8">
             <ComboBox ItemsSource="{Binding AccountChoices}" SelectedItem="{Binding JoinAccount}" HorizontalAlignment="Stretch"
-                      ToolTip.Tip="The account that joins the room">
+                      ToolTip.Tip="Account">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:AccountChoice">
                   <TextBlock Text="{Binding Label}" />
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBox Text="{Binding JoinRoom}" PlaceholderText="Room, such as ops-team or ops-team@muc.example.com" />
+            <TextBox Text="{Binding JoinRoom}" PlaceholderText="Room name or address" />
             <TextBlock Classes="meta" Text="{Binding JoinHint}" TextWrapping="Wrap" />
             <TextBox Text="{Binding JoinNick}" PlaceholderText="Your nickname in the room" />
             <TextBlock Classes="error" Text="{Binding JoinError}" TextWrapping="Wrap"
@@ -158,9 +158,9 @@
                     <TextBlock Text="CONTACT REQUEST" FontSize="{StaticResource Type.Caption}" FontWeight="SemiBold" Foreground="{DynamicResource Accent.Ink}" VerticalAlignment="Center" />
                   </StackPanel>
                   <TextBlock TextWrapping="Wrap">
-                    <Run Text="{Binding BareJid}" FontWeight="SemiBold" /><Run Text=" wants to be a contact of " /><Run Text="{Binding AccountLabel}" FontWeight="SemiBold" /><Run Text="." />
+                    <Run Text="{Binding BareJid}" FontWeight="SemiBold" /><Run Text=" wants to be a contact" />
                   </TextBlock>
-                  <TextBlock Classes="meta" TextWrapping="Wrap" Text="Accepting lets them see when you are online, and asks to see theirs." />
+                  <TextBlock Classes="meta" Text="{Binding AccountLabel, StringFormat='Asks {0}'}" IsVisible="{Binding AccountLabel, Converter={x:Static conv:EventConverters.HasText}}" />
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button Classes="primary" Content="Accept" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).AcceptCommand}" CommandParameter="{Binding}" />
                     <Button Content="Decline" Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).DeclineCommand}" CommandParameter="{Binding}" />
@@ -195,7 +195,7 @@
         <Border DockPanel.Dock="Top" Classes="panel" Padding="12" Margin="0,0,0,10" IsVisible="{Binding IsAddOpen}">
           <StackPanel Spacing="8">
             <ComboBox ItemsSource="{Binding AccountChoices}" SelectedItem="{Binding NewContactAccount}" HorizontalAlignment="Stretch"
-                      ToolTip.Tip="The account the contact is added to">
+                      ToolTip.Tip="Account">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:AccountChoice">
                   <TextBlock Text="{Binding Label}" />
@@ -272,7 +272,7 @@
                   <TextBlock Grid.Row="1" Grid.Column="1" Classes="meta" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
                              Text="{Binding Preview}" IsVisible="{Binding Preview, Converter={x:Static conv:EventConverters.HasText}}" />
                   <TextBlock Grid.Row="1" Grid.Column="1" Classes="meta" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
-                             Text="{Binding AccountLabel}" IsVisible="{Binding Preview, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                             Text="{Binding ThroughText}" IsVisible="{Binding Preview, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
                   <Border Grid.Row="1" Grid.Column="2" Classes="unread" Classes.muted="{Binding IsMuted}" IsVisible="{Binding HasUnread}" HorizontalAlignment="Right">
                     <TextBlock Text="{Binding Unread}" />
                   </Border>

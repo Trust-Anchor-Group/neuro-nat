@@ -12,10 +12,6 @@ public static class BoolToTextConverter
 	/// <summary>Right alignment for true (my messages), left for false.</summary>
 	public static readonly IValueConverter RightIfTrue =
 		new FuncValueConverter<bool, Avalonia.Layout.HorizontalAlignment>(right => right ? Avalonia.Layout.HorizontalAlignment.Right : Avalonia.Layout.HorizontalAlignment.Left);
-
-	/// <summary>" · edited" for corrected messages.</summary>
-	public static readonly IValueConverter Edited =
-		new FuncValueConverter<bool, string>(edited => edited ? " · edited" : string.Empty);
 }
 
 /// <summary>Boolean-to-spacing converters.</summary>

@@ -165,7 +165,7 @@ public sealed partial class DevicesViewModel : ObservableObject
 		foreach (AccountSession s in this.accounts.Sessions)
 		{
 			if (!this.AccountChoices.Any(c => c.Id == s.Profile.Id))
-				this.AccountChoices.Add(new DeviceAccountChoice(s.Profile.Id, s.Profile.Label));
+				this.AccountChoices.Add(new DeviceAccountChoice(s.Profile.Id, s.Profile.ShortLabel));
 		}
 		this.Account ??= this.AccountChoices.FirstOrDefault(c => this.devices.IsAvailable(c.Id)) ?? this.AccountChoices.FirstOrDefault();
 	}
@@ -202,7 +202,7 @@ public sealed partial class DevicesViewModel : ObservableObject
 		{
 			DeviceRowViewModel r = this.Rows.FirstOrDefault(x => x.Key == key) ?? new DeviceRowViewModel(key, accountId);
 			AccountProfile? p = profiles.TryGetValue(accountId, out AccountProfile? x) ? x : null;
-			r.AccountLabel = p?.Label ?? string.Empty;
+			r.AccountLabel = p?.ShortLabel ?? string.Empty;
 			r.AccountColorIndex = p?.ColorIndex ?? 0;
 			keep.Add(r);
 			return r;
@@ -218,13 +218,13 @@ public sealed partial class DevicesViewModel : ObservableObject
 						DeviceRowViewModel r = Row($"mine:{id}:{t.Jid}:{t.NodeId}:{t.SourceId}", id);
 						(r.Thing, r.Owned, r.Question) = (t, true, null);
 						r.Title = t.Label;
-						r.Meta = t.NodeId is null ? t.Jid : $"{t.Jid} · {t.NodeId}";
+						r.Meta = t.NodeId is null ? t.Jid : $"{t.NodeId} on {t.Jid}";
 						r.HasState = false;
 					}
 				}
 				this.EmptyText = this.accounts.Sessions.Any(s => this.devices.IsAvailable(s.Profile.Id))
-					? "Your accounts own no devices. Claim one with its key, or search the registry."
-					: "None of your accounts' Neurons has a thing registry, or they are not connected.";
+					? "No devices yet"
+					: "No thing registry";
 				break;
 
 			case DevicesMode.Search:
@@ -234,10 +234,10 @@ public sealed partial class DevicesViewModel : ObservableObject
 					bool owned = this.mine.TryGetValue(id, out IReadOnlyList<RegistryThing>? m) && m.Any(x => x.Jid == t.Jid && x.NodeId == t.NodeId);
 					(r.Thing, r.Owned, r.Question) = (t, owned, null);
 					r.Title = t.Label;
-					r.Meta = t.NodeId is null ? t.Jid : $"{t.Jid} · {t.NodeId}";
+					r.Meta = t.NodeId is null ? t.Jid : $"{t.NodeId} on {t.Jid}";
 					(r.StateLabel, r.Tone, r.HasState) = owned ? ("Yours", "ok", true) : (string.Empty, "idle", false);
 				}
-				this.EmptyText = "Search public devices by any tag: a name, a model, a serial number. Use * as a wildcard.";
+				this.EmptyText = "Search by any tag. * is a wildcard.";
 				break;
 
 			case DevicesMode.Questions:
@@ -251,10 +251,10 @@ public sealed partial class DevicesViewModel : ObservableObject
 						DeviceQuestionKind.Readout => $"{q.RemoteJid} wants to read data",
 						_ => $"{q.RemoteJid} wants to control it",
 					};
-					r.Meta = q.NodeId is null ? q.DeviceJid : $"{q.DeviceJid} · {q.NodeId}";
+					r.Meta = q.NodeId is null ? q.DeviceJid : $"{q.NodeId} on {q.DeviceJid}";
 					(r.StateLabel, r.Tone, r.HasState) = ("Waiting for you", "busy", true);
 				}
-				this.EmptyText = "No questions. When someone wants access to a device you own, its Neuron asks you here.";
+				this.EmptyText = "No questions";
 				break;
 		}
 
@@ -290,14 +290,15 @@ public sealed partial class DevicesViewModel : ObservableObject
 		if (this.IsClaiming)
 		{
 			this.DetailTitle = "Claim a device";
-			this.DetailSubtitle = "Give the tags the device registered with, including its KEY. The key is usually printed on the device or in its QR code.";
+			this.DetailSubtitle = "The device's tags, including its KEY";
 			return;
 		}
 
 		if (r?.Thing is RegistryThing t)
 		{
 			this.DetailTitle = t.Label;
-			this.DetailSubtitle = r.Owned ? $"Owned through {s?.Profile.Label}" : $"Public in the registry · seen through {s?.Profile.Label}";
+			string through = this.accounts.Sessions.Count > 1 && s is not null ? " through " + s.Profile.ShortLabel : string.Empty;
+			this.DetailSubtitle = r.Owned ? "Yours" + through : "Public in the registry";
 			this.Facts.Add(new DeviceFact("Address", t.Jid));
 			if (t.NodeId is not null)
 				this.Facts.Add(new DeviceFact("Node", t.NodeId));
@@ -309,7 +310,7 @@ public sealed partial class DevicesViewModel : ObservableObject
 		else if (r?.Question is DeviceQuestion q)
 		{
 			this.DetailTitle = r.Title;
-			this.DetailSubtitle = $"Asked {RelativeTime.Format(q.Received, DateTime.Now)} · you own the device through {s?.Profile.Label}";
+			this.DetailSubtitle = $"Asked {RelativeTime.Format(q.Received, DateTime.Now)}" + (this.accounts.Sessions.Count > 1 && s is not null ? " through " + s.Profile.ShortLabel : string.Empty);
 			this.Facts.Add(new DeviceFact("Device", q.DeviceJid));
 			if (q.NodeId is not null)
 				this.Facts.Add(new DeviceFact("Node", q.NodeId + (q.SourceId is null ? string.Empty : " in " + q.SourceId)));

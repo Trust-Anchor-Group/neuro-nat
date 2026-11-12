@@ -51,7 +51,7 @@
           <Button DockPanel.Dock="Right" Classes="ghost mini" Command="{Binding CloseCommand}" ToolTip.Tip="Close" AutomationProperties.Name="Close">
             <c:LineIcon Data="{StaticResource Icon.Close}" Width="13" Height="13" />
           </Button>
-          <Button DockPanel.Dock="Right" Classes="ghost mini" IsVisible="{Binding CanMute}" ToolTip.Tip="Mute: no pop-ups or sounds from here for a while"
+          <Button DockPanel.Dock="Right" Classes="ghost mini" IsVisible="{Binding CanMute}" ToolTip.Tip="Mute"
                   AutomationProperties.Name="Mute">
             <Button.Flyout>
               <MenuFlyout Placement="BottomEdgeAlignedRight">
@@ -62,8 +62,11 @@
             </Button.Flyout>
             <c:LineIcon Data="{StaticResource Icon.BellOff}" Width="13" Height="13" />
           </Button>
-          <TextBlock Classes="caption tone" Classes.bad="{Binding IsBad}" Classes.busy="{Binding IsBusy}" Classes.ok="{Binding IsOk}"
-                     Text="{Binding Caption}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="caption tone" Classes.bad="{Binding IsBad}" Classes.busy="{Binding IsBusy}" Classes.ok="{Binding IsOk}"
+                       Text="{Binding Caption}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="caption" Text="{Binding MoreText}" VerticalAlignment="Center" />
+          </StackPanel>
         </DockPanel>
 
         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />

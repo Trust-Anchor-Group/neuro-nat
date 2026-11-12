@@ -59,7 +59,7 @@ public partial class App : Application
 				Engine.Alerts.IAlertSettingsStore alertStore = services.AlertSettings;
 				Engine.Alerts.AlertService alerts = new(services.Monitors, alertStore.Load())
 				{
-					AccountLabel = id => services.Accounts.Sessions.FirstOrDefault(s => s.Profile.Id == id)?.Profile.Label,
+					AccountLabel = id => services.Accounts.Sessions.Count > 1 ? services.Accounts.Sessions.FirstOrDefault(s => s.Profile.Id == id)?.Profile.ShortLabel : null,
 				};
 				// Messages, invitations, questions and requests pop up the same way.
 				alerts.Watch(services.Chat);

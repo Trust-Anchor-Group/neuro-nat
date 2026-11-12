@@ -95,7 +95,7 @@
       <Border DockPanel.Dock="Top" Padding="24,12" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
         <DockPanel DataContext="{Binding SelectedPerson}" x:DataType="vm:PersonViewModel">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <Button Classes="ghost" ToolTip.Tip="What may interrupt you here: pop-ups and sounds">
+            <Button Classes="ghost" ToolTip.Tip="Notifications">
               <Button.Flyout>
                 <MenuFlyout Placement="BottomEdgeAlignedRight">
                   <MenuItem Header="Tell me about every message" IsVisible="{Binding IsRoom}" ToggleType="Radio" IsChecked="{Binding IsNotifyAll, Mode=OneWay}"
@@ -117,47 +117,48 @@
                 <TextBlock Classes="btnLabel" Text="Muted" IsVisible="{Binding IsMuted}" />
               </StackPanel>
             </Button>
-            <Button Classes="ghost" IsVisible="{Binding IsNeuron}" ToolTip.Tip="Open this Neuron's chat admin console"
+            <Button Classes="ghost" IsVisible="{Binding IsNeuron}" ToolTip.Tip="Open the console"
                     Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).OpenConsoleCommand}">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Console}" />
                 <TextBlock Classes="btnLabel" Text="Console" />
               </StackPanel>
             </Button>
-            <Button Classes="ghost" IsVisible="{Binding IsRoom}" ToolTip.Tip="Show or hide who is in the room"
+            <Button Classes="ghost" IsVisible="{Binding IsRoom}" ToolTip.Tip="People in the room"
                     Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).TogglePanelCommand}">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.People}" />
                 <TextBlock Classes="btnLabel" Text="{Binding OccupantCount, StringFormat='People ({0})'}" />
               </StackPanel>
             </Button>
-            <Button Classes="ghost" IsVisible="{Binding !IsRoom}" ToolTip.Tip="Show or hide their name, address and groups"
+            <Button Classes="ghost" IsVisible="{Binding !IsRoom}" ToolTip.Tip="Details"
                     Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).TogglePanelCommand}">
               <StackPanel Classes="btn">
                 <c:LineIcon Classes="btn" Data="{StaticResource Icon.Person}" />
                 <TextBlock Classes="btnLabel" Text="Details" />
               </StackPanel>
             </Button>
-            <Button x:Name="MoreButton" Classes="ghost" ToolTip.Tip="Everything else you can do here"
+            <Button x:Name="MoreButton" Classes="ghost" ToolTip.Tip="More"
                     c:ActionMenu.Source="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext)}" c:ActionMenu.OnClick="True">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
             </Button>
           </StackPanel>
           <StackPanel Spacing="2">
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <TextBlock Classes="section" Text="{Binding Label}" />
-              <TextBlock Classes="mono tertiary" Text="{Binding BareJid}" VerticalAlignment="Center" />
+              <TextBlock Classes="section" Text="{Binding Label}" ToolTip.Tip="{Binding BareJid}" />
             </StackPanel>
-            <TextBlock Classes="meta" TextTrimming="CharacterEllipsis">
-              <Run Text="{Binding PresenceText}" /><Run Text=" · via " /><Run Text="{Binding AccountLabel}" />
-            </TextBlock>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Classes="meta" Text="{Binding PresenceText}" />
+              <TextBlock Classes="meta" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" MaxWidth="320" IsVisible="{Binding StatusText, Converter={x:Static conv:EventConverters.HasText}}" />
+              <TextBlock Classes="meta" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" MaxWidth="320" IsVisible="{Binding IsRoom}" />
+              <TextBlock Classes="meta" Text="{Binding ThroughText}" IsVisible="{Binding ThroughText, Converter={x:Static conv:EventConverters.HasText}}" />
+            </StackPanel>
             <TextBlock Classes="meta" Text="{Binding SubscriptionNote}" IsVisible="{Binding SubscriptionNote, Converter={x:Static conv:EventConverters.HasText}}" />
             <TextBlock Classes="meta" Text="{Binding NotifyText}" IsVisible="{Binding IsMuted}" />
             <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding SecurityText, Converter={x:Static conv:EventConverters.HasText}}">
               <c:LineIcon Data="{StaticResource Icon.Lock}" Width="13" Height="13" VerticalAlignment="Center"
                           Foreground="{DynamicResource State.Ok}" IsVisible="{Binding IsEncrypted}" />
-              <TextBlock Classes="meta" Text="{Binding SecurityText}" TextTrimming="CharacterEllipsis"
-                         ToolTip.Tip="Compare the key with what your contact sees as their own key. If they match, nobody is in between." />
+              <TextBlock Classes="meta" Text="{Binding SecurityText}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
           </StackPanel>
         </DockPanel>
@@ -199,7 +200,7 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="x:String">
                       <DockPanel Margin="0,2">
-                        <Button DockPanel.Dock="Right" Classes="small" Content="Let back in" ToolTip.Tip="Lift the ban: they may come into the room again"
+                        <Button DockPanel.Dock="Right" Classes="small" Content="Let back in" ToolTip.Tip="Lift the ban"
                                 Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).LetBackInCommand}" CommandParameter="{Binding}" />
                         <TextBlock Classes="mono" Text="{Binding}" FontSize="{StaticResource Type.Meta}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding}" />
                       </DockPanel>
@@ -216,7 +217,7 @@
                       <TextBlock Classes="label" Text="{Binding Header}" IsVisible="{Binding HasHeader}" Margin="6,8,0,4" />
                       <Border Classes="occupant" c:ActionMenu.Source="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext)}">
                         <DockPanel>
-                          <Button DockPanel.Dock="Right" Classes="ghost small" Padding="6,2" ToolTip.Tip="What you can do with them"
+                          <Button DockPanel.Dock="Right" Classes="ghost small" Padding="6,2" ToolTip.Tip="More"
                                   c:ActionMenu.Source="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext)}" c:ActionMenu.OnClick="True">
                             <c:LineIcon Data="{StaticResource Icon.More}" Width="14" Height="14" />
                           </Button>
@@ -248,7 +249,6 @@
                 <TextBlock Classes="label" Text="Name" />
                 <TextBox x:Name="NameBox" Text="{Binding DetailName}" PlaceholderText="{Binding SelectedPerson.BareJid}" />
                 <Button Classes="primary small" Content="Save name" HorizontalAlignment="Left" Command="{Binding SaveNameCommand}" IsVisible="{Binding CanSaveName}" />
-                <TextBlock Classes="meta" TextWrapping="Wrap" Text="Only you see the name, in every app that uses this account." />
               </StackPanel>
 
               <StackPanel Spacing="4">
@@ -259,9 +259,13 @@
                   </Button>
                   <SelectableTextBlock Classes="mono" Text="{Binding SelectedPerson.BareJid}" TextWrapping="Wrap" FontSize="{StaticResource Type.Meta}" VerticalAlignment="Center" />
                 </DockPanel>
-                <TextBlock Classes="meta" TextWrapping="Wrap">
-                  <Run Text="Through " /><Run Text="{Binding SelectedPerson.AccountLabel}" />
-                </TextBlock>
+                <TextBlock Classes="meta" TextWrapping="Wrap" Text="{Binding SelectedPerson.ThroughText}"
+                           IsVisible="{Binding SelectedPerson.ThroughText, Converter={x:Static conv:EventConverters.HasText}}" />
+              </StackPanel>
+
+              <StackPanel Spacing="4" IsVisible="{Binding SelectedPerson.KeyText, Converter={x:Static conv:EventConverters.HasText}}">
+                <TextBlock Classes="label" Text="Key" />
+                <SelectableTextBlock Classes="mono" Text="{Binding SelectedPerson.KeyText}" TextWrapping="Wrap" FontSize="{StaticResource Type.Meta}" />
               </StackPanel>
 
               <StackPanel Spacing="6" IsVisible="{Binding SelectedPerson.InRoster}">
@@ -277,7 +281,7 @@
                       <Border CornerRadius="12" Padding="10,2,2,2" Margin="0,0,6,6" Background="{DynamicResource Surface.Pressed}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                           <TextBlock Text="{Binding}" FontSize="{StaticResource Type.Meta}" VerticalAlignment="Center" />
-                          <Button Classes="ghost" MinHeight="0" Padding="5,4" CornerRadius="10" ToolTip.Tip="Take them out of this group"
+                          <Button Classes="ghost" MinHeight="0" Padding="5,4" CornerRadius="10" ToolTip.Tip="Remove from group"
                                   Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).RemoveGroupCommand}" CommandParameter="{Binding}">
                             <c:LineIcon Data="{StaticResource Icon.Close}" Width="10" Height="10" />
                           </Button>
@@ -286,7 +290,7 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Classes="meta" Text="Not in a group yet." IsVisible="{Binding !SelectedPerson.HasGroups}" />
+                <TextBlock Classes="meta" Text="No groups" IsVisible="{Binding !SelectedPerson.HasGroups}" />
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                   <TextBox x:Name="GroupBox" Text="{Binding NewGroup}" PlaceholderText="New group" />
                   <Button Grid.Column="1" Content="Add" Command="{Binding AddGroupCommand}" />
@@ -299,7 +303,7 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="x:String">
-                      <Button Classes="small" Margin="0,0,6,6" CornerRadius="12" ToolTip.Tip="Add them to this group"
+                      <Button Classes="small" Margin="0,0,6,6" CornerRadius="12" ToolTip.Tip="Add to group"
                               Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).AddToGroupCommand}" CommandParameter="{Binding}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                           <c:LineIcon Data="{StaticResource Icon.Plus}" Width="10" Height="10" />
@@ -309,16 +313,14 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Classes="meta" TextWrapping="Wrap" Text="Groups narrow the people list. They are kept with the account, so other apps show them too." />
               </StackPanel>
 
               <StackPanel Spacing="6" IsVisible="{Binding CanAddOpen}">
-                <TextBlock Classes="meta" TextWrapping="Wrap" Text="Not one of your contacts: you do not see when they are online, and cannot name or group them." />
+                <TextBlock Classes="meta" TextWrapping="Wrap" Text="Not a contact" />
                 <Button Content="Add to contacts" HorizontalAlignment="Left" Command="{Binding AddOpenToContactsCommand}" />
               </StackPanel>
 
               <StackPanel Spacing="6" IsVisible="{Binding SelectedPerson.IsPrivate}">
-                <TextBlock Classes="meta" TextWrapping="Wrap" Text="A conversation with one person in a room. It goes through the room, to them alone, and works while you are both in it." />
                 <Button Content="Open the room" HorizontalAlignment="Left" Command="{Binding OpenRoomOfPrivateCommand}" />
               </StackPanel>
 
@@ -345,8 +347,8 @@
           <!-- A room that only lets you read -->
           <DockPanel IsVisible="{Binding SelectedPerson.IsReadOnly}">
             <Button DockPanel.Dock="Right" Classes="small" Content="Ask to speak" Command="{Binding AskToSpeakCommand}"
-                    ToolTip.Tip="Asks the room's moderators to let you write" />
-            <TextBlock Classes="meta" VerticalAlignment="Center" Text="You can only read in this room. What you write is not let through." TextWrapping="Wrap" />
+                    ToolTip.Tip="Ask the moderators" />
+            <TextBlock Classes="meta" VerticalAlignment="Center" Text="You can only read here" TextWrapping="Wrap" />
           </DockPanel>
 
           <!-- Answering or changing a message -->
@@ -372,7 +374,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:EmojiSuggestion">
-                <Button Classes="ghost small suggestion" Classes.current="{Binding IsSelected}" Focusable="False" ToolTip.Tip="Tab or Enter picks the marked one"
+                <Button Classes="ghost small suggestion" Classes.current="{Binding IsSelected}" Focusable="False" ToolTip.Tip="Tab or Enter picks it"
                         Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).PickSuggestionCommand}" CommandParameter="{Binding}">
                   <StackPanel Orientation="Horizontal" Spacing="5">
                     <TextBlock Text="{Binding Choice.Symbol}" FontSize="15" VerticalAlignment="Center" />
@@ -385,13 +387,13 @@
 
           <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
             <Button x:Name="AttachButton" Classes="ghost" VerticalAlignment="Bottom" IsVisible="{Binding CanSendFiles}"
-                    ToolTip.Tip="Send a file. You can also drop files on the conversation.">
+                    ToolTip.Tip="Send a file">
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Attach}" />
             </Button>
             <TextBox x:Name="Composer" Grid.Column="1" Text="{Binding Draft}" CaretIndex="{Binding Caret, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="40" MaxHeight="200"
                      PlaceholderText="Write a message" Padding="10,8" />
             <Button x:Name="EmojiButton" Grid.Column="2" Classes="ghost" VerticalAlignment="Bottom"
-                    ToolTip.Tip="Emoji. You can also type a colon and a name, such as :rocket">
+                    ToolTip.Tip="Emoji">
               <Button.Flyout>
                 <Flyout Placement="TopEdgeAlignedRight">
                   <ScrollViewer MaxHeight="330" Width="290">
@@ -421,8 +423,7 @@
               </Button.Flyout>
               <c:LineIcon Classes="btn" Data="{StaticResource Icon.Smile}" />
             </Button>
-            <Button Grid.Column="3" Classes="primary" Content="{Binding SendText}" Command="{Binding SendCommand}" VerticalAlignment="Bottom" Margin="4,0,0,0"
-                    ToolTip.Tip="Enter sends, Shift+Enter starts a new line. Markdown works. Up in an empty box changes your last message." />
+            <Button Grid.Column="3" Classes="primary" Content="{Binding SendText}" Command="{Binding SendCommand}" VerticalAlignment="Bottom" Margin="4,0,0,0" />
           </Grid>
         </StackPanel>
       </Border>
@@ -431,7 +432,7 @@
       <ScrollViewer x:Name="MessageScroller" Padding="24,14" DragDrop.AllowDrop="True">
         <StackPanel>
         <Button x:Name="OlderButton" Classes="ghost small" Content="Show older messages" HorizontalAlignment="Center" Margin="0,0,0,10"
-                IsVisible="{Binding HasOlder}" ToolTip.Tip="Older messages also come as you scroll up" />
+                IsVisible="{Binding HasOlder}" />
         <ItemsControl ItemsSource="{Binding Messages}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:MessageViewModel">
@@ -480,7 +481,6 @@
             </StackPanel>
             <StackPanel Spacing="2" Margin="0,0,12,0">
               <TextBlock Classes="section" Text="{Binding RoomFormTitle}" TextWrapping="Wrap" />
-              <TextBlock Classes="meta" Text="These come from the room's own service. They apply to everyone in the room." TextWrapping="Wrap" />
             </StackPanel>
           </DockPanel>
           <TextBlock DockPanel.Dock="Top" Classes="error" Text="{Binding RoomFormError}" TextWrapping="Wrap" Margin="0,0,0,10"
@@ -497,8 +497,6 @@
 
     <StackPanel IsVisible="{Binding !HasConversation}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
       <TextBlock Text="Pick someone to talk to" FontWeight="SemiBold" HorizontalAlignment="Center" />
-      <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                 Text="People and rooms from all your accounts are here. To talk to a Neuron, open its page and use the Console tab." />
     </StackPanel>
   </Panel>
 </UserControl>

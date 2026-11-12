@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -71,6 +72,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 				this.Events?.Flush();
 			},
 		};
+		this.Picker = new NeuronPickerViewModel(this.NeuronChips, jids => this.SetLens(jids)) { Actions = this };
 		this.Events = new EventsViewModel(fleet.Monitors);
 		this.NeuronEvents = new EventsViewModel(fleet.Monitors);
 		this.Fleet = new FleetViewModel(fleet, accounts) { ShowEventsFor = this.ShowEventsOf };
@@ -89,12 +91,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			// The Neurons list is sorted the way it was left.
 			this.Fleet.Sort = this.Settings.NeuronSort;
 
-			// The Neuron picked last time is picked again as soon as it is among the Neurons.
-			if (!this.IsExtra && this.LensJid is null && this.Settings.Neuron is string kept)
-			{
-				this.wantedLens = kept;
-				this.SyncNeurons();
-			}
+			// The Neurons ticked last time are ticked again, and count as soon as they are among the Neurons.
+			if (!this.IsExtra && this.LensJids.Count == 0 && this.Settings.Neurons.Count > 0)
+				this.SetLens(this.Settings.Neurons, remember: false);
 		};
 		this.Console = new ConsoleViewModel(chatService, fleet.Monitors, accounts);
 		this.Chat = new ChatViewModel(chatService, accounts)
@@ -231,7 +230,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		=> this.Chat.IsWatched = this.IsWindowActive && (this.IsChat || (this.IsAttention && this.Inbox.ShowsConversation));
 
 	/// <summary>"(3) NAT": the title carries the Inbox count, so the taskbar shows it too.</summary>
-	public string WindowTitle => this.IsExtra ? this.WorkspaceTitle + " · NAT" : this.Inbox.WaitingCount > 0 ? $"({this.Inbox.Badge}) NAT" : "NAT";
+	public string WindowTitle => this.IsExtra ? this.WorkspaceTitle + " - NAT" : this.Inbox.WaitingCount > 0 ? $"({this.Inbox.Badge}) NAT" : "NAT";
 
 	/// <summary>The Inbox: everything that waits for you.</summary>
 	public InboxViewModel Inbox { get; }
@@ -279,55 +278,105 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		}
 	}
 
-	// ----- Neuron chips: click one and the screens show only that Neuron. -----
+	// ----- The Neuron filter: tick Neurons and the screens show only those. -----
 
+	/// <summary>Every Neuron, with its state and whether it is ticked. In the order of the Neurons list.</summary>
 	public ObservableCollection<NeuronChipViewModel> NeuronChips { get; } = [];
 
-	/// <summary>Bare JID of the Neuron the screens are filtered to; null for all.</summary>
-	[ObservableProperty]
-	[NotifyPropertyChangedFor(nameof(IsAllNeurons))]
-	private string? lensJid;
+	/// <summary>The button in the top bar and its list.</summary>
+	public NeuronPickerViewModel Picker { get; }
 
-	public bool IsAllNeurons => this.LensJid is null;
+	// The Neurons ticked by hand, by bare JID. It may name Neurons that are not there (yet):
+	// they count as soon as they are, so a remembered choice comes back as its Neurons connect.
+	private FrozenSet<string> lens = NeuronSet.All;
+
+	// What the screens are filtered to now: the ticked Neurons that are there. Empty for all.
+	private FrozenSet<string> applied = NeuronSet.All;
+
+	/// <summary>The Neurons ticked by hand. Empty for all of them.</summary>
+	public IReadOnlySet<string> LensJids
+	{
+		get => this.lens;
+		set => this.SetLens(value);
+	}
+
+	/// <summary>What the screens are filtered to: the ticked Neurons that are there. Empty when every Neuron shows.</summary>
+	public IReadOnlySet<string> Lens => this.applied;
+
+	/// <summary>
+	/// The one Neuron the screens show, when it is exactly one; null for several or all.
+	/// Setting it ticks that Neuron alone, and null shows them all.
+	/// </summary>
+	public string? LensJid
+	{
+		get => this.applied.Count == 1 ? this.applied.First() : null;
+		set => this.SetLens(value is null ? [] : [value]);
+	}
+
+	public bool IsAllNeurons => this.applied.Count == 0;
 
 	[ObservableProperty]
 	private bool hasNeuronChips;
 
 	/// <summary>
-	/// The chips show on the screens that are about all Neurons at once: the Inbox, the list
-	/// and the map, Events and the Console. A Neuron's own page, Chat, Accounts and Settings
-	/// have nothing for them to narrow.
+	/// The Neuron filter shows on the screens that are about all Neurons at once: the Inbox, the
+	/// list and the map, Events and the Console. A Neuron's own page, Chat, Accounts and Settings
+	/// have nothing for it to narrow.
 	/// </summary>
 	public bool IsLensVisible => this.Workspace is WorkspaceKind.Attention or WorkspaceKind.Fleet or WorkspaceKind.Topology or WorkspaceKind.Events or WorkspaceKind.Console;
 
-	// The Neuron picked last time, until its chip is there to pick again.
-	private string? wantedLens;
-	private bool lensByItself;
 	private string? consoleLens;
 
-	partial void OnLensJidChanged(string? value)
+	/// <summary>
+	/// Ticks these Neurons and no others. Chosen by hand, the main window keeps the choice for
+	/// the next run; <paramref name="remember"/> is false when it comes back from there.
+	/// </summary>
+	public void SetLens(IEnumerable<string> jids, bool remember = true)
 	{
-		foreach (NeuronChipViewModel chip in this.NeuronChips)
-			chip.IsSelected = string.Equals(chip.BareJid, value, StringComparison.OrdinalIgnoreCase);
+		FrozenSet<string> next = NeuronSet.Of(jids);
+		if (next.SameAs(this.lens))
+			return;
 
-		this.Events.NeuronFilter = value;
-		this.Inbox.NeuronFilterName = this.NeuronChips.FirstOrDefault(c => c.IsSelected)?.Label;
-		this.Inbox.NeuronFilter = value;
-		this.Fleet.NeuronFilter = value;
-		this.ApplyLens();
+		this.lens = next;
+		this.OnPropertyChanged(nameof(this.LensJids));
+		this.ApplyTicks();
 
-		// Picked by hand, it is kept for the next run. Dropped because the Neuron went away, it is not.
-		if (!this.lensByItself)
-		{
-			this.wantedLens = null;
-
-			// The main window's choice is the one that comes back at start. The others keep theirs with the window.
-			if (!this.IsExtra)
-				this.Settings.RememberNeuron(value);
-		}
+		// The main window's choice is the one that comes back at start. The others keep theirs with the window.
+		if (remember && !this.IsExtra)
+			this.Settings.RememberNeurons(next);
 	}
 
-	/// <summary>What the picked Neuron means on the screen in front, where that is more than a filter.</summary>
+	/// <summary>Puts the ticks on the Neurons, and narrows the screens to what is ticked and there.</summary>
+	private void ApplyTicks()
+	{
+		int ticked = 0;
+		foreach (NeuronChipViewModel chip in this.NeuronChips)
+		{
+			chip.IsSelected = this.lens.Contains(chip.BareJid);
+			if (chip.IsSelected)
+				ticked++;
+		}
+
+		// Ticked, but not there: it is not a filter until it is. All of them ticked is no filter.
+		FrozenSet<string> next = ticked == 0 || ticked == this.NeuronChips.Count
+			? NeuronSet.All
+			: NeuronSet.Of(this.NeuronChips.Where(c => c.IsSelected).Select(c => c.BareJid));
+		this.Picker.Refresh();
+		if (next.SameAs(this.applied))
+			return;
+
+		this.applied = next;
+		this.Events.NeuronFilter = next;
+		this.Inbox.NeuronFilterName = this.Picker.Text;
+		this.Inbox.NeuronFilter = next;
+		this.Fleet.NeuronFilter = next;
+		this.OnPropertyChanged(nameof(this.Lens));
+		this.OnPropertyChanged(nameof(this.LensJid));
+		this.OnPropertyChanged(nameof(this.IsAllNeurons));
+		this.ApplyLens();
+	}
+
+	/// <summary>What the picked Neuron means on the screen in front, where that is more than a filter. Only for exactly one.</summary>
 	private void ApplyLens()
 	{
 		if (this.LensJid is not string jid)
@@ -354,50 +403,46 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	}
 
 	[RelayCommand]
-	private void ShowAllNeurons() => this.LensJid = null;
+	private void ShowAllNeurons() => this.SetLens([]);
 
+	/// <summary>Ticks a Neuron, or takes its tick away.</summary>
 	[RelayCommand]
 	private void ToggleNeuron(NeuronChipViewModel? chip)
-		=> this.LensJid = chip is null || chip.IsSelected ? null : chip.BareJid;
+	{
+		if (chip is null)
+			this.SetLens([]);
+		else
+			this.Picker.ToggleCommand.Execute(chip);
+	}
 
 	private void SyncNeurons()
 	{
 		List<IGrouping<string, FleetRowViewModel>> groups = [.. this.Fleet.Rows.GroupBy(r => r.BareJid, StringComparer.OrdinalIgnoreCase)];
+		HashSet<string> there = new(groups.Select(g => g.Key), StringComparer.OrdinalIgnoreCase);
 
 		for (int i = this.NeuronChips.Count - 1; i >= 0; i--)
 		{
-			if (!groups.Any(g => string.Equals(g.Key, this.NeuronChips[i].BareJid, StringComparison.OrdinalIgnoreCase)))
+			if (!there.Contains(this.NeuronChips[i].BareJid))
 				this.NeuronChips.RemoveAt(i);
 		}
 
+		Dictionary<string, NeuronChipViewModel> byJid = new(StringComparer.OrdinalIgnoreCase);
+		foreach (NeuronChipViewModel c in this.NeuronChips)
+			byJid[c.BareJid] = c;
+
 		for (int i = 0; i < groups.Count; i++)
 		{
-			NeuronChipViewModel? chip = this.NeuronChips.FirstOrDefault(c => string.Equals(c.BareJid, groups[i].Key, StringComparison.OrdinalIgnoreCase));
-			if (chip is null)
+			if (!byJid.TryGetValue(groups[i].Key, out NeuronChipViewModel? chip))
 			{
 				chip = new NeuronChipViewModel(groups[i].Key);
 				this.NeuronChips.Insert(Math.Min(i, this.NeuronChips.Count), chip);
 			}
 
 			chip.Apply([.. groups[i]]);
-			chip.IsSelected = string.Equals(chip.BareJid, this.LensJid, StringComparison.OrdinalIgnoreCase);
 		}
 
-		// A Neuron that is gone cannot stay the filter. It is picked again when it comes back.
-		if (this.LensJid is string gone && !this.NeuronChips.Any(c => c.IsSelected))
-		{
-			this.lensByItself = true;
-			this.LensJid = null;
-			this.wantedLens = gone;
-			this.lensByItself = false;
-		}
-		else if (this.LensJid is null && this.wantedLens is string wanted && this.NeuronChips.Any(c => string.Equals(c.BareJid, wanted, StringComparison.OrdinalIgnoreCase)))
-		{
-			this.lensByItself = true;
-			this.LensJid = wanted;
-			this.wantedLens = null;
-			this.lensByItself = false;
-		}
+		// A ticked Neuron that went away stops being a filter; it is ticked again when it comes back.
+		this.ApplyTicks();
 
 		this.HasNeuronChips = this.NeuronChips.Count > 0;
 
@@ -558,13 +603,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			Icon(this.Settings.IsDoNotDisturb ? "Bell" : "BellOff"), () => this.Settings.SetStatus(this.Settings.IsDoNotDisturb ? OwnStatus.Available : OwnStatus.DoNotDisturb)) { Kind = "Do" };
 		yield return new SearchItem(this.IsDark ? "Light look" : "Dark look", "Switch between light and dark", Icon(this.IsDark ? "Sun" : "Moon"), this.ToggleTheme) { Kind = "Do" };
 		yield return new SearchItem("New window", "Open what is showing in a window of its own", Icon("Window"), () => this.NewWindowCommand.Execute(null)) { Kind = "Do", Words = "second monitor screen" };
-		yield return new SearchItem("Wall view", "The Neurons and their latest problems, large, for a big screen", Icon("Fleet"), () => this.OpenWallCommand.Execute(null)) { Kind = "Do", Words = "full screen monitor tv dashboard" };
+		yield return new SearchItem("Wall view", "Large, for a big screen", Icon("Fleet"), () => this.OpenWallCommand.Execute(null)) { Kind = "Do", Words = "full screen monitor tv dashboard" };
 		yield return new SearchItem("Larger text", "One text size up", Icon("Settings"), () => this.Settings.StepTextSize(1)) { Kind = "Do", Words = "zoom font size bigger" };
 		yield return new SearchItem("Smaller text", "One text size down", Icon("Settings"), () => this.Settings.StepTextSize(-1)) { Kind = "Do", Words = "zoom font size" };
 		if (this.CanGoBack)
 			yield return new SearchItem("Back", this.BackTip, Icon("Back"), () => this.GoBackCommand.Execute(null)) { Kind = "Do" };
-		if (this.LensJid is string lens)
-			yield return new SearchItem("Show all Neurons", "The screens show only " + lens + " now", Icon("Filter"), () => this.LensJid = null) { Kind = "Do" };
+		if (!this.IsAllNeurons)
+			yield return new SearchItem("Show all Neurons", "Showing " + this.Picker.Text, Icon("Filter"), () => this.SetLens([])) { Kind = "Do" };
 	}
 
 	/// <summary>The Chat workspace.</summary>
@@ -843,14 +888,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 	public bool HasAccounts => this.Accounts.Count > 0;
 
-	/// <summary>"2 accounts · 1 online"</summary>
+	/// <summary>"2 accounts, 1 online"</summary>
 	public string AccountSummary
 	{
 		get
 		{
 			int n = this.Accounts.Count;
 			int online = this.Accounts.Count(a => a.IsOnline);
-			return n == 0 ? "No accounts" : $"{n} account{(n == 1 ? "" : "s")} · {online} online";
+			return n == 0 ? "No accounts" : $"{n} account{(n == 1 ? "" : "s")}, {online} online";
 		}
 	}
 

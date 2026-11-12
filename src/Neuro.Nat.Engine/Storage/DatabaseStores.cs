@@ -158,7 +158,8 @@ public sealed class DatabaseAttentionStore(IDatabaseProvider db) : IAttentionSto
 
 	private sealed record Item(
 		string Id, Guid AccountId, string NeuronJid, string? MessageId, DateTime Received, DateTime? Updated,
-		string Markdown, string Text, AttentionState State, DateTime? HandledAt);
+		string Markdown, string Text, AttentionState State, DateTime? HandledAt,
+		IdentityReview? Review = null, string? Applicant = null);
 
 	public IReadOnlyList<NeuronNotification> Load()
 	{
@@ -185,6 +186,8 @@ public sealed class DatabaseAttentionStore(IDatabaseProvider db) : IAttentionSto
 					Text = s.Text,
 					State = s.State,
 					HandledAt = s.HandledAt,
+					Review = s.Review,
+					Applicant = s.Applicant,
 				});
 			}
 
@@ -204,7 +207,7 @@ public sealed class DatabaseAttentionStore(IDatabaseProvider db) : IAttentionSto
 					if (!present.Add(n.Id))
 						continue;
 
-					string json = Stored.ToJson(new Item(n.Id, n.AccountId, n.NeuronJid, n.MessageId, n.Received, n.Updated, n.Markdown, n.Text, n.State, n.HandledAt));
+					string json = Stored.ToJson(new Item(n.Id, n.AccountId, n.NeuronJid, n.MessageId, n.Received, n.Updated, n.Markdown, n.Text, n.State, n.HandledAt, n.Review, n.Applicant));
 					if (this.written.TryGetValue(n.Id, out (StoredInboxItem Row, string Json) w))
 					{
 						if (w.Json == json)

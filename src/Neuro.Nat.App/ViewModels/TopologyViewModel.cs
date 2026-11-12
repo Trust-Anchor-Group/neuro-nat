@@ -306,7 +306,8 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 		Dictionary<Guid, AccountProfile> profiles = this.accounts.Sessions.ToDictionary(s => s.Profile.Id, s => s.Profile);
 		Dictionary<string, string> subs = nodes.ToDictionary(n => n.Id, n => n.Kind switch
 		{
-			TopologyNodeKind.Neuron => n.Label != n.Id ? n.Id : profiles.TryGetValue(n.AccountId ?? Guid.Empty, out AccountProfile? a) ? "through " + a.Label : "Neuron",
+			TopologyNodeKind.Neuron => n.Label != Converters.NeuronNameConverter.Name(n.Id) ? Converters.NeuronNameConverter.Name(n.Id)
+				: profiles.Count > 1 && profiles.TryGetValue(n.AccountId ?? Guid.Empty, out AccountProfile? a) ? "Through " + a.ShortLabel : "Neuron",
 			TopologyNodeKind.Broker => "Broker",
 			_ => string.Empty,
 		});
@@ -338,13 +339,13 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 		int brokers = nodes.Count(n => n.Kind == TopologyNodeKind.Broker);
 		int federation = edges.Count(e => e.Kind == TopologyLink.Federation);
 		this.Summary = this.snapshot.Taken == DateTime.MinValue ? "Not scanned yet"
-			: string.Join(" · ", new[]
+			: string.Join(", ", new[]
 			{
 				Count(neurons, "Neuron"),
 				brokers > 0 ? Count(brokers, "other broker") : null,
 				federation > 0 ? Count(federation, "federation link") : null,
-				RelativeTime.Format(this.snapshot.Taken, DateTime.Now) is "now" ? "scanned just now" : "scanned " + RelativeTime.Format(this.snapshot.Taken, DateTime.Now),
-			}.Where(s => s is not null));
+			}.Where(s => s is not null))
+				+ (RelativeTime.Format(this.snapshot.Taken, DateTime.Now) is "now" ? ", scanned just now" : ", scanned " + RelativeTime.Format(this.snapshot.Taken, DateTime.Now));
 
 		if (this.SelectedId is not null && !map.Any(m => m.Id == this.SelectedId))
 			this.SelectedId = null;
@@ -407,18 +408,18 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 		{
 			TopologyNodeKind.Neuron => this.SelectedTone switch
 			{
-				"bad" => "Neuron · errors in the last hour",
-				"busy" => "Neuron · warnings or open problems",
-				"ok" => "Neuron · healthy",
-				_ => "Neuron · not monitored right now",
+				"bad" => "Neuron with errors in the last hour",
+				"busy" => "Neuron with warnings or open problems",
+				"ok" => "Healthy Neuron",
+				_ => "Neuron not monitored right now",
 			},
 			TopologyNodeKind.Broker => "Broker none of your accounts administers",
 			_ => "Contact in a roster group",
 		};
 
 		this.Facts.Add(new TopologyFact("Address", n.Id));
-		if (n.AccountId is Guid account && this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == account) is AccountSession session)
-			this.Facts.Add(new TopologyFact("Seen through", session.Profile.Label));
+		if (this.accounts.Sessions.Count > 1 && n.AccountId is Guid account && this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == account) is AccountSession session)
+			this.Facts.Add(new TopologyFact("Seen through", session.Profile.ShortLabel));
 
 		if (n.Kind == TopologyNodeKind.Neuron && n.AccountId is Guid a && n.NeuronJid is string jid)
 		{

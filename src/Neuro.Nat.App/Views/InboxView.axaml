@@ -74,10 +74,10 @@
       <DockPanel Margin="12,14,12,12">
         <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2">
-            <ToggleButton Classes="ghost" IsChecked="{Binding ShowDone}" ToolTip.Tip="Also show what is done, and what was only information">
+            <ToggleButton Classes="ghost" IsChecked="{Binding ShowDone}" ToolTip.Tip="Show done">
               <TextBlock Text="Show done" FontSize="{StaticResource Type.Meta}" />
             </ToggleButton>
-            <Button Classes="ghost" Command="{Binding MarkAllReadCommand}" ToolTip.Tip="Mark every message and notification as read">
+            <Button Classes="ghost" Command="{Binding MarkAllReadCommand}" ToolTip.Tip="Mark all read">
               <TextBlock Text="Mark all read" FontSize="{StaticResource Type.Meta}" />
             </Button>
           </StackPanel>
@@ -88,25 +88,25 @@
         <!-- The four parts of the list -->
         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*,*,*" Margin="0,0,0,10">
           <ToggleButton Classes="seg first" IsChecked="{Binding IsEverything, Mode=OneWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:InboxTab.Everything}" ToolTip.Tip="Messages, requests and what your Neurons need, together">
+                        Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:InboxTab.Everything}" ToolTip.Tip="Everything">
             <TextBlock Text="All" />
           </ToggleButton>
           <ToggleButton Grid.Column="1" Classes="seg" IsChecked="{Binding IsMessages, Mode=OneWay}" Margin="-1,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:InboxTab.Messages}" ToolTip.Tip="Messages you have not read">
+                        Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:InboxTab.Messages}" ToolTip.Tip="Unread messages">
             <StackPanel Orientation="Horizontal" Spacing="5">
               <TextBlock Text="Messages" />
               <TextBlock Classes="num" Text="{Binding MessageCount}" IsVisible="{Binding HasMessages}" FontWeight="SemiBold" />
             </StackPanel>
           </ToggleButton>
           <ToggleButton Grid.Column="2" Classes="seg" IsChecked="{Binding IsRequests, Mode=OneWay}" Margin="-1,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:InboxTab.Requests}" ToolTip.Tip="Contact requests, invitations, questions from devices and requests for your identity">
+                        Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:InboxTab.Requests}" ToolTip.Tip="Requests">
             <StackPanel Orientation="Horizontal" Spacing="5">
               <TextBlock Text="Requests" />
               <TextBlock Classes="num" Text="{Binding RequestCount}" IsVisible="{Binding HasRequests}" FontWeight="SemiBold" />
             </StackPanel>
           </ToggleButton>
           <ToggleButton Grid.Column="3" Classes="seg last" IsChecked="{Binding IsNeurons, Mode=OneWay}" Margin="-1,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                        Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:InboxTab.Neurons}" ToolTip.Tip="What your Neurons told their administrators">
+                        Command="{Binding SetTabCommand}" CommandParameter="{x:Static vm:InboxTab.Neurons}" ToolTip.Tip="Notifications">
             <StackPanel Orientation="Horizontal" Spacing="5">
               <TextBlock Text="Neurons" />
               <TextBlock Classes="num" Text="{Binding NeuronCount}" IsVisible="{Binding HasNeurons}" FontWeight="SemiBold" />
@@ -114,12 +114,12 @@
           </ToggleButton>
         </Grid>
 
-        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding SearchText}" PlaceholderText="Filter by text, person, Neuron or kind…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
+        <TextBox DockPanel.Dock="Top" Classes="find" Text="{Binding SearchText}" PlaceholderText="Filter…" MinHeight="30" Padding="10,5" Margin="0,0,0,10" />
 
         <!-- One Neuron is picked at the top: say what that keeps out of the list -->
         <DockPanel DockPanel.Dock="Bottom" Margin="2,8,0,0" IsVisible="{Binding HasElsewhere}">
           <Button x:Name="ElsewhereButton" DockPanel.Dock="Right" Classes="link" Command="{Binding ShowElsewhereCommand}" VerticalAlignment="Center"
-                  ToolTip.Tip="Show what waits from every Neuron">
+                  ToolTip.Tip="Show every Neuron">
             <TextBlock Classes="meta" Text="Show all" Foreground="{DynamicResource Accent.Ink}" />
           </Button>
           <TextBlock Classes="meta" Text="{Binding ElsewhereText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -147,8 +147,7 @@
         <Border DockPanel.Dock="Bottom" Classes="panel" Padding="12,6,6,6" Margin="0,8,0,0" Background="{DynamicResource Accent.Subtle}" BorderThickness="0"
                 IsVisible="{Binding HasMany}">
           <DockPanel>
-            <Button DockPanel.Dock="Right" Classes="primary small" Content="Mark done" Command="{Binding DoneManyCommand}"
-                    ToolTip.Tip="Marks the picked notifications done and the picked messages read. Requests keep waiting for their own answer." />
+            <Button DockPanel.Dock="Right" Classes="primary small" Content="Mark done" Command="{Binding DoneManyCommand}" />
             <TextBlock Text="{Binding ManyText}" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource Accent.Ink}" />
           </DockPanel>
         </Border>
@@ -195,7 +194,7 @@
           <StackPanel IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="310" Spacing="6">
             <c:LineIcon Data="{StaticResource Icon.Check}" Width="26" Height="26" Foreground="{DynamicResource State.Ok}" HorizontalAlignment="Center" />
             <TextBlock Text="{Binding EmptyTitle}" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
-            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="{Binding EmptyText}" />
+            <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="{Binding EmptyText}" IsVisible="{Binding EmptyText, Converter={x:Static conv:EventConverters.HasText}}" />
           </StackPanel>
         </Panel>
       </DockPanel>
@@ -215,20 +214,21 @@
           <TextBlock Classes="title" Text="{Binding Title}" TextWrapping="Wrap" />
           <SelectableTextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="{DynamicResource Ink.Secondary}"
                                IsVisible="{Binding Detail, Converter={x:Static conv:EventConverters.HasText}}" />
-          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding AccountLabel, Converter={x:Static conv:EventConverters.HasText}}">
-            <Border Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
-                    Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
-              <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="10" FontWeight="SemiBold"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                         Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
-            </Border>
-            <TextBlock Classes="meta" VerticalAlignment="Center">
-              <Run Text="To your account " /><Run Text="{Binding AccountLabel}" FontWeight="SemiBold" /><Run Text=" · " /><Run Text="{Binding TimeText}" />
-            </TextBlock>
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding AccountLabel, Converter={x:Static conv:EventConverters.HasText}}">
+              <Border Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
+                      Background="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}, ConverterParameter=subtle}">
+                <TextBlock Text="{Binding AccountLabel, Converter={x:Static conv:InitialConverter.Instance}}" FontSize="10" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{Binding AccountColorIndex, Converter={x:Static conv:AccountHueConverter.Instance}}" />
+              </Border>
+              <TextBlock Classes="meta" VerticalAlignment="Center" Text="{Binding AccountLabel, StringFormat='To {0}'}" />
+            </StackPanel>
+            <TextBlock Classes="meta" VerticalAlignment="Center" Text="{Binding TimeText}" />
           </StackPanel>
           <Border Classes="panel" Padding="14,12" Margin="0,4,0,0">
             <StackPanel Spacing="12">
-              <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" LineHeight="19" />
+              <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" LineHeight="19" IsVisible="{Binding Explanation, Converter={x:Static conv:EventConverters.HasText}}" />
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Classes="primary" Content="{Binding PrimaryText}" IsVisible="{Binding HasPrimary}"
                         Command="{Binding $parent[UserControl].((vm:InboxViewModel)DataContext).PrimaryCommand}" CommandParameter="{Binding}" />
@@ -244,8 +244,6 @@
 
       <StackPanel IsVisible="{Binding HasMany}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
         <TextBlock Text="{Binding ManyText}" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                   Text="Mark done, under the list, finishes all of them at once. Pick one row to open it." />
       </StackPanel>
 
       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6">
@@ -256,8 +254,6 @@
           </MultiBinding>
         </StackPanel.IsVisible>
         <TextBlock Text="Pick a row to open it" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                   Text="A message opens its conversation here, so you can answer without leaving the Inbox. A notification opens as the Neuron wrote it. Ctrl or Shift picks several rows." />
       </StackPanel>
     </Panel>
   </Grid>

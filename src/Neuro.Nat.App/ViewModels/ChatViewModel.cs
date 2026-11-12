@@ -21,6 +21,15 @@ public sealed partial class PersonViewModel(Guid accountId, string bareJid) : Ob
 	[ObservableProperty] private bool isOnline;
 	[ObservableProperty] private bool isAway;
 	[ObservableProperty] private string presenceText = string.Empty;
+
+	/// <summary>The status they wrote themselves, shown beside their presence.</summary>
+	[ObservableProperty] private string? statusText;
+
+	/// <summary>"Through Ops" when there are several accounts, else empty.</summary>
+	[ObservableProperty] private string throughText = string.Empty;
+
+	/// <summary>Their key's fingerprint, for the details pane.</summary>
+	[ObservableProperty] private string? keyText;
 	[ObservableProperty] private bool isNeuron;
 	[ObservableProperty] private bool inRoster;
 	[ObservableProperty] private int unread;
@@ -104,7 +113,7 @@ public sealed partial class MessageViewModel(string id) : ObservableObject
 	private bool startsGroup = true;
 
 	/// <summary>The line under a message: its time on the first of a run, and "edited" on any that was changed.</summary>
-	public string StampText => this.StartsGroup ? this.TimeText + (this.IsCorrected ? " · edited" : string.Empty) : "edited";
+	public string StampText => this.StartsGroup ? this.TimeText + (this.IsCorrected ? " (edited)" : string.Empty) : "edited";
 
 	public bool ShowStamp => this.StartsGroup || this.IsCorrected;
 	[ObservableProperty] private bool isEncrypted;
@@ -217,8 +226,8 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	public string FilterHint => this.ShowRooms ? "Filter rooms…" : "Filter people…";
 	public string EmptyTitle => this.FilterText.Trim().Length > 0 ? "Nothing matches" : this.ShowRooms ? "No rooms yet" : "No contacts yet";
 	public string EmptyText => this.FilterText.Trim().Length > 0 ? "Nothing here matches \"" + this.FilterText.Trim() + "\"."
-		: this.ShowRooms ? "A room is a group chat. Join one by its name, or create your own."
-		: "Contacts of your connected accounts show up here. Add a coworker with their address.";
+		: this.ShowRooms ? "Join a room by its name, or create one."
+		: "Add a coworker by their address.";
 
 	[ObservableProperty] private int peopleUnread;
 	[ObservableProperty] private int roomsUnread;
@@ -277,7 +286,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 	partial void OnJoinAccountChanged(AccountChoice? value)
 	{
 		string? service = value is null ? null : this.chat.MucService(value.Id);
-		this.JoinHint = service is null ? "Give the room's full address." : $"A name alone joins it on {service}.";
+		this.JoinHint = service is null ? "The room's full address" : $"On {service}";
 		if (value is not null && string.IsNullOrWhiteSpace(this.JoinNick))
 			this.JoinNick = value.Label.Split('@')[0];
 	}
@@ -400,7 +409,8 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 				list.Add(p);
 
 			AccountProfile? prof = profiles.TryGetValue(account, out AccountProfile? x) ? x : null;
-			p.AccountLabel = prof?.Label ?? string.Empty;
+			p.AccountLabel = prof?.ShortLabel ?? string.Empty;
+			p.ThroughText = profiles.Count > 1 && prof is not null ? "Through " + prof.ShortLabel : string.Empty;
 			p.AccountColorIndex = prof?.ColorIndex ?? 0;
 			return p;
 		}
@@ -427,7 +437,8 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 					Availability.DoNotDisturb => "Busy",
 					Availability.Chat => "Free to chat",
 					_ => "Online",
-				} + (string.IsNullOrWhiteSpace(c.Status) ? string.Empty : " · " + c.Status);
+				};
+				p.StatusText = string.IsNullOrWhiteSpace(c.Status) ? null : c.Status;
 				p.SubscriptionNote = c.Subscription switch
 				{
 					SubscriptionState.None => "Not sharing presence",
@@ -452,7 +463,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			p.IsOnline = room.Joined;
 			p.IsReadOnly = room.Joined && room.Me?.IsVisitor == true;
 			p.PresenceText = room.Joined
-				? (room.Occupants.Count == 1 ? "1 person here" : $"{room.Occupants.Count} people here") + (string.IsNullOrWhiteSpace(conv.Subject) ? string.Empty : " · " + conv.Subject)
+				? (room.Occupants.Count == 1 ? "1 person here" : $"{room.Occupants.Count} people here")
 				: room.Error ?? "Not in the room right now";
 			p.LastActivity = conv.LastActivity;
 		}
@@ -479,7 +490,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			p.IsOnline = here;
 			p.PresenceText = here ? "In the room now" : room?.Joined == true ? "Not in the room right now" : "You are not in the room right now";
 			p.IsEncrypted = false;
-			p.SecurityText = "Goes through the room to " + nick + " alone. Not end-to-end encrypted.";
+			p.SecurityText = "Not encrypted";
 		}
 
 		// Someone who wrote without being a contact has no presence to show. A Neuron is a
@@ -505,9 +516,8 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		{
 			ContactSecurity s = this.chat.Security(p.AccountId, p.BareJid);
 			p.IsEncrypted = s.Encrypted;
-			p.SecurityText = s.Encrypted
-				? "End-to-end encrypted · their key " + s.Fingerprint
-				: p.IsNeuron ? null : "Not encrypted: their app has not shared a key, or they are offline";
+			p.SecurityText = s.Encrypted ? "End-to-end encrypted" : p.IsNeuron ? null : "Not encrypted";
+			p.KeyText = s.Encrypted ? s.Fingerprint : null;
 		}
 
 		foreach (Conversation conv in this.chat.Conversations)
@@ -623,7 +633,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			this.CanSendFiles = this.chat.CanSendFiles(sel.AccountId);
 
 		List<AccountChoice> choices = [.. this.accounts.Sessions.Where(s => s.Status == ConnectionStatus.Connected)
-			.Select(s => new AccountChoice(s.Profile.Id, s.Profile.Label, s.Profile.ColorIndex))];
+			.Select(s => new AccountChoice(s.Profile.Id, s.Profile.ShortLabel, s.Profile.ColorIndex))];
 		if (!choices.SequenceEqual(this.AccountChoices))
 		{
 			this.AccountChoices.Clear();

@@ -33,7 +33,7 @@
     <Border Classes="listPane" c:Pane.Key="devices" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel Margin="12,14,12,12">
         <DockPanel DockPanel.Dock="Top" Margin="6,0,0,10">
-          <Button DockPanel.Dock="Right" Classes="primary" Command="{Binding StartClaimCommand}" ToolTip.Tip="Take ownership of a device with its key">
+          <Button DockPanel.Dock="Right" Classes="primary" Command="{Binding StartClaimCommand}" ToolTip.Tip="Claim a device">
             <TextBlock Text="Claim" FontSize="{StaticResource Type.Meta}" />
           </Button>
           <TextBlock Classes="section" Text="Devices" VerticalAlignment="Center" />
@@ -96,7 +96,7 @@
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
             <Button Classes="danger" Content="Give up…" IsVisible="{Binding CanDisown}" Command="{Binding AskDisownCommand}"
-                    ToolTip.Tip="Stop owning this device. It goes back to the registry, unclaimed." />
+                    ToolTip.Tip="Give it up" />
           </StackPanel>
           <StackPanel Spacing="4" Margin="0,0,16,0">
             <TextBlock Classes="title" Text="{Binding DetailTitle}" TextWrapping="Wrap" />
@@ -112,7 +112,7 @@
               <Button Classes="danger armed" Content="Give it up" Command="{Binding DisownCommand}" />
             </StackPanel>
             <TextBlock TextWrapping="Wrap" VerticalAlignment="Center"
-                       Text="Give up this device? Anyone with its key can claim it after you, and the rules you gave it are removed." />
+                       Text="Give up this device? Anyone with its key can claim it." />
           </DockPanel>
         </Border>
 
@@ -144,8 +144,6 @@
                 <RadioButton GroupName="scope" Content="Everyone on their domain" IsChecked="{Binding ScopeIndex, Converter={x:Static conv:IndexConverters.Is1}}" />
                 <RadioButton GroupName="scope" Content="Everyone" IsVisible="{Binding IsFriendship}" IsChecked="{Binding ScopeIndex, Converter={x:Static conv:IndexConverters.Is2}}" />
               </StackPanel>
-              <TextBlock Classes="meta" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left"
-                         Text="The device remembers the answer as a rule, so the same question is not asked again. Clear the devices' rules from the Mine list to start over." />
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="Deny" Command="{Binding AnswerCommand}" CommandParameter="reject" IsEnabled="{Binding !IsBusy}" />
                 <Button Classes="primary" Content="Allow" Command="{Binding AnswerCommand}" CommandParameter="accept" IsEnabled="{Binding !IsBusy}" />
@@ -171,7 +169,7 @@
             </StackPanel>
 
             <Button Classes="ghost" HorizontalAlignment="Left" Command="{Binding ClearCachesCommand}" IsVisible="{Binding IsMine}"
-                    ToolTip.Tip="Your devices forget the access rules they have cached and ask again">
+                    ToolTip.Tip="Clear their rules">
               <TextBlock Text="Make my devices ask again" FontSize="{StaticResource Type.Meta}" />
             </Button>
           </StackPanel>
@@ -180,8 +178,6 @@
 
       <StackPanel IsVisible="{Binding !HasSelection}" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Spacing="6" Margin="16,0">
         <TextBlock Text="Pick a device or a question" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
-        <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                   Text="Devices you own answer to you: when someone wants to read, control or befriend them, the question waits here." />
       </StackPanel>
     </Panel>
   </Grid>

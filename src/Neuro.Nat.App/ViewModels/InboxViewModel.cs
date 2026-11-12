@@ -169,15 +169,16 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 	public IReadOnlyList<InboxRowViewModel> Everything { get; private set; } = [];
 
 	/// <summary>
-	/// Bare JID of the one Neuron to show; null for all. Set by the shell from the Neuron chips.
+	/// The bare JIDs of the Neurons to show; empty for all. Set by the shell from its Neuron filter.
 	/// What a Neuron told you, and what comes from people and things on it, is "from" it.
 	/// </summary>
-	public string? NeuronFilter
+	public IReadOnlySet<string> NeuronFilter
 	{
 		get => this.neuronFilter;
 		set
 		{
-			if (string.Equals(this.neuronFilter, value, StringComparison.OrdinalIgnoreCase))
+			value ??= NeuronSet.All;
+			if (value.SameAs(this.neuronFilter))
 				return;
 
 			this.neuronFilter = value;
@@ -185,9 +186,9 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 		}
 	}
 
-	private string? neuronFilter;
+	private IReadOnlySet<string> neuronFilter = NeuronSet.All;
 
-	/// <summary>What the Neuron of the filter is called, for the empty list. Set by the shell before the filter.</summary>
+	/// <summary>What the Neurons of the filter are called, for the empty list: a name, or "3 of 42 Neurons". Set by the shell before the filter.</summary>
 	public string? NeuronFilterName { get; set; }
 
 	/// <summary>"3 more from other Neurons": what the Neuron filter keeps out of the list. Empty when nothing.</summary>
@@ -203,17 +204,31 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 	[RelayCommand]
 	private void ShowElsewhere() => this.ShowAllNeurons?.Invoke();
 
-	private static bool IsFrom(InboxRowViewModel r, string neuron)
+	private static bool IsFrom(InboxRowViewModel r, IReadOnlySet<string> neurons)
 	{
-		if (r.NodeAsk is NodeRequest q && (string.Equals(q.Service, neuron, StringComparison.OrdinalIgnoreCase) || q.Service.EndsWith("." + neuron, StringComparison.OrdinalIgnoreCase)))
+		if (r.NodeAsk is NodeRequest q && IsOn(q.Service, neurons))
 			return true;
 
-		if (r.Jid is not string jid)
-			return false;
-
 		// A room lives on a part of the Neuron: "muc.lab.tagroot.io" is on "lab.tagroot.io".
-		string domain = jid[(jid.IndexOf('@') + 1)..];
-		return string.Equals(domain, neuron, StringComparison.OrdinalIgnoreCase) || domain.EndsWith("." + neuron, StringComparison.OrdinalIgnoreCase);
+		return r.Jid is string jid && IsOn(jid[(jid.IndexOf('@') + 1)..], neurons);
+	}
+
+	/// <summary>True when the domain is one of the Neurons, or a part of one: each shorter ending is looked up.</summary>
+	private static bool IsOn(string domain, IReadOnlySet<string> neurons)
+	{
+		for (string d = domain; d.Length > 0;)
+		{
+			if (neurons.Contains(d))
+				return true;
+
+			int dot = d.IndexOf('.');
+			if (dot < 0)
+				return false;
+
+			d = d[(dot + 1)..];
+		}
+
+		return false;
 	}
 
 	/// <summary>Set by the shell: opens Identities, where a request for an identity is reviewed.</summary>
@@ -295,7 +310,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 
 	[ObservableProperty] private bool hasRows;
 
-	public string EmptyTitle => this.HasElsewhere ? "Nothing from " + (this.NeuronFilterName ?? this.neuronFilter) + " here" : this.Tab switch
+	public string EmptyTitle => this.HasElsewhere ? "Nothing from " + (this.NeuronFilterName ?? NeuronSet.ToText(this.neuronFilter)) + " here" : this.Tab switch
 	{
 		InboxTab.Messages => "No unread messages",
 		InboxTab.Requests => "No requests",
@@ -303,13 +318,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 		_ => "Nothing waits for you",
 	};
 
-	public string EmptyText => this.HasElsewhere ? "The list shows one Neuron only. " + this.ElsewhereText + "." : this.Tab switch
-	{
-		InboxTab.Messages => "Messages you have not read show up here, from people and from rooms.",
-		InboxTab.Requests => "Contact requests, room invitations, questions from your devices, requests for your identity and requests to subscribe to your nodes show up here, with their answers on the row.",
-		InboxTab.Neurons => "Your Neurons' notifications land here: identity applications, account requests, alerts, backups and updates.",
-		_ => "New messages, requests and what your Neurons need from you all land here. Answer on the row, and it leaves the list.",
-	};
+	public string EmptyText => this.HasElsewhere ? (this.neuronFilter.Count == 1 ? "The list shows one Neuron only. " : $"The list shows {this.neuronFilter.Count} Neurons only. ") + this.ElsewhereText + "." : string.Empty;
 
 	// ----- Selection -----
 
@@ -473,7 +482,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 
 			AccountProfile? p = profiles.TryGetValue(account, out AccountProfile? x) ? x : null;
 			r.AccountId = account;
-			r.AccountLabel = p?.Label ?? string.Empty;
+			r.AccountLabel = profiles.Count > 1 ? p?.ShortLabel ?? string.Empty : string.Empty;
 			r.AccountColorIndex = p?.ColorIndex ?? 0;
 			r.When = when;
 			r.TimeText = RelativeTime.Format(when, now);
@@ -521,7 +530,6 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 			r.KindLabel = "Contact request";
 			r.Title = q.BareJid + " wants to be a contact";
 			r.Detail = string.IsNullOrEmpty(r.AccountLabel) ? null : "Asks " + r.AccountLabel;
-			r.Explanation = "Accepting lets them see when you are online, and asks to see when they are. Declining tells them no.";
 			(r.PrimaryText, r.SecondaryText) = ("Accept", "Decline");
 		}
 
@@ -533,7 +541,6 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 			r.KindLabel = "Room invitation";
 			r.Title = $"{i.From} invites you to {i.RoomJid.Split('@')[0]}";
 			r.Detail = string.IsNullOrWhiteSpace(i.Reason) ? i.RoomJid : i.Reason;
-			r.Explanation = "Joining adds the room to your chats, and you stay in it until you leave. Declining tells the one who invited you.";
 			(r.PrimaryText, r.SecondaryText) = ("Join", "Decline");
 		}
 
@@ -550,8 +557,8 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 				DeviceQuestionKind.Readout => $"{q.RemoteJid} wants to read a device",
 				_ => $"{q.RemoteJid} wants to control a device",
 			};
-			r.Detail = q.DeviceJid + (q.Names.Count == 0 ? string.Empty : " · " + string.Join(", ", q.Names));
-			r.Explanation = "You own this device, so the answer is yours. Allow and Deny here answer for this one asker. To answer for everyone on their domain, open Devices.";
+			r.Detail = q.Names.Count == 0 ? q.DeviceJid : q.DeviceJid + ": " + string.Join(", ", q.Names);
+			r.Explanation = "Answers for this asker only.";
 			(r.PrimaryText, r.SecondaryText) = ("Allow", "Deny");
 		}
 
@@ -563,7 +570,6 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 			r.Tone = "busy";
 			r.Title = (p.RequestorName ?? p.From) + (p.Kind == "identity" ? " asks to see your identity" : " asks for your signature");
 			r.Detail = string.IsNullOrWhiteSpace(p.Purpose) ? p.From : p.Purpose;
-			r.Explanation = "Review shows who asks, with their own identity, before you say yes or no.";
 			(r.PrimaryText, r.SecondaryText) = ("Review", null);
 		}
 
@@ -576,7 +582,6 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 			r.Tone = "busy";
 			r.Title = $"{q.Jid} wants to subscribe to {q.Node}";
 			r.Detail = "A node you own on " + q.Service;
-			r.Explanation = "Allowing sends them what is published on the node from now on. Denying tells them no. Who subscribes can be changed later on the node's People tab.";
 			(r.PrimaryText, r.SecondaryText) = ("Allow", "Deny");
 		}
 
@@ -617,8 +622,9 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 
 		// The Neuron chips: only what is from that Neuron, and a word about what is left out.
 		int elsewhere = 0;
-		if (this.neuronFilter is string only)
+		if (this.neuronFilter.Count > 0)
 		{
+			IReadOnlySet<string> only = this.neuronFilter;
 			elsewhere = inTab.Count(r => !r.IsDone && !IsFrom(r, only));
 			inTab.RemoveAll(r => !IsFrom(r, only));
 		}

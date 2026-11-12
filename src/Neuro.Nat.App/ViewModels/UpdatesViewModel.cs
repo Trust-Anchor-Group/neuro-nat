@@ -196,10 +196,10 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 			{
 				UpdateRowViewModel r = this.Rows.FirstOrDefault(x => x.AccountId == n.AccountId && string.Equals(x.NeuronJid, n.BareJid, StringComparison.OrdinalIgnoreCase))
 					?? new UpdateRowViewModel(n.AccountId, n.BareJid);
-				r.Label = n.Label;
+				r.Label = Converters.NeuronNameConverter.Name(n.BareJid);
 				r.IsLive = n.State == WatchState.Live;
 				AccountProfile? p = profiles.TryGetValue(n.AccountId, out AccountProfile? x) ? x : null;
-				r.AccountLabel = p?.Label ?? string.Empty;
+				r.AccountLabel = p?.ShortLabel ?? string.Empty;
 				r.AccountColorIndex = p?.ColorIndex ?? 0;
 				Describe(r);
 				keep.Add(r);
@@ -288,7 +288,7 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 		}
 
 		string auto = s.AutoDelayMinutes is int m ? $"updates itself after {m} min" : "manual updates";
-		r.Meta = (s.BuildTime is null ? string.Empty : "Built " + s.BuildTime + " · ") + auto;
+		r.Meta = s.BuildTime is null ? char.ToUpperInvariant(auto[0]) + auto[1..] : "Built " + s.BuildTime + ", " + auto;
 		if (s.PendingUpdate is not null)
 			(r.StateLabel, r.Tone, r.HasState) = (s.AutoDelayMinutes is null ? "Update ready" : "Update pending", "busy", true);
 		else
@@ -337,8 +337,8 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 
 		this.BuildText = s is null ? (r?.IsLive == false ? "Not connected" : "Reading…") : s.Error ?? (s.BuildTime is null ? "Not recorded in this build" : s.BuildTime);
 		this.AutoText = s?.AutoDelayMinutes is int m
-			? $"Installs new packages {m} minutes after they arrive. Until then you can cancel."
-			: "Off. New packages wait until someone upgrades.";
+			? $"Installs new packages after {m} minutes"
+			: "Off";
 		this.AutoMinutes = (s?.AutoDelayMinutes ?? 0).ToString(CultureInfo.CurrentCulture);
 
 		this.contentSyncing = true;

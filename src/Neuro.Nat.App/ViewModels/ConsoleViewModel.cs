@@ -18,6 +18,9 @@ public sealed partial class ConsoleTargetViewModel(Guid accountId, string bareJi
 	[ObservableProperty] private string label = bareJid;
 	[ObservableProperty] private string accountLabel = string.Empty;
 	[ObservableProperty] private int accountColorIndex;
+
+	/// <summary>Whether the account is worth naming: only when there are several.</summary>
+	[ObservableProperty] private bool showAccount;
 	[ObservableProperty] private bool isChecked;
 	[ObservableProperty] private bool isOnline;
 
@@ -272,10 +275,11 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 				this.Targets.Add(t);
 			}
 
-			t.Label = n.Label;
+			t.Label = Converters.NeuronNameConverter.Name(n.BareJid);
+			t.ShowAccount = profiles.Count > 1;
 			t.IsOnline = n.State == WatchState.Live;
 			AccountProfile? p = profiles.TryGetValue(n.AccountId, out AccountProfile? x) ? x : null;
-			t.AccountLabel = p?.Label ?? string.Empty;
+			t.AccountLabel = p?.ShortLabel ?? string.Empty;
 			t.AccountColorIndex = p?.ColorIndex ?? 0;
 		}
 
@@ -396,7 +400,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 				string verb = command.Split(' ', 2)[0];
 				this.ConfirmPrompt = targets.Count == 1
 					? $"{verb} changes {targets[0].Label}. Type its name to go ahead."
-					: $"{verb} changes {targets.Count} Neurons at once. Type {targets.Count} to go ahead.";
+					: $"{verb} changes {targets.Count} Neurons. Type {targets.Count} to go ahead.";
 				return;
 			}
 

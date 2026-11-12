@@ -121,3 +121,23 @@ public sealed class StoredSetting : IStoredObject
 
 	public string Json { get; set; } = string.Empty;
 }
+
+/// <summary>What a contact of an account answered when asked whether it is a Neuron.</summary>
+[CollectionName("KnownNeurons")]
+[TypeName(TypeNameSerialization.None)]
+[Index("AccountId", "Jid")]
+public sealed class StoredKnownNeuron : IStoredObject
+{
+	[ObjectId]
+	public string? ObjectId { get; set; }
+
+	public string AccountId { get; set; } = string.Empty;
+
+	/// <summary>The contact's bare JID, in lower case.</summary>
+	public string Jid { get; set; } = string.Empty;
+
+	public bool IsNeuron { get; set; }
+
+	/// <summary>When it answered (UTC).</summary>
+	public DateTime Answered { get; set; }
+}

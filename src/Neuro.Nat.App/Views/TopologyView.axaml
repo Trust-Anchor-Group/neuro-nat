@@ -84,7 +84,7 @@
       <DockPanel Margin="16,10">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <TextBlock Classes="meta wideOnly" Text="{Binding Summary}" VerticalAlignment="Center" Margin="0,0,6,0" />
-          <Button Command="{Binding ScanCommand}" IsEnabled="{Binding !IsScanning}" ToolTip.Tip="Ask every Neuron again">
+          <Button Command="{Binding ScanCommand}" IsEnabled="{Binding !IsScanning}" ToolTip.Tip="Scan again">
             <Panel>
               <TextBlock Text="Scan again" FontSize="{StaticResource Type.Meta}" IsVisible="{Binding !IsScanning}" />
               <TextBlock Text="Scanning…" FontSize="{StaticResource Type.Meta}" IsVisible="{Binding IsScanning}" />
@@ -94,25 +94,25 @@
 
         <StackPanel Orientation="Horizontal" Spacing="8">
           <TextBox Classes="find mapFind" Text="{Binding SearchText}" PlaceholderText="Find a Neuron or broker…" MinHeight="28" Padding="10,4" />
-          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowParents}" ToolTip.Tip="Each Neuron and the broker its own client connects to">
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowParents}" ToolTip.Tip="Parents">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Line Classes="legend" Stroke="{DynamicResource Line.Strong}" />
               <TextBlock Text="Parents" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowFederation}" ToolTip.Tip="Server-to-server links between brokers in the same parent tree">
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowFederation}" ToolTip.Tip="Federation in the tree">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Line Classes="legend" Stroke="{DynamicResource Accent}" StrokeDashArray="3.5,2" />
               <TextBlock Text="Federation" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowOtherServers}" ToolTip.Tip="Server-to-server links to brokers outside the parent tree, and those brokers">
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowOtherServers}" ToolTip.Tip="Federation outside the tree">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Line Classes="legend" Stroke="{DynamicResource Ink.Tertiary}" StrokeDashArray="3.5,2" />
               <TextBlock Text="Other servers" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowGroups}" ToolTip.Tip="Contacts in the Neurons' roster groups. Asks the Neurons once more.">
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowGroups}" ToolTip.Tip="Roster groups">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Line Classes="legend" Stroke="{DynamicResource Ink.Tertiary}" StrokeDashArray="1.5,1.5" />
               <TextBlock Text="Groups" />
@@ -145,8 +145,6 @@
           <c:LineIcon Data="{StaticResource Icon.Topology}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
           <TextBlock Text="Asking your Neurons…" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding IsScanning}" />
           <TextBlock Text="No network to show yet" FontWeight="SemiBold" HorizontalAlignment="Center" IsVisible="{Binding !IsScanning}" />
-          <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
-                     Text="Each Neuron where one of your accounts is an administrator tells how it is connected: to its parent broker, and to the brokers it federates with. Together they make this map." />
         </StackPanel>
       </Panel>
 
@@ -165,7 +163,7 @@
               </StackPanel>
 
               <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding SelectedIsNeuron}">
-                <Button Classes="primary" Command="{Binding OpenPageCommand}" ToolTip.Tip="Open this Neuron's page (double click on the map)">
+                <Button Classes="primary" Command="{Binding OpenPageCommand}" ToolTip.Tip="Open its page">
                   <TextBlock Text="Open" />
                 </Button>
                 <Button Command="{Binding ShowEventsCommand}" ToolTip.Tip="This Neuron's events">
@@ -174,7 +172,7 @@
                     <TextBlock Classes="btnLabel" Text="Events" />
                   </StackPanel>
                 </Button>
-                <Button Command="{Binding OpenConsoleCommand}" ToolTip.Tip="Send commands to this Neuron">
+                <Button Command="{Binding OpenConsoleCommand}" ToolTip.Tip="Console">
                   <StackPanel Classes="btn">
                     <c:LineIcon Classes="btn" Data="{StaticResource Icon.Console}" />
                     <TextBlock Classes="btnLabel" Text="Console" />
@@ -219,27 +217,25 @@
                   <Border DockPanel.Dock="Left" Width="26" Height="16" CornerRadius="4" BorderBrush="{DynamicResource Line.Strong}" BorderThickness="1" Background="{DynamicResource Surface.Panel}">
                     <Ellipse Width="6" Height="6" Fill="{DynamicResource State.Ok}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5,0,0,0" />
                   </Border>
-                  <TextBlock Text="A Neuron you administer, with its health" />
+                  <TextBlock Text="Neuron and its health" />
                 </DockPanel>
                 <DockPanel Classes="legendRow">
                   <Rectangle DockPanel.Dock="Left" Width="26" Height="16" RadiusX="4" RadiusY="4" Stroke="{DynamicResource Line.Strong}" StrokeThickness="1" StrokeDashArray="2,2" />
-                  <TextBlock Text="A broker it connects to" />
+                  <TextBlock Text="Broker" />
                 </DockPanel>
                 <DockPanel Classes="legendRow">
                   <Line DockPanel.Dock="Left" Classes="legend" Stroke="{DynamicResource Line.Strong}" Width="26" />
-                  <TextBlock Text="Up to its parent: the broker it connects to" />
+                  <TextBlock Text="To its parent" />
                 </DockPanel>
                 <DockPanel Classes="legendRow">
                   <Line DockPanel.Dock="Left" Classes="legend" Stroke="{DynamicResource Accent}" Width="26" />
-                  <TextBlock Text="Its parent, and federated with it" />
+                  <TextBlock Text="Parent and federated" />
                 </DockPanel>
                 <DockPanel Classes="legendRow">
                   <Line DockPanel.Dock="Left" Classes="legend" Stroke="{DynamicResource Accent}" StrokeDashArray="3.5,2" Width="26" />
-                  <TextBlock Text="Federated with each other: server to server" />
+                  <TextBlock Text="Federated" />
                 </DockPanel>
               </StackPanel>
-              <TextBlock Classes="meta" TextWrapping="Wrap"
-                         Text="Drag to move, scroll to zoom. Click a point for its connections; double click a Neuron for its console." />
 
               <StackPanel Spacing="8" IsVisible="{Binding HasProblems}">
                 <TextBlock Classes="section" Text="Did not answer" />

@@ -32,6 +32,9 @@ public sealed partial class FleetRowViewModel : ObservableObject
 	[ObservableProperty] private string label = string.Empty;
 	[ObservableProperty] private string accountLabel = string.Empty;
 	[ObservableProperty] private int accountColorIndex;
+
+	/// <summary>Whether the account is worth naming: only when there are several.</summary>
+	[ObservableProperty] private bool showAccount;
 	[ObservableProperty] private WatchState state;
 	[ObservableProperty] private string stateText = string.Empty;
 	[ObservableProperty] private string software = "–";
@@ -60,7 +63,7 @@ public sealed partial class FleetRowViewModel : ObservableObject
 	internal void Apply(WatchedNeuron n, AccountProfile? account)
 	{
 		this.Label = n.Label;
-		this.AccountLabel = account?.Label ?? string.Empty;
+		this.AccountLabel = account?.ShortLabel ?? string.Empty;
 		this.AccountColorIndex = account?.ColorIndex ?? 0;
 		this.State = n.State;
 		this.StateText = n.StatusText;
@@ -90,7 +93,7 @@ public sealed partial class FleetRowViewModel : ObservableObject
 
 		this.MemoryText = (h.AllocatedMemory.Latest, h.FreeMemory.Latest) switch
 		{
-			(double a, double f) => $"{Mb(a)} used · {Mb(f)} free",
+			(double a, double f) => $"{Mb(a)} used, {Mb(f)} free",
 			(double a, null) => $"{Mb(a)} used",
 			(null, double f) => $"{Mb(f)} free",
 			_ => "–",
@@ -104,7 +107,7 @@ public sealed partial class FleetRowViewModel : ObservableObject
 		this.LowDisk = h.FreeDisk.Latest is double fd && fd < 2;
 
 		bool noSamples = h.Cpu.Latest is null && h.AllocatedMemory.Latest is null && h.FreeMemory.Latest is null && h.FreeDisk.Latest is null;
-		this.Note = h.Error ?? (noSamples ? "No performance samples on this Neuron. They are recorded when it runs as a service." : null);
+		this.Note = h.Error ?? (noSamples ? "No performance samples" : null);
 	}
 
 	internal void Apply(EventHub.NeuronSummary? s, DateTime now)
@@ -256,13 +259,14 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 		};
 	}
 
-	/// <summary>Bare JID of the one Neuron to show; null for all. Set by the shell from the Neuron chips.</summary>
-	public string? NeuronFilter
+	/// <summary>The bare JIDs of the Neurons to show; empty for all. Set by the shell from its Neuron filter.</summary>
+	public IReadOnlySet<string> NeuronFilter
 	{
 		get => this.neuronFilter;
 		set
 		{
-			if (string.Equals(this.neuronFilter, value, StringComparison.OrdinalIgnoreCase))
+			value ??= NeuronSet.All;
+			if (value.SameAs(this.neuronFilter))
 				return;
 
 			this.neuronFilter = value;
@@ -270,11 +274,11 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 		}
 	}
 
-	private string? neuronFilter;
+	private IReadOnlySet<string> neuronFilter = NeuronSet.All;
 
 	private bool Matches(FleetRowViewModel r)
 	{
-		if (this.neuronFilter is string only && !string.Equals(r.BareJid, only, StringComparison.OrdinalIgnoreCase))
+		if (!this.neuronFilter.Admits(r.BareJid))
 			return false;
 
 		string q = this.FilterText.Trim();
@@ -424,13 +428,18 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 		IReadOnlyDictionary<string, EventHub.NeuronSummary> summaries = this.fleet.Monitors.Hub.SummarizeByNeuron(now);
 		Dictionary<Guid, AccountProfile> profiles = this.accounts.Sessions.ToDictionary(s => s.Profile.Id, s => s.Profile);
 
+		IReadOnlyDictionary<string, string> names = NeuronNames.Distinct(neurons);
+		Converters.NeuronNameConverter.Update(names);
+
 		List<FleetRowViewModel> keep = [];
-		foreach (WatchedNeuron n in neurons.OrderBy(n => n.Label, StringComparer.OrdinalIgnoreCase))
+		foreach (WatchedNeuron n in neurons.OrderBy(n => names[n.BareJid], StringComparer.OrdinalIgnoreCase))
 		{
 			FleetRowViewModel row = this.Rows.FirstOrDefault(r => r.AccountId == n.AccountId && string.Equals(r.BareJid, n.BareJid, StringComparison.OrdinalIgnoreCase))
 				?? new FleetRowViewModel(n.AccountId, n.BareJid);
 
 			row.Apply(n, profiles.TryGetValue(n.AccountId, out AccountProfile? p) ? p : null);
+			row.Label = names[n.BareJid];
+			row.ShowAccount = profiles.Count > 1;
 			row.Apply(this.fleet.Get(n.AccountId, n.BareJid));
 			row.Apply(summaries.TryGetValue(n.BareJid, out EventHub.NeuronSummary? s) ? s : null, now);
 			keep.Add(row);
@@ -459,7 +468,7 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 		this.HasRows = keep.Count > 0;
 		this.Summary = keep.Count == 0
 			? "No Neurons yet"
-			: $"{keep.Count} Neuron{(keep.Count == 1 ? "" : "s")} · {live} reporting" + (failing > 0 ? $" · {failing} with errors in the last hour" : string.Empty);
+			: $"{keep.Count} Neuron{(keep.Count == 1 ? "" : "s")}, {live} reporting" + (failing > 0 ? $", {failing} with errors in the last hour" : string.Empty);
 		this.Refreshed?.Invoke(this, EventArgs.Empty);
 	}
 

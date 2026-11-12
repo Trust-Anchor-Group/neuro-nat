@@ -56,7 +56,7 @@ public sealed partial class ChatViewModel
 		[
 			("Moderators", o => o.IsModerator),
 			("Participants", o => !o.IsModerator && !o.IsVisitor),
-			("Visitors · can only read", o => o.IsVisitor),
+			("Visitors, who can only read", o => o.IsVisitor),
 		];
 
 		foreach ((string title, Func<RoomOccupant, bool> isIn) in parts)
@@ -133,7 +133,6 @@ public sealed partial class ChatViewModel
 			this.Refresh();
 		})
 		{
-			Text = "The subject is a line everyone in the room sees at its top.",
 			Placeholder = "Subject",
 			Input = p.Subject ?? string.Empty,
 			ConfirmText = "Change subject",
@@ -149,7 +148,6 @@ public sealed partial class ChatViewModel
 			Ui.Say("Invited " + jid);
 		})
 		{
-			Text = "They get an invitation they can accept or decline.",
 			Placeholder = "Address, such as kim@lab.local",
 			NeedsText = true,
 			ConfirmText = "Invite",
@@ -167,7 +165,7 @@ public sealed partial class ChatViewModel
 			Ui.Say("Left " + p.Label);
 		})
 		{
-			Text = "You stop getting its messages, and the ones kept in this app go. You can join again later.",
+			Text = "Its messages kept here go too.",
 			ConfirmText = "Leave room",
 			IsDanger = true,
 		};
@@ -185,8 +183,7 @@ public sealed partial class ChatViewModel
 			Ui.Say("Deleted the room " + p.Label);
 		})
 		{
-			Text = "The room goes, with everything written in it" + (others > 0 ? ", and " + Ui.Count(others, "other person", "other people") + " in it " + (others == 1 ? "is" : "are") + " put out" : string.Empty)
-				+ ". This cannot be undone. Type the room's name, " + p.Label + ", to go ahead.",
+			Text = (others > 0 ? Ui.Count(others, "other person", "other people") + " in it. " : string.Empty) + "This cannot be undone. Type " + p.Label + " to go ahead.",
 			Placeholder = p.Label,
 			MustMatch = p.Label,
 			ConfirmText = "Delete room",
@@ -265,7 +262,7 @@ public sealed partial class ChatViewModel
 			this.Refresh();
 		})
 		{
-			Text = who.Nick + " is put out now, and can come back in. To keep someone out, ban them.",
+			Text = who.Nick + " can come back in.",
 			Placeholder = "Reason (optional, they see it)",
 			ConfirmText = "Remove from room",
 			IsDanger = true,
@@ -284,7 +281,7 @@ public sealed partial class ChatViewModel
 			this.Refresh();
 		})
 		{
-			Text = who.Nick + " (" + address + ") is put out and not let in again until the ban is lifted, from the room's banned list.",
+			Text = who.Nick + " (" + address + ") stays out until the ban is lifted.",
 			Placeholder = "Reason (optional, they see it)",
 			ConfirmText = "Ban",
 			IsDanger = true,
