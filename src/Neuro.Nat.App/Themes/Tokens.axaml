@@ -58,6 +58,17 @@
       <SolidColorBrush x:Key="Account.Hue5" Color="#3A8F3A" />
       <SolidColorBrush x:Key="Account.Hue6" Color="#0C86B5" />
       <SolidColorBrush x:Key="Account.Hue7" Color="#D2601A" />
+      <!-- Charts: series colours in this order (never cycled), a neutral for undecided and other,
+           and the hatch over days whose numbers can still change -->
+      <SolidColorBrush x:Key="Chart.1" Color="#2A78D6" />
+      <SolidColorBrush x:Key="Chart.2" Color="#EB6834" />
+      <SolidColorBrush x:Key="Chart.3" Color="#1BAF7A" />
+      <SolidColorBrush x:Key="Chart.4" Color="#EDA100" />
+      <SolidColorBrush x:Key="Chart.5" Color="#E87BA4" />
+      <SolidColorBrush x:Key="Chart.6" Color="#6250D6" />
+      <SolidColorBrush x:Key="Chart.Neutral" Color="#B4BAC3" />
+      <SolidColorBrush x:Key="Chart.Hatch" Color="#2E6B7480" />
+      <SolidColorBrush x:Key="Chart.Settling" Color="#0A6B7480" />
       <!-- Fluent controls pick up the tokens through these aliases -->
       <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="Surface.Raised" />
       <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="Line.Strong" />
@@ -118,6 +129,15 @@
       <SolidColorBrush x:Key="Account.Hue5" Color="#6CC46C" />
       <SolidColorBrush x:Key="Account.Hue6" Color="#4BB8E6" />
       <SolidColorBrush x:Key="Account.Hue7" Color="#F08A4B" />
+      <SolidColorBrush x:Key="Chart.1" Color="#3987E5" />
+      <SolidColorBrush x:Key="Chart.2" Color="#D95926" />
+      <SolidColorBrush x:Key="Chart.3" Color="#199E70" />
+      <SolidColorBrush x:Key="Chart.4" Color="#C98500" />
+      <SolidColorBrush x:Key="Chart.5" Color="#D55181" />
+      <SolidColorBrush x:Key="Chart.6" Color="#9085E9" />
+      <SolidColorBrush x:Key="Chart.Neutral" Color="#4C5460" />
+      <SolidColorBrush x:Key="Chart.Hatch" Color="#38838B96" />
+      <SolidColorBrush x:Key="Chart.Settling" Color="#0C838B96" />
       <!-- Fluent controls pick up the tokens through these aliases -->
       <StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="Surface.Raised" />
       <StaticResource x:Key="MenuFlyoutPresenterBorderBrush" ResourceKey="Line.Strong" />
@@ -214,5 +234,6 @@
   <StreamGeometry x:Key="Icon.Pin">M9 4h6l-1 6 3 3H7l3-3z M12 13v7</StreamGeometry>
   <StreamGeometry x:Key="Icon.Status">M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z</StreamGeometry>
   <StreamGeometry x:Key="Icon.Mention">M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M16 8v5a2.5 2.5 0 0 0 5 0v-1a9 9 0 1 0-4 7.5</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Chart">M4 20h16 M7 16.5v-5 M12 16.5V6 M17 16.5v-8</StreamGeometry>
   <StreamGeometry x:Key="Icon.Inbox">M4 13l3-8h10l3 8v6H4z M4 13h5a3 3 0 0 0 6 0h5</StreamGeometry>
 </ResourceDictionary>

@@ -75,6 +75,9 @@ public partial class App : Application
 				foreach (Avalonia.Controls.Templates.IDataTemplate template in services.Features.Templates())
 					this.DataTemplates.Add(template);
 
+				// Their pages on the big screen come and go with what they list.
+				services.Features.FeedBigScreen(BigScreenPages.Added);
+
 				MainWindowViewModel vm = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub, features: services.Features);
 				vm.Compare.Store = services.NeuronCopies;
 				MainWindow window = new() { DataContext = vm };

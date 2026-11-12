@@ -54,6 +54,20 @@ colors:
   state-ok-subtle-dark: "#142A1E"
   state-busy-subtle-dark: "#2E2412"
   state-idle-dark: "#6E7682"
+  chart-1: "#2A78D6"
+  chart-2: "#EB6834"
+  chart-3: "#1BAF7A"
+  chart-4: "#EDA100"
+  chart-5: "#E87BA4"
+  chart-6: "#6250D6"
+  chart-neutral: "#B4BAC3"
+  chart-1-dark: "#3987E5"
+  chart-2-dark: "#D95926"
+  chart-3-dark: "#199E70"
+  chart-4-dark: "#C98500"
+  chart-5-dark: "#D55181"
+  chart-6-dark: "#9085E9"
+  chart-neutral-dark: "#4C5460"
   severity-debug: "#8A929E"
   severity-informational: "#545D6B"
   severity-notice: "#3358D4"
@@ -307,6 +321,7 @@ Cool neutrals, one cobalt accent, a state set, a severity ramp and the account h
 - **Account hues** (`Account.Hue0` to `Account.Hue7`): the small square with the account's initial, wherever an account is named. Chosen by the account's index through `AccountHueConverter`.
 - **State** (`State.Ok`, `State.Busy`, `State.Bad`, `State.Idle`, and `.Subtle` tints of the first three): status dots, counts that need attention, error text, the destructive button, and the tinted bands behind a failure, a warning or a success. `ToneBrushConverter` maps the tones `ok`, `busy`, `bad` and `idle` to them.
 - **Severity** (`Severity.Debug` to `Severity.Emergency`): the level tag on an event and on a problem. Warning and Error share the state colours on purpose.
+- **Charts** (`Chart.1` to `Chart.6`, `Chart.Neutral`, `Chart.Hatch`, `Chart.Settling`): the series of a chart, in that order and never cycled; the neutral one for undecided and other; the hatch over days whose numbers can still change. A series keeps its colour when others come and go (Android is always `Chart.1`, iOS `Chart.2`). Light and dark are each checked for colour blindness; three light ones are below 3:1 on white, so every chart can be shown as a table.
 - **Surfaces** (`Surface.Ground`, `.Panel`, `.Rail`, `.Header`, `.Code`, `.Raised`, `.Hover`, `.Pressed`): the window, panels and inputs, the rail, table headers, streams of machine text, things that float, and the two interaction fills.
 - **Lines** (`Line`, `Line.Strong`): `Line` for panel borders, dividers and loading placeholders; `Line.Strong` for the borders of buttons and inputs and for scrollbars.
 - **Ink** (`Ink.Primary`, `.Secondary`, `.Tertiary`, `.OnAccent`): content, supporting text, and times and placeholders.
@@ -348,6 +363,7 @@ Cool neutrals, one cobalt accent, a state set, a severity ramp and the account h
 - **Chat**: people and rooms, the conversation, and the person's details as a third column when there is room.
 - **Console**: tick one or several Neurons, run a command, read the answers side by side.
 - **Accounts**: each account with Connection (and its traffic), Devices, Identities and Storage.
+- **App telemetry** (only while a Neuron with the Neuro.App.Telemetry package is found, as a sixth place in the rail and as a tab on that Neuron's page): Overview, Applications, NFC reading, Troubleshooting, Neurons and All metrics, from the feature project `Neuro.Nat.Features.Telemetry`. With several such Neurons, a choice of one at the top; their numbers are never mixed. Pages and charts an account may not read are left out.
 - **Settings**: your status, pop-ups and sounds, look, text size, the tray, and every keyboard shortcut. At the bottom, the app's long name and version, and, where nothing is kept between runs (no vault for the database key yet), one plain line saying so.
 - **When what NAT saved cannot be opened**, a small window says so before anything else ("NAT cannot open what it has saved on this computer.") with Try again (primary), Start fresh and Quit (`Views/DatabaseProblemWindow.axaml`). NAT never starts empty without a word.
 
@@ -363,7 +379,7 @@ Cool neutrals, one cobalt accent, a state set, a severity ramp and the account h
 
 **More than one window.** Ctrl+Shift+N opens the screen in front in a window of its own; a Neuron and a conversation have "Open in a new window" on their menus. Windows come back where they were, on a screen that still exists, showing what they showed. The app itself opens on the screen it was closed on.
 
-**The big screen** (F11, `Views/BigScreenView.axaml`): for a screen across the room, one page at a time in large text with no controls. Neurons (the Neurons as large tiles and the latest problems) is always there; Problems (each open problem: what, where, since when, how many times) only while one is open; after them come the pages features add through `IBigScreenPage` in `BigScreenPages.Added` (App numbers will be one). It turns by itself, 20 seconds a page, and skips pages with nothing to show; small dots at the bottom say which page is showing. When a Neuron goes down or a new problem opens, it turns to that page and stays half as long again; a new problem is marked New. Left and Right turn, Space holds, Esc or F11 leaves. Settings choose the pages and the time. Pages slide in as they turn, and simply change with less motion. It is drawn for 1280 px and scaled to the window, so it reads the same at 3840.
+**The big screen** (F11, `Views/BigScreenView.axaml`): for a screen across the room, one page at a time in large text with no controls. Neurons (the Neurons as large tiles and the latest problems) is always there; Problems (each open problem: what, where, since when, how many times) only while one is open; after them come the pages features add through `IBigScreenPage` in `BigScreenPages.Added` (App numbers, each found telemetry Neuron's key numbers, is one). It turns by itself, 20 seconds a page, and skips pages with nothing to show; small dots at the bottom say which page is showing. When a Neuron goes down or a new problem opens, it turns to that page and stays half as long again; a new problem is marked New. Left and Right turn, Space holds, Esc or F11 leaves. Settings choose the pages and the time. Pages slide in as they turn, and simply change with less motion. It is drawn for 1280 px and scaled to the window, so it reads the same at 3840.
 
 **Spacing:** steps of 2, 4, 6, 8, 10, 12, 14, 16, 20 px. 6 between an icon and its label, 8 between sibling controls, 14 inside a panel, 20 at the edge of a screen. `compact` on the root (Settings, "Compact rows") makes list rows less tall.
 
@@ -412,6 +428,9 @@ Anything you can point at has a link that reads plainly: `neuro-nat://neuron/<do
 
 ### Pop-ups
 A message or an alert shows as a card in the bottom right corner of the window, or of the screen when the window is behind others or in the tray (`Views/NoticeCard.axaml`). It can be answered or dismissed from the card. Settings start with four plain choices (What needs me, Everything, Nothing, My own choice); the table of switches for each kind only shows for "My own choice". Settings never open on a long list of tick boxes.
+
+### Charts
+Drawn by NAT itself (`Neuro.Nat.Features.Telemetry/Charts`): lines and bars over time (`TimeChart`, also stacked), one bar per group across (`AcrossChart`), a large number with its trend (`TrendLine` beside it), and the same numbers as a table (`TableChart`). Every chart sits in a `panel` with its name in `section` and at most one `meta` line under it, a legend when it has more than one series, and "Show table". The pointer on a chart shows its values in a floating box; days that can still change are hatched and marked "May change". Grid lines are `Line`, axis text `Ink.Tertiary` at 11 px, lines 2 px, bars with a 2 px gap.
 
 ### Empty and loading
 - **Empty:** a 24 px icon in `Ink.Tertiary` and one short semi-bold line saying what is missing. A `meta` line under it only when the way to fill it is not plain from the screen. Centred, at most about 380 px wide, with a side margin so it wraps in a narrow pane.

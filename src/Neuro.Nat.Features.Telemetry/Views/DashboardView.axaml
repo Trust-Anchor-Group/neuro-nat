@@ -1,0 +1,343 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.Features.Telemetry.ViewModels"
+             xmlns:data="using:Neuro.Nat.Features.Telemetry.Data"
+             xmlns:ch="using:Neuro.Nat.Features.Telemetry.Charts"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             x:Class="Neuro.Nat.Features.Telemetry.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+
+  <!-- App telemetry for one collector: its pages in a row at the top, the page under it. -->
+  <UserControl.Styles>
+    <Style Selector="UniformGrid.keys">
+      <Setter Property="Columns" Value="6" />
+    </Style>
+    <Style Selector=".maxw1280 UniformGrid.keys">
+      <Setter Property="Columns" Value="3" />
+    </Style>
+    <Style Selector=".maxw860 UniformGrid.keys">
+      <Setter Property="Columns" Value="2" />
+    </Style>
+    <!-- Two columns of charts; narrow: one column, the right ones under the left ones. -->
+    <Style Selector="Grid.panels > ItemsControl.right">
+      <Setter Property="(Grid.Column)" Value="1" />
+    </Style>
+    <Style Selector=".maxw1100 Grid.panels > ItemsControl.left">
+      <Setter Property="(Grid.ColumnSpan)" Value="2" />
+    </Style>
+    <Style Selector=".maxw1100 Grid.panels > ItemsControl.right">
+      <Setter Property="(Grid.Column)" Value="0" />
+      <Setter Property="(Grid.Row)" Value="1" />
+      <Setter Property="(Grid.ColumnSpan)" Value="2" />
+      <Setter Property="Margin" Value="0,14,0,0" />
+    </Style>
+    <Style Selector="Grid.attention > Border.facts">
+      <Setter Property="(Grid.Column)" Value="1" />
+      <Setter Property="Width" Value="320" />
+    </Style>
+    <Style Selector=".maxw1100 Grid.attention > Border.facts">
+      <Setter Property="(Grid.Column)" Value="0" />
+      <Setter Property="(Grid.Row)" Value="1" />
+      <Setter Property="Width" Value="NaN" />
+    </Style>
+    <Style Selector=".maxw1100 Grid.attention > Border.findings">
+      <Setter Property="(Grid.ColumnSpan)" Value="2" />
+    </Style>
+    <Style Selector=".maxw1100 Grid.attention > Border.facts">
+      <Setter Property="(Grid.ColumnSpan)" Value="2" />
+    </Style>
+    <Style Selector=".maxw860 TextBlock.fresh">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="TextBlock.big">
+      <Setter Property="FontSize" Value="{StaticResource Type.Number}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LetterSpacing" Value="-0.3" />
+    </Style>
+    <Style Selector="Border.keyCard">
+      <Setter Property="Padding" Value="14,12,14,10" />
+    </Style>
+    <Style Selector="Grid.neuronRow > TextBlock.when">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector=".maxw860 Grid.neuronRow > TextBlock.when">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.DataTemplates>
+    <!-- One chart, or its numbers as a table -->
+    <DataTemplate DataType="vm:ChartPanelViewModel">
+      <Border Classes="panel" Padding="16,12,16,14">
+        <StackPanel Spacing="8">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="ghost small" Command="{Binding ToggleTableCommand}" IsVisible="{Binding HasNumbers}"
+                    VerticalAlignment="Top" Content="{Binding TableText}" />
+            <Border DockPanel.Dock="Right" Classes="pill" IsVisible="{Binding TeamOnly}" VerticalAlignment="Top" Margin="0,2,8,0">
+              <TextBlock Text="Team only" />
+            </Border>
+            <StackPanel Spacing="2">
+              <TextBlock Classes="section" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="meta" Text="{Binding Hint}" IsVisible="{Binding HasHint}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </DockPanel>
+          <WrapPanel IsVisible="{Binding HasLegend}" Orientation="Horizontal">
+            <ItemsControl ItemsSource="{Binding Legend}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:LegendItem">
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,14,0">
+                    <ch:Swatch Slot="{Binding Slot}" VerticalAlignment="Center" />
+                    <TextBlock Classes="meta" Text="{Binding Name}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsSettling}">
+              <ch:Swatch Slot="-1" VerticalAlignment="Center" />
+              <TextBlock Classes="meta" Text="May change" />
+            </StackPanel>
+          </WrapPanel>
+          <ch:TimeChart Data="{Binding Data}" IsVisible="{Binding ShowTime}" Height="200" />
+          <ch:AcrossChart Data="{Binding Data}" IsVisible="{Binding ShowAcross}" />
+          <ch:TableChart Data="{Binding Data}" First="{Binding TableFirst}" IsVisible="{Binding ShowNumbersTable}" />
+          <TextBlock Classes="meta" Text="No numbers in these days" IsVisible="{Binding IsEmpty}" Margin="0,8" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <DockPanel>
+    <!-- The pages, and how fresh the numbers are -->
+    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="12,0,20,0" Background="{DynamicResource Surface.Panel}">
+      <DockPanel Height="40">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Classes="meta fresh" Text="{Binding Freshness}" VerticalAlignment="Center" />
+          <Button Classes="ghost" Command="{Binding CopyLinkCommand}" IsVisible="{Binding CanCopyLink}" ToolTip.Tip="Copy link">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+              <TextBlock Classes="btnLabel" Text="Copy link" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding PagesShown}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:DashboardPageItem">
+                <Button Classes="tab" Classes.current="{Binding IsCurrent}" Height="40"
+                        Command="{Binding $parent[UserControl].((vm:DashboardViewModel)DataContext).ShowPageCommand}" CommandParameter="{Binding Key}">
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <ScrollViewer>
+      <StackPanel Margin="20,16,20,24" Spacing="14" MaxWidth="1600">
+
+        <!-- Asking went wrong: what is shown is what was kept -->
+        <Border Padding="12,9" CornerRadius="{StaticResource Radius}" Background="{DynamicResource State.Busy.Subtle}" IsVisible="{Binding HasProblem}">
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="Could not read new numbers:" FontWeight="SemiBold" />
+            <Run Text="{Binding Problem}" />
+          </TextBlock>
+        </Border>
+
+        <!-- Before the first numbers -->
+        <StackPanel Spacing="10" IsVisible="{Binding IsLoading}">
+          <TextBlock Classes="meta" Text="Reading the numbers" />
+          <c:Placeholder Rows="4" RowHeight="40" />
+        </StackPanel>
+        <StackPanel Spacing="6" IsVisible="{Binding HasNoNumbers}" HorizontalAlignment="Center" MaxWidth="380" Margin="16,60">
+          <c:LineIcon Data="{StaticResource Icon.Chart}" Width="24" Height="24" Foreground="{DynamicResource Ink.Tertiary}" HorizontalAlignment="Center" />
+          <TextBlock FontWeight="SemiBold" Text="No numbers yet" HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Overview -->
+        <StackPanel Spacing="14" IsVisible="{Binding IsOverview}">
+          <StackPanel Spacing="14" IsVisible="{Binding ShowsNumbers}">
+            <TextBlock Classes="meta" Text="{Binding PeriodText}" />
+            <ItemsControl ItemsSource="{Binding KeyNumbers}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Classes="keys" ColumnSpacing="12" RowSpacing="12" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="data:KeyNumber">
+                  <Border Classes="panel keyCard">
+                    <StackPanel Spacing="3">
+                      <TextBlock Classes="meta" Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="1">
+                        <TextBlock Classes="big" Text="{Binding Value}" />
+                        <TextBlock Classes="meta" Text="{Binding Unit}" VerticalAlignment="Bottom" Margin="0,0,0,3" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <c:LineIcon Data="{Binding ArrowIcon, Converter={x:Static conv:IconConverter.Instance}}" Width="13" Height="13" VerticalAlignment="Center"
+                                    Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" IsVisible="{Binding ArrowIcon, Converter={x:Static conv:EventConverters.HasText}}" />
+                        <TextBlock Classes="caption" Text="{Binding Delta}" TextTrimming="CharacterEllipsis"
+                                   Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                      </StackPanel>
+                      <TextBlock Classes="caption tertiary" Text="{Binding Hint}" TextTrimming="CharacterEllipsis" FontWeight="Normal" />
+                      <Panel Height="30" Margin="0,4,0,0">
+                        <ch:TrendLine Values="{Binding Trend}" IsVisible="{Binding HasTrend}" />
+                      </Panel>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Grid Classes="attention" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="14">
+              <!-- What needs attention -->
+              <Border Classes="panel findings" Padding="16,12,16,8">
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="section" Text="Needs attention" Margin="0,0,0,4" />
+                  <DockPanel IsVisible="{Binding NothingBroken}" Margin="0,4">
+                    <Ellipse Width="8" Height="8" Fill="{DynamicResource State.Ok}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock Text="Nothing is broken" FontWeight="SemiBold" />
+                  </DockPanel>
+                  <ItemsControl ItemsSource="{Binding Findings}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="data:Finding">
+                        <DockPanel Margin="0,6">
+                          <Ellipse DockPanel.Dock="Left" Width="8" Height="8" VerticalAlignment="Top" Margin="0,5,10,0"
+                                   Fill="{Binding Level, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                          <Button DockPanel.Dock="Right" Classes="link" VerticalAlignment="Top" Margin="12,0,0,0"
+                                  IsVisible="{Binding Page, Converter={x:Static conv:EventConverters.HasText}}"
+                                  Command="{Binding $parent[UserControl].((vm:DashboardViewModel)DataContext).GoCommand}" CommandParameter="{Binding Page}"
+                                  Content="{Binding PageTitle}" />
+                          <StackPanel Spacing="2">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Classes="meta" Text="{Binding Detail}" TextWrapping="Wrap" />
+                          </StackPanel>
+                        </DockPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+              <!-- How fresh and complete -->
+              <Border Classes="panel facts" Padding="16,12,16,12" VerticalAlignment="Top">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="section" Text="The numbers" />
+                  <ItemsControl ItemsSource="{Binding Facts}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="data:Fact">
+                        <DockPanel Margin="0,3">
+                          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                            <Ellipse Width="8" Height="8" VerticalAlignment="Center" IsVisible="{Binding Tone, Converter={x:Static conv:EventConverters.HasText}}"
+                                     Fill="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                            <TextBlock Text="{Binding Value}" FontWeight="SemiBold" />
+                          </StackPanel>
+                          <TextBlock Classes="meta" Text="{Binding Name}" />
+                        </DockPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <Grid Classes="panels" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14">
+              <ItemsControl Classes="left" ItemsSource="{Binding PanelsLeft}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="14" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+              <ItemsControl Classes="right" ItemsSource="{Binding PanelsRight}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="14" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </Grid>
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Pages of charts -->
+        <StackPanel Spacing="14" IsVisible="{Binding IsChartPage}">
+          <StackPanel Spacing="14" IsVisible="{Binding ShowsNumbers}">
+            <TextBlock Classes="meta" Text="{Binding PeriodText}" />
+
+            <!-- The Neurons the numbers come from -->
+            <Border Classes="panel" Padding="16,12,16,8" IsVisible="{Binding IsNeurons}">
+              <StackPanel Spacing="2">
+                <TextBlock Classes="section" Text="How up to date each Neuron is" Margin="0,0,0,6" />
+                <ItemsControl ItemsSource="{Binding NeuronRows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="data:NeuronRow">
+                      <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="0,8">
+                        <StackPanel Spacing="3">
+                          <Grid Classes="neuronRow" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                            <Ellipse Width="8" Height="8" VerticalAlignment="Center" Fill="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Neuron}" />
+                            <TextBlock Grid.Column="2" Classes="meta when" Text="{Binding LastDay, StringFormat='Latest day {0}'}" />
+                            <TextBlock Grid.Column="3" Text="{Binding Label}" FontWeight="SemiBold"
+                                       Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                          </Grid>
+                          <TextBlock Classes="meta" Text="{Binding Todo}" TextWrapping="Wrap" Margin="20,0,0,0"
+                                     IsVisible="{Binding Todo, Converter={x:Static conv:EventConverters.HasText}}" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <Grid Classes="panels" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14">
+              <ItemsControl Classes="left" ItemsSource="{Binding PanelsLeft}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="14" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+              <ItemsControl Classes="right" ItemsSource="{Binding PanelsRight}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="14" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </Grid>
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Any metric from the catalog -->
+        <StackPanel Spacing="14" IsVisible="{Binding IsMetrics}">
+          <StackPanel Spacing="14" IsVisible="{Binding ShowsNumbers}">
+            <WrapPanel Orientation="Horizontal">
+              <ComboBox ItemsSource="{Binding MetricChoices}" SelectedItem="{Binding Metric}" MinWidth="260" Margin="0,0,8,8" PlaceholderText="Metric" />
+              <ComboBox ItemsSource="{Binding SplitChoices}" SelectedItem="{Binding Split}" MinWidth="180" Margin="0,0,8,8" />
+              <TextBlock Classes="meta" Text="{Binding PeriodText}" VerticalAlignment="Center" Margin="4,0,0,8" />
+            </WrapPanel>
+            <TextBlock Classes="meta" Text="{Binding ExploreAbout}" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left"
+                       IsVisible="{Binding ExploreAbout, Converter={x:Static conv:EventConverters.HasText}}" />
+            <ContentControl Content="{Binding ExploreChart}" />
+            <ContentControl Content="{Binding ExploreTotal}" />
+            <SelectableTextBlock Classes="mono tertiary" Text="{Binding ExploreQuery}" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

@@ -21,6 +21,11 @@ public sealed record TelemetryStatus
 	/// <summary>How many Neurons it collects from (role "source"). Zero when it only has its own numbers.</summary>
 	public int Sources { get; init; }
 
+	/// <summary>The Neurons it collects from, by the names /Status gives them, separated by commas (a string, so two answers compare by value).</summary>
+	public string SourceList { get; init; } = string.Empty;
+
+	public IEnumerable<string> SourceNames => this.SourceList.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
 	/// <summary>The privilege the account lacks, when not allowed.</summary>
 	public string? Privilege { get; init; }
 
@@ -51,6 +56,7 @@ public sealed record TelemetryStatus
 			string? self = null;
 			DateTime? day = null;
 			int sources = 0;
+			List<string> names = [];
 			foreach (JsonElement n in neurons.EnumerateArray())
 			{
 				if (n.ValueKind != JsonValueKind.Object)
@@ -58,7 +64,11 @@ public sealed record TelemetryStatus
 
 				string? role = Text(n, "role");
 				if (role == "source")
+				{
 					sources++;
+					if (Text(n, "neuron") is string source)
+						names.Add(source);
+				}
 				else if (role == "self" && self is null)
 				{
 					self = Text(n, "neuron") ?? string.Empty;
@@ -73,7 +83,7 @@ public sealed record TelemetryStatus
 			if (self is null)
 				return null;
 
-			return new TelemetryStatus { Presence = FeaturePresence.Present, WebAddress = webAddress, Neuron = self, LastComputedDay = day, Sources = sources };
+			return new TelemetryStatus { Presence = FeaturePresence.Present, WebAddress = webAddress, Neuron = self, LastComputedDay = day, Sources = sources, SourceList = string.Join(",", names) };
 		}
 		catch (JsonException)
 		{

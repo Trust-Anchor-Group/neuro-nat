@@ -91,7 +91,10 @@ public class TelemetryFeatureTests
 				return Task.FromResult<string?>(t);
 			},
 			(_, domain) => hasAddress ? [new Uri("https://" + domain + "/")] : [],
-			() => Now);
+			() => Now)
+		{
+			FetchesNumbers = false,
+		};
 		feature.Start(host);
 		return new Sample(feature, host, web, ops.Profile.Id, tokens);
 	}
@@ -303,8 +306,36 @@ public class TelemetryFeatureTests
 		});
 
 		// Plain http only on this computer, so a token never crosses the network unencrypted.
-		Assert.Equal(["https://web.tagroot.io:8443/", "http://localhost:8081/", "https://lab.tagroot.io/"], NeuronWeb.Candidates(inbox, account, Lab).Select(u => u.ToString()));
-		Assert.Equal(["https://localhost/"], NeuronWeb.Candidates(inbox, account, "localhost").Select(u => u.ToString()));
-		Assert.Empty(NeuronWeb.Candidates(null, account, string.Empty));
+		Assert.Equal(["https://web.tagroot.io:8443/", "http://localhost:8081/", "https://lab.tagroot.io/"], NeuronWeb.Candidates(null, inbox, account, Lab).Select(u => u.ToString()));
+		Assert.Equal(["https://localhost/"], NeuronWeb.Candidates(null, inbox, account, "localhost").Select(u => u.ToString()));
+		Assert.Empty(NeuronWeb.Candidates(null, null, account, string.Empty));
+	}
+
+	[Fact]
+	public void TheAccountsOwnWebAddressComesFirst()
+	{
+		Guid account = Guid.NewGuid();
+		Engine.Attention.AttentionInbox inbox = new();
+		inbox.Preview(new Engine.Attention.NeuronNotification
+		{
+			Id = "n1",
+			AccountId = account,
+			NeuronJid = Lab,
+			Received = DateTime.Now,
+			Markdown = "New software\n\n[Admin](https://web.tagroot.io:8443/Settings.md)",
+		});
+
+		// Set on the account: first. Then the Neuron's own links, then https on its domain.
+		Assert.Equal(["http://localhost:8081/", "https://web.tagroot.io:8443/", "https://lab.tagroot.io/"],
+			NeuronWeb.Candidates("http://localhost:8081", inbox, account, Lab).Select(u => u.ToString()));
+		Assert.Equal(["https://web.tagroot.io:8443/", "https://lab.tagroot.io/"], NeuronWeb.Candidates(null, inbox, account, Lab).Select(u => u.ToString()));
+		Assert.Equal(["https://lab.tagroot.io/"], NeuronWeb.Candidates(" ", null, account, Lab).Select(u => u.ToString()));
+
+		// Plain http to another computer is refused, set or not; a bare host gets https.
+		Assert.Equal(["https://lab.tagroot.io/"], NeuronWeb.Candidates("http://web.tagroot.io", null, account, Lab).Select(u => u.ToString()));
+		Assert.Null(Engine.Accounts.AccountWeb.Check("http://web.tagroot.io"));
+		Assert.Null(Engine.Accounts.AccountWeb.Check("ftp://web.tagroot.io"));
+		Assert.Equal("https://web.tagroot.io/", Engine.Accounts.AccountWeb.Check("web.tagroot.io"));
+		Assert.Equal("http://127.0.0.1:8081/", Engine.Accounts.AccountWeb.Check("http://127.0.0.1:8081/x"));
 	}
 }

@@ -876,13 +876,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	// Add-account form
 	[ObservableProperty]
 	[NotifyCanExecuteChangedFor(nameof(AddAccountCommand))]
+	[NotifyPropertyChangedFor(nameof(NewWebAddressHint))]
 	private string newHost = "localhost";
 
 	[ObservableProperty]
 	private string newPort = "5222";
 
 	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(NewWebAddressHint))]
 	private string newDomain = string.Empty;
+
+	/// <summary>The Neuron's web address; empty to find it.</summary>
+	[ObservableProperty]
+	private string newWebAddress = string.Empty;
+
+	/// <summary>What the web address will be when the field is left empty.</summary>
+	public string NewWebAddressHint => "https://" + (string.IsNullOrWhiteSpace(this.NewDomain) ? (string.IsNullOrWhiteSpace(this.NewHost) ? "domain" : this.NewHost.Trim()) : this.NewDomain.Trim());
 
 	[ObservableProperty]
 	[NotifyCanExecuteChangedFor(nameof(AddAccountCommand))]
@@ -1015,11 +1024,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			return;
 		}
 
+		string? web = null;
+		if (!string.IsNullOrWhiteSpace(this.NewWebAddress))
+		{
+			web = AccountWeb.Check(this.NewWebAddress);
+			if (web is null)
+			{
+				this.FormError = "Web address must start with https://, or http:// on this computer.";
+				return;
+			}
+		}
+
 		AccountProfile profile = new()
 		{
 			Host = this.NewHost.Trim(),
 			Port = port,
 			Domain = this.NewDomain.Trim(),
+			WebAddress = web,
 			UserName = this.NewUserName.Trim(),
 			TrustServerCertificate = this.NewTrustCertificate,
 		};

@@ -315,7 +315,7 @@
                         ToolTip.Tip="{Binding Title}" AutomationProperties.Name="{Binding Title}">
                   <StackPanel Spacing="4">
                     <c:LineIcon Data="{Binding Icon}" />
-                    <TextBlock Classes="railLabel" Text="{Binding Title}" HorizontalAlignment="Center" />
+                    <TextBlock Classes="railLabel" Text="{Binding Title}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="56" />
                   </StackPanel>
                 </Button>
               </DataTemplate>
@@ -616,6 +616,10 @@
               <StackPanel>
                 <TextBlock Classes="label" Text="Domain (only if it differs from the host)" />
                 <TextBox Text="{Binding NewDomain}" PlaceholderText="example.org" />
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Classes="label" Text="Web address" />
+                <TextBox Text="{Binding NewWebAddress}" PlaceholderText="{Binding NewWebAddressHint}" />
               </StackPanel>
               <StackPanel>
                 <TextBlock Classes="label" Text="User name" />

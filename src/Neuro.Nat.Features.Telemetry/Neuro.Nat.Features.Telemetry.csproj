@@ -2,10 +2,14 @@
 
   <PropertyGroup>
     <RootNamespace>Neuro.Nat.Features.Telemetry</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <Description>App telemetry in NAT: finds the Neurons that have the Neuro.App.Telemetry package, through its web API. NAT knows it only through App.Features.</Description>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The dashboard's views and view models, drawn the way the app draws its own (no chart package). -->
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
     <!-- Short-lived tokens for the web API, asked for over the account's XMPP connection. -->
     <PackageReference Include="Waher.Networking.XMPP.HTTPX" />
     <!-- HTTPX brings Waher.Networking.HTTP 4.9, which asks for Markdown 6.4 and so SkiaSharp 4; Avalonia 12 is built on

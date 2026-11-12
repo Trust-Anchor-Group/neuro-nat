@@ -107,7 +107,7 @@ public class FeatureContractTests
 		Dispatcher.UIThread.RunJobs();
 
 		Assert.Equal(["Stand-in: installed"], vm.Updates.FeatureLines);
-		Assert.Equal(["Numbers"], vm.PageFeatureTabs.Select(t => t.Title));
+		Assert.Equal(["Numbers", "Parts"], vm.PageFeatureTabs.Select(t => t.Title));
 		Assert.Equal(["App numbers"], vm.FeaturePlaces.Select(p => p.Title));
 		vm.Inbox.Refresh();
 		Assert.Contains(vm.Inbox.Everything, r => r.IsFeatureItem && r.Title == "Fewer NFC reads" && r.Jid == Lab);
@@ -119,7 +119,7 @@ public class FeatureContractTests
 		Assert.True(vm.IsNeuronFeature);
 		Assert.True(vm.IsNeuronPage);
 		Assert.Equal("tab content", vm.FeatureContent);
-		Assert.True(vm.PageFeatureTabs.Single().IsCurrent);
+		Assert.True(vm.PageFeatureTabs.First().IsCurrent);
 
 		vm.ShowFeaturePlaceCommand.Execute("standin.place");
 		Assert.True(vm.IsFeature);
@@ -141,6 +141,58 @@ public class FeatureContractTests
 		Assert.Empty(vm.FeaturePlaces);
 		Assert.False(vm.IsNeuronFeature);
 		Assert.False(vm.Updates.HasFeatureLines);
+	}
+
+	[AvaloniaFact]
+	public async Task WithoutFeaturesTheBigScreenKeepsItsOwnPagesAndNothingOffersALink()
+	{
+		Sample s = await SampleAsync(null);
+		List<IBigScreenPage> added = [];
+		s.Vm.Features.FeedBigScreen(added);
+		Dispatcher.UIThread.RunJobs();
+		Assert.Empty(added);
+
+		BigScreenViewModel screen = new(s.Vm.Fleet, new EventHub(), null, added);
+		screen.Start();
+		Assert.Equal([BigScreenPages.Neurons, BigScreenPages.Problems], screen.Pages.Select(p => p.Key));
+		screen.Stop();
+
+		// Links are the shell's to make; until it does, there are none.
+		Assert.Null(FeatureLinks.Make(new FeatureTarget("any")));
+	}
+
+	[AvaloniaFact]
+	public async Task AFeaturesPagesComeAndGoOnTheBigScreenAndAPartOpensInsideItsContent()
+	{
+		StandInFeature feature = new();
+		Sample s = await SampleAsync(new FeatureSet([feature]));
+		List<IBigScreenPage> added = [];
+		s.Vm.Features.FeedBigScreen(added);
+		Assert.Empty(added);
+
+		feature.Account = s.Ops;
+		feature.Present = true;
+		feature.Raise();
+		Dispatcher.UIThread.RunJobs();
+		IBigScreenPage page = Assert.Single(added);
+		Assert.Equal(("standin.screen", "App numbers", "screen content"), (page.Key, page.Title, page.Content));
+
+		// A target with a part: the tab opens, and its content is asked to show the part.
+		s.Vm.OpenFeature(new FeatureTarget("standin.parts", s.Ops, Lab) { Part = "nfc" });
+		Dispatcher.UIThread.RunJobs();
+		Assert.Equal("nfc", Assert.IsType<PartsContent>(s.Vm.FeatureContent).Shown);
+
+		feature.Present = false;
+		feature.Raise();
+		Dispatcher.UIThread.RunJobs();
+		Assert.Empty(added);
+	}
+
+	private sealed class PartsContent : IFeatureContent
+	{
+		public string? Shown { get; private set; }
+
+		public void ShowPart(string part) => this.Shown = part;
 	}
 
 	[Fact]
@@ -190,7 +242,9 @@ public class FeatureContractTests
 		public IReadOnlyList<string> SoftwareLines(Guid accountId, string neuronJid) => this.Present ? ["Stand-in: installed"] : [];
 
 		public IReadOnlyList<FeatureTab> NeuronTabs(Guid accountId, string neuronJid)
-			=> this.Present ? [new FeatureTab("standin.tab", "Numbers", () => "tab content")] : [];
+			=> this.Present ? [new FeatureTab("standin.tab", "Numbers", () => "tab content"), new FeatureTab("standin.parts", "Parts", () => new PartsContent())] : [];
+
+		public IReadOnlyList<FeatureScreenPage> BigScreenPages() => this.Present ? [new FeatureScreenPage("standin.screen", "App numbers", () => "screen content")] : [];
 
 		public IReadOnlyList<FeaturePlace> Places() => this.Present ? [new FeaturePlace("standin.place", "App numbers", "Fleet", () => "place content")] : [];
 

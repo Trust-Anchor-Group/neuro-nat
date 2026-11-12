@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.Features.Telemetry.ViewModels"
+             xmlns:data="using:Neuro.Nat.Features.Telemetry.Data"
+             xmlns:ch="using:Neuro.Nat.Features.Telemetry.Charts"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             xmlns:conv="using:Neuro.Nat.App.Converters"
+             x:Class="Neuro.Nat.Features.Telemetry.Views.AppNumbersView"
+             x:DataType="vm:AppNumbersViewModel">
+
+  <!-- The big screen's App numbers: each collector's key numbers in a row of their own, drawn for 1280 by 560. -->
+  <ItemsControl ItemsSource="{Binding Rows}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <StackPanel Spacing="22" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate DataType="vm:AppNumbersRow">
+        <StackPanel Spacing="10">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding Freshness}" FontSize="16" Foreground="{DynamicResource Ink.Tertiary}" VerticalAlignment="Bottom" />
+            <TextBlock Text="{Binding Name}" FontSize="20" FontWeight="SemiBold" IsVisible="{Binding ShowName}" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+          <ItemsControl ItemsSource="{Binding Numbers}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Columns="{Binding $parent[ItemsControl].((vm:AppNumbersRow)DataContext).Columns}" ColumnSpacing="16" RowSpacing="16" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="data:KeyNumber">
+                <Border Classes="panel" Padding="22,14,22,14">
+                  <DockPanel>
+                    <Panel DockPanel.Dock="Right" Width="140" Height="44" VerticalAlignment="Bottom" Margin="16,0,0,6"
+                           IsVisible="{Binding $parent[ItemsControl].((vm:AppNumbersRow)DataContext).ShowTrend}">
+                      <ch:TrendLine Values="{Binding Trend}" Height="44" IsVisible="{Binding HasTrend}" />
+                    </Panel>
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding Label}" FontSize="16" Foreground="{DynamicResource Ink.Secondary}" TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="2">
+                        <TextBlock Text="{Binding Value}" FontSize="46" FontWeight="SemiBold" FontFeatures="tnum" LineHeight="52" />
+                        <TextBlock Text="{Binding Unit}" FontSize="22" Foreground="{DynamicResource Ink.Secondary}" VerticalAlignment="Bottom" Margin="0,0,0,8" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <c:LineIcon Data="{Binding ArrowIcon, Converter={x:Static conv:IconConverter.Instance}}" Width="18" Height="18" VerticalAlignment="Center"
+                                    Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" IsVisible="{Binding ArrowIcon, Converter={x:Static conv:EventConverters.HasText}}" />
+                        <TextBlock Text="{Binding Delta}" FontSize="16" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding $parent[ItemsControl].((vm:AppNumbersRow)DataContext).ShowTrend}"
+                                   Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                        <TextBlock Text="{Binding Change}" FontSize="16" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding $parent[ItemsControl].((vm:AppNumbersRow)DataContext).ShowName}"
+                                   Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

@@ -32,7 +32,31 @@ public readonly record struct FeatureNeuron(Guid AccountId, string NeuronJid);
 /// Where something a feature adds leads: a tab on a Neuron's page when <see cref="NeuronJid"/>
 /// is given, else a place in the rail. <see cref="ViewKey"/> is the key of that tab or place.
 /// </summary>
-public sealed record FeatureTarget(string ViewKey, Guid? AccountId = null, string? NeuronJid = null);
+public sealed record FeatureTarget(string ViewKey, Guid? AccountId = null, string? NeuronJid = null)
+{
+	/// <summary>A part inside the tab or place, such as one of its pages. The content is shown it through <see cref="IFeatureContent"/>.</summary>
+	public string? Part { get; init; }
+}
+
+/// <summary>
+/// Content a feature makes for a tab or a place that has parts of its own (pages, a chosen view).
+/// When something leads to a part, NAT opens the tab or place and then asks the content to show it.
+/// </summary>
+public interface IFeatureContent
+{
+	/// <summary>Shows a part. Unknown parts are left alone.</summary>
+	void ShowPart(string part);
+}
+
+/// <summary>
+/// Links to what a feature shows (neuro-nat:// links), made by the shell. Until the shell fills
+/// <see cref="Make"/>, there are no links and nothing offers to copy one.
+/// </summary>
+public static class FeatureLinks
+{
+	/// <summary>The link that opens a target, or null when there is none.</summary>
+	public static Func<FeatureTarget, string?> Make { get; set; } = _ => null;
+}
 
 /// <summary>A tab on a Neuron's page. <see cref="Content"/> makes what the tab shows (a view model the feature has a template for).</summary>
 public sealed record FeatureTab(string Key, string Title, Func<object> Content);

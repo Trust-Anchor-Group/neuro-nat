@@ -141,3 +141,24 @@ public sealed class StoredKnownNeuron : IStoredObject
 	/// <summary>When it answered (UTC).</summary>
 	public DateTime Answered { get; set; }
 }
+
+/// <summary>
+/// An answer a feature fetched from a Neuron's web API and keeps between runs (app telemetry's
+/// numbers, for one): the body as it came, with its ETag and when it was asked.
+/// </summary>
+[CollectionName("FeatureAnswers")]
+[TypeName(TypeNameSerialization.None)]
+[Index("Feature", "Key")]
+public sealed class StoredFeatureAnswer : IStoredObject
+{
+	[ObjectId]
+	public string? ObjectId { get; set; }
+
+	/// <summary>The feature's key, such as "telemetry".</summary>
+	public string Feature { get; set; } = string.Empty;
+
+	/// <summary>What was asked, as the feature names it (account, Neuron and path).</summary>
+	public string Key { get; set; } = string.Empty;
+
+	public string Json { get; set; } = string.Empty;
+}

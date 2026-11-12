@@ -10,7 +10,7 @@ namespace Neuro.Nat.App.Features;
 /// every list is empty and NAT shows nothing of them. A feature that throws is left out of that
 /// answer and logged; it never takes a screen down with it.
 /// </summary>
-public sealed class FeatureSet : IFeatureHost, IAsyncDisposable
+public sealed partial class FeatureSet : IFeatureHost, IAsyncDisposable
 {
 	private readonly List<INatFeature> features;
 	private readonly object sync = new();

@@ -1,4 +1,3 @@
-using System.Net;
 using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.Attention;
 using Neuro.Nat.Engine.Events;
@@ -14,11 +13,12 @@ namespace Neuro.Nat.Features.Telemetry;
 internal static class NeuronWeb
 {
 	/// <summary>
-	/// The addresses to try, best first: the web addresses in the Neuron's own notifications (as
-	/// the Identity tab opens its admin pages), then https on the usual port at its domain. Plain
-	/// http only on this computer, so a token never crosses the network unencrypted.
+	/// The addresses to try, best first: the account's own web address when it has one, then the
+	/// web addresses in the Neuron's own notifications (as the Identity tab opens its admin pages),
+	/// then https on the usual port at its domain. Plain http only on this computer, so a token
+	/// never crosses the network unencrypted.
 	/// </summary>
-	public static IReadOnlyList<Uri> Candidates(AttentionInbox? notifications, Guid accountId, string domain)
+	public static IReadOnlyList<Uri> Candidates(string? accountWebAddress, AttentionInbox? notifications, Guid accountId, string domain)
 	{
 		List<Uri> list = [];
 		void Add(Uri u)
@@ -26,6 +26,9 @@ internal static class NeuronWeb
 			if (!list.Any(x => Uri.Compare(x, u, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0))
 				list.Add(u);
 		}
+
+		if (AccountWeb.Check(accountWebAddress) is string own)
+			Add(new Uri(own));
 
 		foreach (NeuronNotification n in notifications?.Items ?? [])
 		{
@@ -48,9 +51,7 @@ internal static class NeuronWeb
 		return list;
 	}
 
-	public static bool IsThisComputer(string host)
-		=> string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase) ||
-			(IPAddress.TryParse(host.Trim('[', ']'), out IPAddress? ip) && IPAddress.IsLoopback(ip));
+	public static bool IsThisComputer(string host) => AccountWeb.IsThisComputer(host);
 }
 
 /// <summary>Asks the account's Neuron for a token over XMPP, one request at a time per app.</summary>

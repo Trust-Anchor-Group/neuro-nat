@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.Features.Telemetry.ViewModels"
+             xmlns:views="using:Neuro.Nat.Features.Telemetry.Views"
+             x:Class="Neuro.Nat.Features.Telemetry.Views.PlaceView"
+             x:DataType="vm:TelemetryPlaceViewModel">
+
+  <!-- App telemetry in the rail: with more than one collector, which one at the top. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Top" IsVisible="{Binding HasPicker}" Padding="20,10,20,10" Background="{DynamicResource Surface.Ground}"
+            BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Collectors}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="0" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:CollectorChoice">
+              <ToggleButton Classes="seg" IsChecked="{Binding IsCurrent, Mode=OneWay}"
+                            Command="{Binding $parent[UserControl].((vm:TelemetryPlaceViewModel)DataContext).PickCommand}" CommandParameter="{Binding Key}"
+                            Content="{Binding Name}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Border>
+    <views:DashboardView DataContext="{Binding Current}" />
+  </DockPanel>
+</UserControl>

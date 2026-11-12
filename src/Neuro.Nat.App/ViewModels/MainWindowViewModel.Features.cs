@@ -189,11 +189,30 @@ public sealed partial class MainWindowViewModel
 			this.OpenNeuron(jid, target.AccountId);
 			if (!this.OpenFeatureTab(target.ViewKey))
 				Ui.Say("Not on this Neuron");
+			else
+				this.ShowFeaturePart(target);
 			return;
 		}
 
 		if (!this.OpenFeaturePlace(target.ViewKey))
 			Ui.Say("Not there any more");
+		else
+			this.ShowFeaturePart(target);
+	}
+
+	private void ShowFeaturePart(FeatureTarget target)
+	{
+		if (target.Part is string part && this.FeatureContent is IFeatureContent content)
+		{
+			try
+			{
+				content.ShowPart(part);
+			}
+			catch (Exception ex)
+			{
+				AppLog.Error("A feature could not show " + part + ".", ex);
+			}
+		}
 	}
 
 	/// <summary>Lines for the search box from the features.</summary>

@@ -1,0 +1,635 @@
+{
+	"metricsVersion": 5,
+	"dimensions": {
+		"neuron": {
+			"audience": "internal",
+			"description": "The Neuron the numbers come from: its domain."
+		},
+		"method": {
+			"audience": "external",
+			"description": "Verification method of the application, as the app reports it, such as NFC."
+		},
+		"nationality": {
+			"audience": "external",
+			"description": "Nationality on the document, as the app reports it."
+		},
+		"platform": {
+			"audience": "external",
+			"description": "The phone's operating system, such as Android or iOS."
+		},
+		"appVersion": {
+			"audience": "external",
+			"description": "Version of the app that made the attempt."
+		},
+		"outcome": {
+			"audience": "external",
+			"description": "How an NFC attempt ended. ReadSucceeded and ReadFailed are NFC reads: they happened after the NFC scan started. ErrorBeforeRead is a camera, document text line (MRZ) or setup error before it.",
+			"values": [
+				"ReadSucceeded",
+				"ReadFailed",
+				"ErrorBeforeRead",
+				"SwitchedMethod",
+				"Abandoned",
+				"NoReadResult"
+			]
+		},
+		"applicationOutcome": {
+			"audience": "internal",
+			"description": "What happened to the application after a successful NFC read, within 30 days.",
+			"values": [
+				"Approved",
+				"Rejected",
+				"Undecided",
+				"SubmissionFailed",
+				"NotSubmitted"
+			]
+		},
+		"rejectionReason": {
+			"audience": "internal",
+			"description": "Reason given for a rejection. Unknown when none was given."
+		},
+		"failureCode": {
+			"audience": "internal",
+			"description": "The app's failure code."
+		},
+		"readDuration": {
+			"audience": "internal",
+			"description": "How long a successful NFC read took. Unknown when the app did not report it.",
+			"values": [
+				"0-5s",
+				"5-10s",
+				"10-20s",
+				"20-30s",
+				"30-60s",
+				"60s+",
+				"Unknown"
+			]
+		},
+		"step": {
+			"audience": "internal",
+			"description": "A step of the NFC flow, in order. Approved is reached when the application is approved.",
+			"values": [
+				"NfcSelected",
+				"MrzAvailable",
+				"NfcInstructionsShown",
+				"NfcScanStarted",
+				"NfcConnected",
+				"ReadStarted",
+				"ReadCompleted",
+				"SubmissionRequested",
+				"SubmissionAcknowledged",
+				"ResultReceived",
+				"Approved"
+			]
+		},
+		"stopReason": {
+			"audience": "internal",
+			"description": "Why an attempt did not go on from a step.",
+			"values": [
+				"ReadFailed",
+				"ErrorBeforeRead",
+				"SwitchedMethod",
+				"Abandoned",
+				"SubmissionFailed",
+				"Rejected",
+				"Undecided",
+				"NoFurtherActivity"
+			]
+		},
+		"chipResult": {
+			"audience": "internal",
+			"description": "Result of the chip read in the app's failure diagnostics."
+		},
+		"lastChipFile": {
+			"audience": "internal",
+			"description": "Last file read from the chip before the failure, in the app's failure diagnostics."
+		},
+		"failureStage": {
+			"audience": "internal",
+			"description": "Stage of the flow where an unreadable document was reported."
+		}
+	},
+	"metrics": [
+		{
+			"key": "Applications.Submitted",
+			"title": "Applications submitted",
+			"kind": "count",
+			"unit": "applications",
+			"dimensions": [
+				"method",
+				"nationality"
+			],
+			"followUpDays": 0,
+			"audience": "external",
+			"description": "Identity applications submitted from the app, counted on the UTC day they were first submitted. A resubmission of the same application within 31 days is not counted again."
+		},
+		{
+			"key": "Applications.Approved",
+			"title": "Applications approved",
+			"kind": "count",
+			"unit": "applications",
+			"dimensions": [
+				"method",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "Applications approved within 30 days, counted on the day they were first submitted."
+		},
+		{
+			"key": "Applications.Rejected",
+			"title": "Applications rejected",
+			"kind": "count",
+			"unit": "applications",
+			"dimensions": [
+				"method",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "Applications rejected (and not later approved) within 30 days, counted on the day they were first submitted."
+		},
+		{
+			"key": "Applications.Decided",
+			"title": "Applications decided",
+			"kind": "count",
+			"unit": "applications",
+			"dimensions": [
+				"method",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "Applications approved or rejected within 30 days."
+		},
+		{
+			"key": "Applications.Undecided",
+			"title": "Applications undecided",
+			"kind": "count",
+			"unit": "applications",
+			"dimensions": [
+				"method",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "Applications with no approval or rejection within 30 days. Submitted is Decided plus Undecided."
+		},
+		{
+			"key": "Applications.ApprovalRate",
+			"title": "Application approval rate",
+			"kind": "rate",
+			"unit": "percent",
+			"numerator": "Applications.Approved",
+			"denominator": "Applications.Decided",
+			"dimensions": [
+				"method",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "Approved out of decided applications."
+		},
+		{
+			"key": "Applications.RejectionReasons",
+			"title": "Rejection reasons",
+			"kind": "count",
+			"unit": "applications",
+			"dimensions": [
+				"rejectionReason"
+			],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "Rejected applications, counted on the day they were first submitted, by rejection reason. An application can have several reasons, so the reasons can add up to more than the total."
+		},
+		{
+			"key": "Applications.NfcRejectionReasons",
+			"title": "NFC rejection reasons",
+			"kind": "count",
+			"unit": "applications",
+			"dimensions": [
+				"rejectionReason"
+			],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "Rejected applications submitted with NFC, by rejection reason. An application can have several reasons."
+		},
+		{
+			"key": "Applications.Applicants",
+			"title": "Applicants",
+			"kind": "distinct",
+			"unit": "users",
+			"dimensions": [],
+			"followUpDays": 0,
+			"audience": "external",
+			"description": "Accounts that submitted an application in the day, calendar week or calendar month, depending on the query's interval. Not available with interval total."
+		},
+		{
+			"key": "Activity.Submissions",
+			"title": "Submissions",
+			"kind": "count",
+			"unit": "events",
+			"dimensions": [
+				"method"
+			],
+			"followUpDays": 0,
+			"audience": "external",
+			"description": "Application submissions on the day, resubmissions of the same application included."
+		},
+		{
+			"key": "Activity.Approvals",
+			"title": "Approvals",
+			"kind": "count",
+			"unit": "events",
+			"dimensions": [
+				"method"
+			],
+			"followUpDays": 0,
+			"audience": "external",
+			"description": "Approvals on the day, also for applications submitted earlier."
+		},
+		{
+			"key": "Activity.Rejections",
+			"title": "Rejections",
+			"kind": "count",
+			"unit": "events",
+			"dimensions": [
+				"method"
+			],
+			"followUpDays": 0,
+			"audience": "external",
+			"description": "Rejections on the day, also for applications submitted earlier."
+		},
+		{
+			"key": "Nfc.Attempts",
+			"title": "NFC attempts",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality",
+				"outcome"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "NFC attempts started, counted on the day they started."
+		},
+		{
+			"key": "Nfc.Reads",
+			"title": "NFC reads",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "Attempts where the NFC scan started and the app tried to read the document's chip, whether it worked or not. Errors before the scan are not NFC reads."
+		},
+		{
+			"key": "Nfc.ReadsSucceeded",
+			"title": "NFC reads succeeded",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality",
+				"readDuration",
+				"applicationOutcome"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "NFC reads that succeeded. Group by readDuration for how long reads took, or by applicationOutcome for what happened to the application next."
+		},
+		{
+			"key": "Nfc.ReadsFailed",
+			"title": "NFC reads failed",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality",
+				"failureCode"
+			],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "NFC reads that failed, by the app's failure code."
+		},
+		{
+			"key": "Nfc.ReadSuccessRate",
+			"title": "NFC read success rate",
+			"kind": "rate",
+			"unit": "percent",
+			"numerator": "Nfc.ReadsSucceeded",
+			"denominator": "Nfc.Reads",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "NFC reads that succeeded, out of all NFC reads. Errors before the NFC scan are not counted."
+		},
+		{
+			"key": "Nfc.ErrorsBeforeRead",
+			"title": "Stopped before NFC read",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality",
+				"failureCode"
+			],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "Attempts stopped by an error before the NFC scan started: camera, document text lines (MRZ) or setup. Not NFC reads."
+		},
+		{
+			"key": "Nfc.AttemptsApproved",
+			"title": "NFC attempts approved",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "NFC attempts whose application was approved within 30 days."
+		},
+		{
+			"key": "Nfc.AttemptsRejected",
+			"title": "NFC attempts rejected",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "NFC attempts whose application was rejected (and not later approved) within 30 days."
+		},
+		{
+			"key": "Nfc.AttemptsDecided",
+			"title": "NFC attempts decided",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "NFC attempts whose application was approved or rejected within 30 days."
+		},
+		{
+			"key": "Nfc.AttemptApprovalRate",
+			"title": "NFC attempt approval rate",
+			"kind": "rate",
+			"unit": "percent",
+			"numerator": "Nfc.AttemptsApproved",
+			"denominator": "Nfc.AttemptsDecided",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "Approved out of decided NFC attempts. Counts attempts, not applications; for applications, use Applications.ApprovalRate filtered by method."
+		},
+		{
+			"key": "Nfc.Journeys",
+			"title": "NFC journeys",
+			"kind": "count",
+			"unit": "journeys",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 0,
+			"audience": "external",
+			"description": "NFC journeys started: all NFC attempts an account makes for one application, retries included, counted on the day of the first attempt."
+		},
+		{
+			"key": "Nfc.JourneysSucceeded",
+			"title": "NFC journeys completed",
+			"kind": "count",
+			"unit": "journeys",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "NFC journeys where some attempt had a successful NFC read within 30 days, counted on the day of the first attempt."
+		},
+		{
+			"key": "Nfc.JourneySuccessRate",
+			"title": "NFC completion rate",
+			"kind": "rate",
+			"unit": "percent",
+			"numerator": "Nfc.JourneysSucceeded",
+			"denominator": "Nfc.Journeys",
+			"dimensions": [
+				"platform",
+				"appVersion",
+				"nationality"
+			],
+			"followUpDays": 30,
+			"audience": "external",
+			"description": "Journeys that ended in a successful NFC read, out of all NFC journeys. Unlike Nfc.ReadSuccessRate, retries do not lower it, and people who gave up before the NFC scan count as not completed."
+		},
+		{
+			"key": "Nfc.Users",
+			"title": "NFC users",
+			"kind": "distinct",
+			"unit": "users",
+			"dimensions": [],
+			"followUpDays": 0,
+			"audience": "external",
+			"description": "Accounts that started an NFC attempt in the day, calendar week or calendar month, depending on the query's interval. Not available with interval total."
+		},
+		{
+			"key": "Nfc.StepsReached",
+			"title": "Steps reached",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"step"
+			],
+			"hasTotal": false,
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "Attempts that reached each step. Only by step."
+		},
+		{
+			"key": "Nfc.StepsContinued",
+			"title": "Steps continued",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"step"
+			],
+			"excludedValues": {
+				"step": [
+					"Approved"
+				]
+			},
+			"hasTotal": false,
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "Attempts that reached each step and then the next one. Only by step."
+		},
+		{
+			"key": "Nfc.StepContinuationRate",
+			"title": "Step continuation rate",
+			"kind": "rate",
+			"unit": "percent",
+			"numerator": "Nfc.StepsContinued",
+			"denominator": "Nfc.StepsReached",
+			"dimensions": [
+				"step"
+			],
+			"excludedValues": {
+				"step": [
+					"Approved"
+				]
+			},
+			"hasTotal": false,
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "Attempts that went on to the next step, out of attempts that reached the step. Only by step."
+		},
+		{
+			"key": "Nfc.StepsStopped",
+			"title": "Steps stopped",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [
+				"step",
+				"stopReason"
+			],
+			"excludedValues": {
+				"step": [
+					"Approved"
+				]
+			},
+			"hasTotal": false,
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "Attempts that reached a step but not the next one, by step or by why. An attempt that skips a step it did not report can count at more than one step, so there is no total."
+		},
+		{
+			"key": "Nfc.FailureDiagnostics",
+			"title": "Failure diagnostics",
+			"kind": "count",
+			"unit": "records",
+			"dimensions": [
+				"outcome",
+				"chipResult",
+				"lastChipFile",
+				"platform",
+				"appVersion"
+			],
+			"followUpDays": 3,
+			"audience": "internal",
+			"description": "Failure diagnostics the app sent after a failed or cancelled NFC read, counted on the day of their attempt."
+		},
+		{
+			"key": "Nfc.UnreadableReports",
+			"title": "Unreadable document reports",
+			"kind": "count",
+			"unit": "reports",
+			"dimensions": [
+				"failureCode",
+				"failureStage"
+			],
+			"followUpDays": 0,
+			"audience": "internal",
+			"description": "Reports of documents the app could not read, counted on the day received. Not linked to accounts or attempts."
+		},
+		{
+			"key": "Nfc.UnreadableReportsShared",
+			"title": "Unreadable reports shared",
+			"kind": "count",
+			"unit": "reports",
+			"dimensions": [
+				"failureCode",
+				"failureStage"
+			],
+			"followUpDays": 0,
+			"audience": "internal",
+			"description": "Unreadable document reports where the user agreed to share details."
+		},
+		{
+			"key": "Nfc.UnreadableReportsSodUploaded",
+			"title": "Unreadable reports with SOD",
+			"kind": "count",
+			"unit": "reports",
+			"dimensions": [
+				"failureCode",
+				"failureStage"
+			],
+			"followUpDays": 0,
+			"audience": "internal",
+			"description": "Unreadable document reports where the document security object (SOD) was uploaded."
+		},
+		{
+			"key": "Nfc.UnreadableReportsComUploaded",
+			"title": "Unreadable reports with COM",
+			"kind": "count",
+			"unit": "reports",
+			"dimensions": [
+				"failureCode",
+				"failureStage"
+			],
+			"followUpDays": 0,
+			"audience": "internal",
+			"description": "Unreadable document reports where the document's COM file was uploaded."
+		},
+		{
+			"key": "DataQuality.InvalidEvents",
+			"title": "Invalid events",
+			"kind": "count",
+			"unit": "events",
+			"dimensions": [],
+			"followUpDays": 0,
+			"audience": "internal",
+			"description": "Verification events that could not be used (missing ID, time or required link), counted on the day received."
+		},
+		{
+			"key": "DataQuality.EventsWithoutAccount",
+			"title": "Events without account",
+			"kind": "count",
+			"unit": "events",
+			"dimensions": [],
+			"followUpDays": 0,
+			"audience": "internal",
+			"description": "Verification events without an account. They are left out of user counts."
+		},
+		{
+			"key": "DataQuality.UnknownReadOutcomes",
+			"title": "Unknown read outcomes",
+			"kind": "count",
+			"unit": "attempts",
+			"dimensions": [],
+			"followUpDays": 30,
+			"audience": "internal",
+			"description": "NFC attempts whose read result had an outcome the package does not recognize."
+		}
+	]
+}

@@ -24,6 +24,13 @@ public sealed record AccountProfile
 	/// </summary>
 	public string Domain { get; init; } = string.Empty;
 
+	/// <summary>
+	/// The Neuron's web address, such as https://lab.example.org or http://localhost:8081, for
+	/// what NAT reads over the web (app telemetry). Null: from the Neuron's notifications, else
+	/// https on the domain.
+	/// </summary>
+	public string? WebAddress { get; init; }
+
 	/// <summary>Account (user) name, without the domain.</summary>
 	public required string UserName { get; init; }
 

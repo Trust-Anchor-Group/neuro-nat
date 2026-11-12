@@ -11,12 +11,20 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- The dashboard is rendered headlessly for review, as the app's own screens are. -->
+    <PackageReference Include="Avalonia.Headless.XUnit" />
+    <PackageReference Include="Avalonia.Skia" />
     <!-- Held at 6.3.3 as in the app; see the feature project. -->
     <PackageReference Include="Waher.Content.Markdown" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Neuro.Nat.Features.Telemetry\Neuro.Nat.Features.Telemetry.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The package's own catalog (Neuro.App.Telemetry, NeuroAppTelemetry/Catalog.json), for the stand-in API. -->
+    <None Include="StandIn\Catalog.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

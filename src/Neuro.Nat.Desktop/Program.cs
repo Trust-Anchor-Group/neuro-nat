@@ -127,7 +127,7 @@ internal static class Program
 				Runbooks = stores.Runbooks,
 
 				// Features in projects of their own. NAT knows them only through App.Features.
-				Features = new App.Features.FeatureSet([new Features.Telemetry.TelemetryFeature()]),
+				Features = new App.Features.FeatureSet([new Features.Telemetry.TelemetryFeature(stores.FeatureAnswers)]),
 			};
 			if (startHidden)
 				AppLog.Info("Started in the tray.");
@@ -163,6 +163,8 @@ internal static class Program
 		public INeuronCopyStore NeuronCopies { get; init; } = new MemoryNeuronCopyStore();
 		/// <summary>Runbooks and the records of their runs.</summary>
 		public IRunbookStore Runbooks { get; init; } = new InMemoryRunbookStore();
+		/// <summary>What features fetched (app telemetry's numbers). Kept only while NAT runs when there is no database.</summary>
+		public IFeatureAnswerStore FeatureAnswers { get; init; } = new InMemoryFeatureAnswerStore();
 	}
 
 	/// <summary>
@@ -244,6 +246,7 @@ internal static class Program
 		{
 			NeuronCopies = new DatabaseNeuronCopyStore(db),
 			Runbooks = new DatabaseRunbookStore(db),
+			FeatureAnswers = new DatabaseFeatureAnswerStore(db),
 		};
 	}
 

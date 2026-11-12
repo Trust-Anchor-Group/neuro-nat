@@ -71,7 +71,7 @@ public class StorageTests(ITestOutputHelper output) : IDisposable
 
 		// Collection names are written into the files: they must not change either.
 		Assert.Equal(
-			["Accounts", "AppSettings", "ChatConversations", "ChatMessages", "ChatRooms", "InboxItems", "KnownNeurons", "NeuronCopies", "RunbookRuns", "Runbooks", "SignIns"],
+			["Accounts", "AppSettings", "ChatConversations", "ChatMessages", "ChatRooms", "FeatureAnswers", "InboxItems", "KnownNeurons", "NeuronCopies", "RunbookRuns", "Runbooks", "SignIns"],
 			stored.Select(t => t.GetCustomAttribute<CollectionNameAttribute>()!.Name).Order(StringComparer.Ordinal));
 	}
 
@@ -110,6 +110,24 @@ public class StorageTests(ITestOutputHelper output) : IDisposable
 
 		Assert.Equal("# Backup failed", Assert.Single(new DatabaseAttentionStore(db).Load()).Markdown);
 		Assert.True(new DatabaseAlertSettingsStore(new DatabaseSettings(db)).Load().SoundForInformation);
+		await db.Stop();
+	}
+
+	[Fact]
+	public async Task WhatFeaturesFetchedComesBackAfterARestart()
+	{
+		FilesProvider db = await this.OpenAsync();
+		DatabaseFeatureAnswerStore store = new(db);
+		DateTime at = new(2026, 11, 12, 9, 30, 0, DateTimeKind.Utc);
+		await store.SaveAsync("telemetry", "a|lab|/Catalog", new FeatureAnswer("{\"metrics\":[]}", "\"e1\"", at), TestContext.Current.CancellationToken);
+		await store.SaveAsync("telemetry", "a|lab|/Catalog", new FeatureAnswer("{\"metrics\":[1]}", "\"e2\"", at.AddHours(1)), TestContext.Current.CancellationToken);
+		await store.SaveAsync("other", "a|lab|/Catalog", new FeatureAnswer("x", null, at), TestContext.Current.CancellationToken);
+		await db.Stop();
+
+		db = await this.OpenAsync();
+		IReadOnlyDictionary<string, FeatureAnswer> back = await new DatabaseFeatureAnswerStore(db).LoadAsync("telemetry", TestContext.Current.CancellationToken);
+		FeatureAnswer a = Assert.Single(back).Value;
+		Assert.Equal(("{\"metrics\":[1]}", "\"e2\"", at.AddHours(1)), (a.Body, a.ETag, a.AskedAt.ToUniversalTime()));
 		await db.Stop();
 	}
 
