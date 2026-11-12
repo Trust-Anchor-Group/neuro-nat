@@ -43,6 +43,12 @@ public enum WorkspaceKind
 
 	/// <summary>Two Neurons side by side, or a Neuron beside a kept copy of it.</summary>
 	Compare,
+
+	/// <summary>A place a feature adds to the rail.</summary>
+	Feature,
+
+	/// <summary>A tab a feature adds to a Neuron's page.</summary>
+	NeuronFeature,
 }
 
 /// <summary>Shell view model: workspace navigation, the account lens, and the Accounts workspace.</summary>
@@ -61,11 +67,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 	public MainWindowViewModel(AccountManager accounts, FleetService fleet, Engine.Chat.ChatService? chat = null, Engine.Identity.IdentityService? identities = null,
 		Engine.Devices.DevicesService? devices = null, Engine.PubSub.PubSubService? pubsub = null, Engine.Software.SoftwareService? software = null,
-		MainWindowViewModel? primary = null)
+		MainWindowViewModel? primary = null, global::Neuro.Nat.App.Features.FeatureSet? features = null)
 	{
 		this.primary = primary;
 		this.accounts = accounts;
 		this.fleet = fleet;
+
+		// The features the host registered; windows beside the main one share them.
+		this.Features = features ?? primary?.Features ?? global::Neuro.Nat.App.Features.FeatureSet.None();
+		this.Features.Start(accounts, fleet.Monitors);
 		this.Search = new SearchViewModel(this.SearchItems)
 		{
 			// People and problems are found as they are now, not as they were when their screens were last open.
@@ -111,7 +121,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			OpenConsoleFor = (account, jid) => this.OpenNeuron(jid, account, WorkspaceKind.NeuronConsole),
 		};
 		Engine.Software.SoftwareService softwareService = software ?? new Engine.Software.SoftwareService(fleet.Monitors, chatService);
-		this.Updates = new UpdatesViewModel(softwareService, fleet.Monitors, accounts);
+		this.Updates = new UpdatesViewModel(softwareService, fleet.Monitors, accounts, this.Features);
 		this.StartCompare(softwareService);
 		this.Devices = new DevicesViewModel(this.devicesService, accounts);
 		Engine.PubSub.PubSubService pubsubService = pubsub ?? new Engine.PubSub.PubSubService(accounts);
@@ -119,6 +129,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		{
 			OpenIdentities = this.ShowIdentities,
 			OpenDevices = this.ShowDevices,
+			Features = this.Features,
+			OpenFeature = this.OpenFeature,
 		};
 		this.Inbox.ShowsConversationChanged += (_, _) => this.SyncWatched();
 		this.Inbox.PropertyChanged += (_, e) =>
@@ -170,6 +182,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.RefreshLastEvent();
 		this.StartActions();
 		this.StartPages();
+		this.StartFeatures();
 		this.StartHistory();
 		this.StartLinks();
 	}
@@ -187,6 +200,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		WorkspaceKind.Console => PlaceKind.Console,
 		WorkspaceKind.Accounts or WorkspaceKind.Devices or WorkspaceKind.AccountIdentities or WorkspaceKind.AccountStorage => PlaceKind.Accounts,
 		WorkspaceKind.Settings => PlaceKind.Settings,
+		WorkspaceKind.Feature => PlaceKind.Feature,
 		_ => PlaceKind.Neurons,
 	};
 
@@ -272,7 +286,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			case WorkspaceKind.Updates:
 			case WorkspaceKind.PubSub:
 			case WorkspaceKind.Identities:
+			case WorkspaceKind.NeuronFeature:
 				this.ShowPageTab(screen);
+				break;
+			case WorkspaceKind.Feature:
+				if (!this.OpenFeaturePlace(this.featurePlaceKey))
+					this.ShowFleet();
 				break;
 			case WorkspaceKind.Events: this.ShowEvents(); break;
 			case WorkspaceKind.Chat: this.ShowChat(); break;
@@ -623,6 +642,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			yield return new SearchItem("Back", this.BackTip, Icon("Back"), () => this.GoBackCommand.Execute(null)) { Kind = "Do" };
 		if (!this.IsAllNeurons)
 			yield return new SearchItem("Show all Neurons", "Showing " + this.Picker.Text, Icon("Filter"), () => this.SetLens([])) { Kind = "Do" };
+
+		foreach (SearchItem i in this.FeatureSearchItems())
+			yield return i;
 	}
 
 	/// <summary>The Chat workspace.</summary>
@@ -838,7 +860,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	}
 
 	/// <summary>The name of the current place, shown in the top bar. On a Neuron's page, the Neuron.</summary>
-	public string WorkspaceTitle => this.IsNeuronPage && this.Page is NeuronPageViewModel p ? p.Label : this.IsCompare ? "Compare" : this.Place.ToString();
+	public string WorkspaceTitle => this.IsNeuronPage && this.Page is NeuronPageViewModel p ? p.Label : this.IsCompare ? "Compare" : this.IsFeature ? this.FeatureTitle : this.Place.ToString();
 
 	[RelayCommand]
 	private void ShowAccounts() => this.Workspace = WorkspaceKind.Accounts;

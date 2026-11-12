@@ -34,7 +34,7 @@ public sealed partial class MainWindowViewModel
 	public EventsViewModel NeuronEvents { get; }
 
 	private static bool IsPageScreen(WorkspaceKind screen) => screen is WorkspaceKind.Neuron or WorkspaceKind.NeuronEvents or WorkspaceKind.Sources
-		or WorkspaceKind.NeuronConsole or WorkspaceKind.Updates or WorkspaceKind.PubSub or WorkspaceKind.Identities;
+		or WorkspaceKind.NeuronConsole or WorkspaceKind.Updates or WorkspaceKind.PubSub or WorkspaceKind.Identities or WorkspaceKind.NeuronFeature;
 
 	/// <summary>True on a Neuron's page, whichever tab.</summary>
 	public bool IsNeuronPage => IsPageScreen(this.Workspace);
@@ -121,6 +121,9 @@ public sealed partial class MainWindowViewModel
 			case WorkspaceKind.Identities:
 				this.Identities.ShowNeuron(p.AccountId, p.BareJid);
 				break;
+
+			case WorkspaceKind.NeuronFeature when this.OpenFeatureTab(this.featureTabKey):
+				return;
 
 			default:
 				tab = WorkspaceKind.Neuron;

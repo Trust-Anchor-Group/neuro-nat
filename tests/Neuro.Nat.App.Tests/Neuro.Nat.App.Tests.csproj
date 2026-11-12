@@ -12,6 +12,8 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Avalonia.Headless.XUnit" />
     <PackageReference Include="Avalonia.Skia" />
+    <!-- Held at 6.3.3 (SkiaSharp 3, as Avalonia 12): app telemetry brings Waher.Networking.HTTP, which asks for 6.4. -->
+    <PackageReference Include="Waher.Content.Markdown" />
   </ItemGroup>
 
   <ItemGroup>

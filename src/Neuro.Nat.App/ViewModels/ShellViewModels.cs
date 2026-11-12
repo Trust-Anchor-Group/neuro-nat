@@ -15,6 +15,9 @@ public enum PlaceKind
 	Console,
 	Accounts,
 	Settings,
+
+	/// <summary>A place a feature adds to the rail.</summary>
+	Feature,
 }
 
 /// <summary>One Neuron in the top bar's Neuron filter: its state, its errors this hour, and whether it is ticked.</summary>

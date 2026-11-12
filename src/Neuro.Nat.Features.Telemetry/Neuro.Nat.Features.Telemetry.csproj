@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Neuro.Nat.Features.Telemetry</RootNamespace>
+    <Description>App telemetry in NAT: finds the Neurons that have the Neuro.App.Telemetry package, through its web API. NAT knows it only through App.Features.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Short-lived tokens for the web API, asked for over the account's XMPP connection. -->
+    <PackageReference Include="Waher.Networking.XMPP.HTTPX" />
+    <!-- HTTPX brings Waher.Networking.HTTP 4.9, which asks for Markdown 6.4 and so SkiaSharp 4; Avalonia 12 is built on
+         SkiaSharp 3. Markdown is held at 6.3.3 here as in the engine; only the token request of HTTPX is used. -->
+    <PackageReference Include="Waher.Content.Markdown" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Neuro.Nat.Engine\Neuro.Nat.Engine.csproj" />
+    <ProjectReference Include="..\Neuro.Nat.App\Neuro.Nat.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Neuro.Nat.Features.Telemetry.Tests" />
+  </ItemGroup>
+
+</Project>

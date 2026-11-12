@@ -9,15 +9,17 @@ dotnet build Neuro.Nat.slnx
 dotnet run --project src/Neuro.Nat.Desktop
 ```
 
-The program is `NAT.exe`. The solution has three projects and two test projects:
+The program is `NAT.exe`. The solution has four projects and three test projects:
 
 | Project | What's in it |
 |:--------|:-------------|
 | `Neuro.Nat.Engine` | Accounts, connections, events, chat, the encrypted database. No UI |
 | `Neuro.Nat.App` | Every screen (Avalonia), the tray, the icon |
 | `Neuro.Nat.Desktop` | The program: starts it all, Windows vault, installer hooks, updates |
+| `Neuro.Nat.Features.Telemetry` | App telemetry: finds the Neurons with the Neuro.App.Telemetry package. The app knows it only through `App/Features` |
 | `Neuro.Nat.Engine.Tests` | Tests of the engine |
 | `Neuro.Nat.App.Tests` | Tests of the screens, rendered without a window |
+| `Neuro.Nat.Features.Telemetry.Tests` | Tests of app telemetry, with a stand-in for the Neuron's web API |
 
 ## Run the tests
 

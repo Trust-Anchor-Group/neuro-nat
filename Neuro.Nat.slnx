@@ -3,10 +3,12 @@
     <Project Path="src/Neuro.Nat.Engine/Neuro.Nat.Engine.csproj" />
     <Project Path="src/Neuro.Nat.App/Neuro.Nat.App.csproj" />
     <Project Path="src/Neuro.Nat.Desktop/Neuro.Nat.Desktop.csproj" />
+    <Project Path="src/Neuro.Nat.Features.Telemetry/Neuro.Nat.Features.Telemetry.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Neuro.Nat.Engine.Tests/Neuro.Nat.Engine.Tests.csproj" />
     <Project Path="tests/Neuro.Nat.App.Tests/Neuro.Nat.App.Tests.csproj" />
+    <Project Path="tests/Neuro.Nat.Features.Telemetry.Tests/Neuro.Nat.Features.Telemetry.Tests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />

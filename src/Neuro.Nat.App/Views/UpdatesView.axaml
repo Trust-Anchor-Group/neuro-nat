@@ -156,6 +156,15 @@
               </Grid>
             </Border>
 
+            <!-- What features say about this Neuron, one quiet line each (app telemetry) -->
+            <ItemsControl ItemsSource="{Binding FeatureLines}" IsVisible="{Binding HasFeatureLines}" Margin="2,-6,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock Classes="meta" Text="{Binding}" TextWrapping="Wrap" Margin="0,1" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <StackPanel Spacing="8">
               <TextBlock Classes="section" Text="Installed packages" />
               <TextBlock Classes="meta" Text="None besides the Neuron itself." IsVisible="{Binding !HasInstalled}" />

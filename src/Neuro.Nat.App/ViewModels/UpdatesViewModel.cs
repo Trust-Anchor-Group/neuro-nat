@@ -3,6 +3,7 @@ using System.Globalization;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Neuro.Nat.App.Features;
 using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.Events;
 using Neuro.Nat.Engine.Software;
@@ -47,19 +48,27 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	private readonly SoftwareService software;
 	private readonly MonitorService monitors;
 	private readonly AccountManager accounts;
+	private readonly FeatureSet features;
 
-	public UpdatesViewModel(SoftwareService software, MonitorService monitors, AccountManager accounts)
+	public UpdatesViewModel(SoftwareService software, MonitorService monitors, AccountManager accounts, FeatureSet? features = null)
 	{
 		this.software = software;
 		this.monitors = monitors;
 		this.accounts = accounts;
+		this.features = features ?? FeatureSet.None();
 		monitors.NeuronsChanged += (_, _) => Dispatcher.UIThread.Post(this.Sync);
+		this.features.Changed += (_, _) => Dispatcher.UIThread.Post(this.ShowFeatureLines);
 	}
 
 	public ObservableCollection<UpdateRowViewModel> Rows { get; } = [];
 	public ObservableCollection<SoftwarePackage> Packages { get; } = [];
 	public ObservableCollection<string> Installed { get; } = [];
 	public ObservableCollection<UpdateLogLine> Log { get; } = [];
+
+	/// <summary>Quiet lines from features about the selected Neuron, such as whether app telemetry is on it.</summary>
+	public ObservableCollection<string> FeatureLines { get; } = [];
+
+	[ObservableProperty] private bool hasFeatureLines;
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasSelection))]
@@ -247,6 +256,7 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 				await this.software.CheckAsync(account, jid);
 				NeuronSoftware s = await this.software.ReadAsync(account, jid);
 				r.Software = s;
+				this.features.NoteSoftware(s);
 				Describe(r);
 				if (r == this.Selected)
 					this.ShowDetail();
@@ -306,6 +316,7 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 		try
 		{
 			NeuronSoftware s = await this.software.ReadAsync(r.AccountId, r.NeuronJid);
+			this.features.NoteSoftware(s);
 			Dispatcher.UIThread.Post(() =>
 			{
 				r.Software = s;
@@ -345,10 +356,26 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 		this.ContentAuto = s?.ContentAutoInstall == true;
 		this.contentSyncing = false;
 
+		this.ShowFeatureLines();
+
 		this.HasPending = s?.PendingUpdate is not null;
 		this.PendingText = s?.PendingUpdate is { } n
 			? $"{n.Title}, {RelativeTime.Format(n.Received, DateTime.Now)}" + (n.Subject is null ? string.Empty : $" ({n.Subject})")
 			: string.Empty;
+	}
+
+	/// <summary>Shows what the features say about the selected Neuron. UI thread.</summary>
+	private void ShowFeatureLines()
+	{
+		IReadOnlyList<string> lines = this.Selected is { } r ? this.features.SoftwareLines(r.AccountId, r.NeuronJid) : [];
+		if (!lines.SequenceEqual(this.FeatureLines))
+		{
+			this.FeatureLines.Clear();
+			foreach (string line in lines)
+				this.FeatureLines.Add(line);
+		}
+
+		this.HasFeatureLines = this.FeatureLines.Count > 0;
 	}
 
 	private void AddLog(string text)

@@ -22,10 +22,13 @@
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
     <PackageReference Include="Velopack" />
+    <!-- Held at 6.3.3 (SkiaSharp 3, as Avalonia 12): app telemetry brings Waher.Networking.HTTP, which asks for 6.4. -->
+    <PackageReference Include="Waher.Content.Markdown" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Neuro.Nat.App\Neuro.Nat.App.csproj" />
+    <ProjectReference Include="..\Neuro.Nat.Features.Telemetry\Neuro.Nat.Features.Telemetry.csproj" />
   </ItemGroup>
 
 </Project>

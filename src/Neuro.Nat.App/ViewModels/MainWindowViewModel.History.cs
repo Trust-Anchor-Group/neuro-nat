@@ -20,7 +20,8 @@ public sealed partial class MainWindowViewModel
 {
 	private const int MaxStops = 60;
 
-	private sealed record Stop(WorkspaceKind Screen, Guid? Account, string? Jid, string Name);
+	/// <param name="Feature">The key of the feature place or tab, on those.</param>
+	private sealed record Stop(WorkspaceKind Screen, Guid? Account, string? Jid, string Name, string? Feature = null);
 
 	private readonly List<Stop> stops = [];
 	private int stopAt = -1;
@@ -40,7 +41,7 @@ public sealed partial class MainWindowViewModel
 	[ObservableProperty] private string forwardTip = "Forward (Alt+Right)";
 
 	private static bool Same(Stop a, Stop b)
-		=> a.Screen == b.Screen && a.Account == b.Account && string.Equals(a.Jid, b.Jid, StringComparison.OrdinalIgnoreCase);
+		=> a.Screen == b.Screen && a.Account == b.Account && string.Equals(a.Jid, b.Jid, StringComparison.OrdinalIgnoreCase) && a.Feature == b.Feature;
 
 	/// <summary>Where the window is right now.</summary>
 	private Stop Here()
@@ -56,13 +57,17 @@ public sealed partial class MainWindowViewModel
 				WorkspaceKind.Updates => ", Software",
 				WorkspaceKind.PubSub => ", Publish/subscribe",
 				WorkspaceKind.Identities => ", Identity",
+				WorkspaceKind.NeuronFeature => ", " + this.FeatureTabTitle,
 				_ => string.Empty,
 			};
-			return new Stop(screen, p.AccountId, p.BareJid, p.Label + tab);
+			return new Stop(screen, p.AccountId, p.BareJid, p.Label + tab, screen == WorkspaceKind.NeuronFeature ? this.featureTabKey : null);
 		}
 
 		switch (PlaceOf(screen))
 		{
+			case PlaceKind.Feature:
+				return new Stop(screen, null, null, this.FeatureTitle, this.featurePlaceKey);
+
 			case PlaceKind.Accounts:
 				string what = screen switch
 				{
@@ -157,12 +162,21 @@ public sealed partial class MainWindowViewModel
 			if (stop.Jid is null || this.RowOf(stop.Jid, stop.Account) is null)
 				return false;
 
+			if (stop.Screen == WorkspaceKind.NeuronFeature)
+			{
+				this.OpenNeuron(stop.Jid, stop.Account);
+				return this.OpenFeatureTab(stop.Feature);
+			}
+
 			this.OpenNeuron(stop.Jid, stop.Account, stop.Screen);
 			return true;
 		}
 
 		switch (PlaceOf(stop.Screen))
 		{
+			case PlaceKind.Feature:
+				return this.OpenFeaturePlace(stop.Feature);
+
 			case PlaceKind.Accounts:
 				if (stop.Account is Guid id)
 				{

@@ -6,6 +6,8 @@
   <ItemGroup Label="Neuron protocol libraries (same packages the Neuron uses)">
     <PackageVersion Include="Waher.Networking.XMPP" Version="4.4.0" />
     <PackageVersion Include="Waher.Networking.XMPP.Concentrator" Version="4.4.0" />
+    <!-- Short-lived tokens for a Neuron's web API, asked for over the XMPP connection (app telemetry). -->
+    <PackageVersion Include="Waher.Networking.XMPP.HTTPX" Version="4.4.0" />
     <PackageVersion Include="Waher.Events" Version="1.4.7" />
     <PackageVersion Include="Waher.Events.XMPP" Version="2.1.4" />
     <PackageVersion Include="Waher.Networking.XMPP.P2P" Version="5.0.0" />

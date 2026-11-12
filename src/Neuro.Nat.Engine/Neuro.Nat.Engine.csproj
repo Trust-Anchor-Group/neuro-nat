@@ -26,6 +26,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Neuro.Nat.Engine.Tests" />
     <InternalsVisibleTo Include="Neuro.Nat.App.Tests" />
+    <InternalsVisibleTo Include="Neuro.Nat.Features.Telemetry.Tests" />
   </ItemGroup>
 
 </Project>

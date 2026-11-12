@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Neuro.Nat.App.Features;
 using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.Chat;
 using Neuro.Nat.Engine.Devices;
@@ -29,6 +30,9 @@ public enum InboxRowKind
 	IdentityRequest,
 	NodeRequest,
 	Notification,
+
+	/// <summary>Something a feature (such as app telemetry) puts in the Inbox.</summary>
+	Feature,
 }
 
 /// <summary>One line in the Inbox: something that waits for you, whatever kind it is.</summary>
@@ -52,7 +56,8 @@ public sealed partial class InboxRowViewModel(string key, InboxRowKind kind) : O
 	public bool IsMessage => this.Kind == InboxRowKind.Message;
 	public bool IsDeviceQuestion => this.Kind == InboxRowKind.DeviceQuestion;
 	public bool IsNotification => this.Kind == InboxRowKind.Notification;
-	public bool IsRequest => !this.IsMessage && !this.IsNotification;
+	public bool IsFeatureItem => this.Kind == InboxRowKind.Feature;
+	public bool IsRequest => !this.IsMessage && !this.IsNotification && !this.IsFeatureItem;
 
 	[ObservableProperty] private string kindLabel = string.Empty;
 	[ObservableProperty] private string title = string.Empty;
@@ -100,6 +105,7 @@ public sealed partial class InboxRowViewModel(string key, InboxRowKind kind) : O
 	public DeviceQuestion? Question { get; set; }
 	public IdentityPetition? Petition { get; set; }
 	public NodeRequest? NodeAsk { get; set; }
+	public FeatureInboxItem? FeatureItem { get; set; }
 }
 
 /// <summary>
@@ -236,6 +242,23 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 
 	/// <summary>Set by the shell: opens Devices, where a question can be answered for a whole domain.</summary>
 	public Action? OpenDevices { get; set; }
+
+	/// <summary>Set by the shell: the features, which may put items in the Inbox.</summary>
+	public FeatureSet? Features
+	{
+		get => this.features;
+		set
+		{
+			this.features = value;
+			if (value is not null)
+				value.Changed += (_, _) => Interlocked.Exchange(ref this.dirty, 1);
+		}
+	}
+
+	private FeatureSet? features;
+
+	/// <summary>Set by the shell: goes where an item a feature put here leads.</summary>
+	public Action<FeatureTarget>? OpenFeature { get; set; }
 
 	private void Something_Changed(object? sender, object e) => Interlocked.Exchange(ref this.dirty, 1);
 
@@ -603,10 +626,25 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 			(r.PrimaryText, r.SecondaryText) = (n.IsOpen ? "Done" : null, null);
 		}
 
+		// What the features put here. It waits until the feature stops listing it.
+		int fromFeatures = 0;
+		foreach (FeatureInboxItem f in this.Features?.InboxItems() ?? [])
+		{
+			InboxRowViewModel r = Row("f:" + f.Key, InboxRowKind.Feature, f.AccountId, f.When);
+			r.FeatureItem = f;
+			r.Jid = f.NeuronJid;
+			r.KindLabel = f.KindLabel;
+			r.Title = f.Title;
+			r.Detail = f.Detail;
+			r.Tone = f.Tone;
+			(r.PrimaryText, r.SecondaryText) = (f.PrimaryText, null);
+			fromFeatures++;
+		}
+
 		this.MessageCount = messages;
 		this.RequestCount = requests;
-		this.NeuronCount = this.Notifications.OpenCount;
-		this.WaitingCount = messages + requests + this.Notifications.OpenCount;
+		this.NeuronCount = this.Notifications.OpenCount + fromFeatures;
+		this.WaitingCount = messages + requests + this.Notifications.OpenCount + fromFeatures;
 
 		this.Everything = list;
 		string search = this.SearchText.Trim();
@@ -616,7 +654,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 			{
 				InboxTab.Messages => r.IsMessage,
 				InboxTab.Requests => r.IsRequest,
-				InboxTab.Neurons => r.IsNotification,
+				InboxTab.Neurons => r.IsNotification || r.IsFeatureItem,
 				_ => true,
 			})];
 
@@ -739,6 +777,21 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 
 			case InboxRowKind.IdentityRequest:
 				this.OpenIdentities?.Invoke();
+				break;
+
+			case InboxRowKind.Feature when row.FeatureItem is FeatureInboxItem f:
+				try
+				{
+					if (f.Primary is not null)
+						await f.Primary();
+					else if (f.Opens is FeatureTarget target)
+						this.OpenFeature?.Invoke(target);
+				}
+				catch (Exception ex)
+				{
+					this.Error = ex.Message;
+				}
+
 				break;
 		}
 

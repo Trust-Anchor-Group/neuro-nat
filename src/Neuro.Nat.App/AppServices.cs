@@ -33,4 +33,7 @@ public sealed record AppServices(AccountManager Accounts, MonitorService Monitor
 
 	/// <summary>False where there is no encrypted database yet (macOS and Linux): nothing is kept between runs.</summary>
 	public bool KeepsData { get; init; }
+
+	/// <summary>The features the host registered at start, such as app telemetry. None unless the host gives some.</summary>
+	public global::Neuro.Nat.App.Features.FeatureSet Features { get; init; } = global::Neuro.Nat.App.Features.FeatureSet.None();
 }

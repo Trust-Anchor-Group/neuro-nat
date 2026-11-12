@@ -305,6 +305,22 @@
               <TextBlock Classes="railLabel" Text="Console" HorizontalAlignment="Center" />
             </StackPanel>
           </Button>
+
+          <!-- Places that features add (none without them) -->
+          <ItemsControl ItemsSource="{Binding FeaturePlaces}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FeaturePlaceItem">
+                <Button Classes="rail" Classes.current="{Binding IsCurrent}"
+                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowFeaturePlaceCommand}" CommandParameter="{Binding Key}"
+                        ToolTip.Tip="{Binding Title}" AutomationProperties.Name="{Binding Title}">
+                  <StackPanel Spacing="4">
+                    <c:LineIcon Data="{Binding Icon}" />
+                    <TextBlock Classes="railLabel" Text="{Binding Title}" HorizontalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
       </DockPanel>
     </Border>
@@ -433,6 +449,24 @@
                   ToolTip.Tip="Identities">
             <TextBlock Text="Identity" VerticalAlignment="Center" />
           </Button>
+
+          <!-- Tabs that features add to this Neuron's page (none without them) -->
+          <ItemsControl ItemsSource="{Binding PageFeatureTabs}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FeatureTabItem">
+                <Button Classes="tab pageTab" Classes.current="{Binding IsCurrent}"
+                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowFeatureTabCommand}" CommandParameter="{Binding Key}"
+                        ToolTip.Tip="{Binding Title}">
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
       </ScrollViewer>
     </Border>
@@ -542,6 +576,9 @@
     <views:CompareView Grid.Row="2" Grid.Column="1" DataContext="{Binding Compare}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCompare}" />
     <views:EventsView Grid.Row="2" Grid.Column="1" DataContext="{Binding NeuronEvents}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNeuronEvents}" />
     <views:ConsoleView Grid.Row="2" Grid.Column="1" DataContext="{Binding PageConsole}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNeuronConsole}" />
+
+    <!-- A place or a Neuron's tab that a feature adds: drawn with the feature's own templates -->
+    <ContentControl Grid.Row="2" Grid.Column="1" Content="{Binding FeatureContent}" IsVisible="{Binding ShowsFeature}" />
 
     <!-- Accounts workspace -->
     <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="Auto,*" IsVisible="{Binding IsPlaceAccounts}">

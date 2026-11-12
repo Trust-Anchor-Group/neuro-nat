@@ -71,7 +71,11 @@ public partial class App : Application
 			try
 			{
 				AppServices services = Services ?? throw new InvalidOperationException("App.Services must be set by the host.");
-				MainWindowViewModel vm = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub);
+				// What the registered features show is drawn with their own templates.
+				foreach (Avalonia.Controls.Templates.IDataTemplate template in services.Features.Templates())
+					this.DataTemplates.Add(template);
+
+				MainWindowViewModel vm = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub, features: services.Features);
 				vm.Compare.Store = services.NeuronCopies;
 				MainWindow window = new() { DataContext = vm };
 				_ = vm.Console.Runbooks.UseAsync(services.Runbooks);
@@ -127,6 +131,7 @@ public partial class App : Application
 
 					// Save the Attention list first: it is quick, and the rest may outlive the process.
 					await services.Monitors.Attention.DisposeAsync();
+					await services.Features.DisposeAsync();
 					await services.Identities.DisposeAsync();
 					await services.Devices.DisposeAsync();
 					await services.PubSub.DisposeAsync();

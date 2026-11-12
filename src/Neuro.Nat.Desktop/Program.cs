@@ -125,6 +125,9 @@ internal static class Program
 				KeepsData = stores.KeepsData,
 				NeuronCopies = stores.NeuronCopies,
 				Runbooks = stores.Runbooks,
+
+				// Features in projects of their own. NAT knows them only through App.Features.
+				Features = new App.Features.FeatureSet([new Features.Telemetry.TelemetryFeature()]),
 			};
 			if (startHidden)
 				AppLog.Info("Started in the tray.");
