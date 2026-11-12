@@ -86,7 +86,7 @@ public partial class App : Application
 
 				// Started with Windows: watch from the tray, and show the window only when asked.
 				// The lifetime shows its main window at start, so it gets one only when shown.
-				if (!services.StartHidden)
+				if (!services.StartHidden && services.Kiosk is null)
 					desktop.MainWindow = window;
 
 				// Noticing things: pop-ups, sounds and counts, in the window and from the tray.
@@ -140,6 +140,25 @@ public partial class App : Application
 					_ = extra.Console.Runbooks.UseAsync(services.Runbooks);
 					return extra;
 				});
+
+				// A kiosk: the big screen and nothing else. No tray, no pop-ups, no sounds: the alerts
+				// above are worked out for the counts, but nothing shows them.
+				if (services.Kiosk is not null)
+				{
+					desktop.MainWindow = ShellWindows.OpenKiosk();
+					desktop.ShutdownRequested += async (_, _) =>
+					{
+						alerts.Dispose();
+						await services.Features.DisposeAsync();
+						await services.Chat.DisposeAsync();
+						await services.Fleet.DisposeAsync();
+						await services.Monitors.DisposeAsync();
+						await services.Accounts.DisposeAsync();
+					};
+					_ = vm.StartAsync();
+					base.OnFrameworkInitializationCompleted();
+					return;
+				}
 
 				Watch.WatchAgent watch = new(desktop, window, vm, alerts, services.Updates);
 				showMainWindow = watch.ShowWindow;

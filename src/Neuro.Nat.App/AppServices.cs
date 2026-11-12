@@ -31,6 +31,9 @@ public sealed record AppServices(AccountManager Accounts, MonitorService Monitor
 	/// <summary>Where runbooks and the records of their runs are kept. In memory unless the host gives a store.</summary>
 	public Engine.Storage.IRunbookStore Runbooks { get; init; } = new Engine.Storage.InMemoryRunbookStore();
 
+	/// <summary>Set for a kiosk (<c>--kiosk</c>): only the Big screen, full screen, for good. Null for a normal start.</summary>
+	public KioskPolicy? Kiosk { get; init; }
+
 	/// <summary>False where there is no encrypted database yet (macOS and Linux): nothing is kept between runs.</summary>
 	public bool KeepsData { get; init; }
 

@@ -53,6 +53,34 @@ public sealed class MonitorService : IAsyncDisposable
 	}
 
 	/// <summary>All monitors, one per account.</summary>
+	/// <summary>A kiosk's rule for presence subscriptions, given to every account's monitor. See <see cref="NeuronMonitor.SubscriptionRule"/>.</summary>
+	public Func<string, bool?>? SubscriptionRule
+	{
+		get => this.subscriptionRule;
+		set
+		{
+			this.subscriptionRule = value;
+			foreach (NeuronMonitor m in this.Monitors)
+				m.SubscriptionRule = value;
+		}
+	}
+
+	private Func<string, bool?>? subscriptionRule;
+
+	/// <summary>Decline what is not accepted instead of asking a person. See <see cref="NeuronMonitor.DeclineOthers"/>.</summary>
+	public bool DeclineOthers
+	{
+		get => this.declineOthers;
+		set
+		{
+			this.declineOthers = value;
+			foreach (NeuronMonitor m in this.Monitors)
+				m.DeclineOthers = value;
+		}
+	}
+
+	private bool declineOthers;
+
 	public IReadOnlyList<NeuronMonitor> Monitors
 	{
 		get
@@ -98,7 +126,7 @@ public sealed class MonitorService : IAsyncDisposable
 				if (this.monitors.ContainsKey(s.Profile.Id))
 					continue;
 
-				NeuronMonitor m = new(s, this.Hub, this.known, this.IsOwnAddress);
+				NeuronMonitor m = new(s, this.Hub, this.known, this.IsOwnAddress) { SubscriptionRule = this.SubscriptionRule, DeclineOthers = this.DeclineOthers };
 				m.NeuronsChanged += (_, _) => this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 				m.SubscriptionRequested += (_, p) => this.SubscriptionRequested?.Invoke(this, (s.Profile.Id, p));
 				m.NotificationReceived += (_, n) => this.Attention.Add(n);

@@ -80,6 +80,8 @@
           </StackPanel>
           <TextBlock x:Name="SublineText" Text="{Binding Subline}" FontSize="19" Margin="32,6,0,0"
                      Classes="bigSub" Classes.bigBad="{Binding IsSublineBad}" />
+          <TextBlock x:Name="StaleLine" Text="{Binding StaleText}" FontSize="19" Margin="32,6,0,0" FontWeight="SemiBold"
+                     Foreground="{DynamicResource State.Busy}" IsVisible="{Binding IsStale}" />
         </StackPanel>
 
         <Panel x:Name="Pages">
@@ -262,7 +264,7 @@
         </ItemsControl>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right" VerticalAlignment="Center">
           <TextBlock x:Name="HeldText" Text="Held" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Ink.Secondary}" IsVisible="{Binding Held}" />
-          <TextBlock x:Name="LeaveHint" Text="Esc or F11 to leave" FontSize="14" Foreground="{DynamicResource Ink.Tertiary}" />
+          <TextBlock x:Name="LeaveHint" Text="Esc or F11 to leave" FontSize="14" Foreground="{DynamicResource Ink.Tertiary}" IsVisible="{Binding ShowsLeaveHint}" />
         </StackPanel>
       </Grid>
     </Grid>

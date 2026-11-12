@@ -326,31 +326,73 @@ public sealed class NeuronMonitor : IAsyncDisposable
 		return Task.CompletedTask;
 	}
 
+	/// <summary>
+	/// A rule for presence subscriptions, by bare JID, for a kiosk: true accepts without asking
+	/// whether it is a Neuron, false declines, null decides as usual. Null for a normal start.
+	/// </summary>
+	public Func<string, bool?>? SubscriptionRule { get; set; }
+
+	/// <summary>Decline subscriptions from anyone not accepted, instead of leaving them for a person (a kiosk has nobody to ask).</summary>
+	public bool DeclineOthers { get; set; }
+
+	/// <summary>What to do with a presence subscription.</summary>
+	internal enum SubscriptionAnswer
+	{
+		Accept,
+		Decline,
+		Ask,
+	}
+
 	private async Task Client_OnPresenceSubscribe(object sender, PresenceEventArgs e)
 	{
-		// A Neuron asks to subscribe to its administrators before it sends them notifications.
-		// Accept it automatically when the sender really is a Neuron, and subscribe back so
-		// its events can be followed. Anyone else is left for the operator to decide.
 		try
 		{
-			if (await this.IsNeuronAsync(e.From))
-			{
-				await e.Accept();
-
-				RosterItem? item = this.client?.GetRosterItem(e.FromBareJID);
-				if (item is null || item.State is SubscriptionState.None or SubscriptionState.From)
-					await (this.client?.RequestPresenceSubscription(e.FromBareJID) ?? Task.CompletedTask);
-
-				this.GetWatch(e.FromBareJID);
-				this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
-			}
-			else
-				this.SubscriptionRequested?.Invoke(this, e);
+			await this.SubscribeAsync(e.From, e.FromBareJID, () => e.Accept(), () => e.Decline(), () => this.SubscriptionRequested?.Invoke(this, e));
 		}
 		catch (Exception ex)
 		{
 			this.session.Sniffer.Exception(ex);
 		}
+	}
+
+	/// <summary>
+	/// A Neuron asks to subscribe to its administrators before it sends them notifications. Accept
+	/// it when the sender really is a Neuron (or a kiosk's rule says so), and subscribe back so its
+	/// events can be followed; it shows at once. Anyone else is left for the operator, or declined.
+	/// </summary>
+	internal async Task<SubscriptionAnswer> SubscribeAsync(string fullJid, string bareJid, Func<Task> accept, Func<Task> decline, Action ask)
+	{
+		bool? rule = this.IsOwn(bareJid) ? false : this.SubscriptionRule?.Invoke(bareJid);
+		bool accepted = rule == true || (rule is null && await this.IsNeuronAsync(fullJid));
+
+		if (accepted)
+		{
+			await accept();
+
+			RosterItem? item = this.client?.GetRosterItem(bareJid);
+			if (this.client is not null && (item is null || item.State is SubscriptionState.None or SubscriptionState.From))
+				await this.client.RequestPresenceSubscription(bareJid);
+
+			// Accepted by rule, it shows as waiting until it answers what it is.
+			if (rule == true)
+				this.Want(bareJid);
+			else
+			{
+				this.GetWatch(bareJid);
+				this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
+			}
+
+			return SubscriptionAnswer.Accept;
+		}
+
+		if (rule == false || this.DeclineOthers)
+		{
+			await decline();
+			return SubscriptionAnswer.Decline;
+		}
+
+		ask();
+		return SubscriptionAnswer.Ask;
 	}
 
 	/// <summary>

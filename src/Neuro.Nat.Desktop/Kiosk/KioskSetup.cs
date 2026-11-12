@@ -47,6 +47,16 @@ internal static class KioskSetup
 		return new Program.HostStores(accounts, vault, null, null, new Engine.Alerts.MemoryAlertSettingsStore(), ui, new InMemoryKnownNeuronStore(), KeepsData: false);
 	}
 
+	/// <summary>
+	/// The kiosk's rule for presence subscriptions: a Neuron whose domain the config lists is accepted
+	/// without asking what it is. When the config lists none, real Neurons are accepted as usual. Anything
+	/// else is declined (the monitor declines what is not accepted).
+	/// </summary>
+	public static Func<string, bool?> Rule(KioskConfig config)
+		=> bareJid => config.Neurons.Count == 0 ? null
+			: config.Neurons.Contains(Engine.Events.NeuronNames.Domain(bareJid).ToLowerInvariant(), StringComparer.OrdinalIgnoreCase)
+				|| config.Neurons.Contains(bareJid.ToLowerInvariant(), StringComparer.OrdinalIgnoreCase) ? true : false;
+
 	/// <summary>The Big screen pages a config can turn off. Neurons always shows.</summary>
 	private static readonly string[] Known = [BigScreenPages.Problems, Features.Telemetry.TelemetryFeature.ScreenKey];
 }

@@ -219,6 +219,14 @@ internal static class Program
 		AccountManager accounts = new(stores.Accounts, stores.SignIns);
 		AttentionInbox attention = new(stores.Inbox);
 		MonitorService monitors = new(accounts, new EventHub(), attention, stores.KnownNeurons);
+		if (kiosk)
+		{
+			// Nobody stands at a kiosk to answer: a listed Neuron is accepted even when it does not
+			// answer what it is, and anything else is declined quietly instead of left waiting.
+			monitors.SubscriptionRule = Kiosk.KioskSetup.Rule(config);
+			monitors.DeclineOthers = true;
+		}
+
 		Engine.Chat.ChatService chat = new(accounts, monitors, stores.Chat);
 		Engine.Identity.IdentityService identities = new(accounts, chat);
 		Engine.Devices.DevicesService devices = new(accounts);
@@ -230,6 +238,7 @@ internal static class Program
 			UiSettings = stores.UiSettings,
 			KeepsData = false,
 			Features = new App.Features.FeatureSet([new Features.Telemetry.TelemetryFeature(stores.FeatureAnswers)]),
+			Kiosk = kiosk ? new App.KioskPolicy(config.Neurons) : null,
 		};
 
 		return BuildAvaloniaApp()

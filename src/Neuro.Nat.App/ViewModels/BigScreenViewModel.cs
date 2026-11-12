@@ -156,8 +156,17 @@ public sealed partial class BigScreenTileViewModel(Guid accountId, string bareJi
 	[ObservableProperty] private bool hasIssues;
 	[ObservableProperty] private string lastEvent = "–";
 
-	internal void Apply(FleetRowViewModel row)
+	internal void Apply(FleetRowViewModel row, bool kiosk = false)
 	{
+		// A kiosk whose account may not read a Neuron's events shows its state, without any error text.
+		if (kiosk && row.State == WatchState.Forbidden)
+		{
+			this.Label = row.Label;
+			this.Tone = "ok";
+			this.StateText = this.ShortState = "Online";
+			return;
+		}
+
 		this.Label = row.Label;
 		this.Tone = row.State switch
 		{
@@ -390,6 +399,25 @@ public sealed partial class BigScreenViewModel : ObservableObject
 	/// <summary>"4 of 5 Neurons reporting"</summary>
 	[ObservableProperty] private string summary = "No Neurons yet";
 
+	/// <summary>A kiosk: it cannot be left, so no hint says how, and a lost connection keeps the last state, marked as old.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(ShowsLeaveHint))]
+	private bool isKiosk;
+
+	public bool ShowsLeaveHint => !this.IsKiosk;
+
+	/// <summary>True while at least one account is connected. Set by the shell.</summary>
+	public Func<bool>? AnyConnected { get; set; }
+
+	/// <summary>"Not connected since 16:20" in a kiosk that lost its connection, while the last state stays on the screen. Null otherwise.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(IsStale))]
+	private string? staleText;
+
+	public bool IsStale => this.StaleText is not null;
+
+	private DateTime? staleSince;
+
 	/// <summary>ok when every Neuron reports, busy when some do, bad when none does.</summary>
 	[ObservableProperty] private string summaryTone = "idle";
 
@@ -564,6 +592,18 @@ public sealed partial class BigScreenViewModel : ObservableObject
 
 		// The tiles keep their order by name, whatever the list is sorted by: a big screen should not shuffle.
 		List<FleetRowViewModel> rows = [.. this.fleet.Rows.OrderBy(r => r.Label, StringComparer.CurrentCultureIgnoreCase).ThenBy(r => r.AccountLabel, StringComparer.CurrentCultureIgnoreCase)];
+
+		// A kiosk that lost its connection keeps what it last knew, marked as old, until it is back.
+		if (this.IsKiosk && this.AnyConnected?.Invoke() == false && this.Tiles.Count > 0)
+		{
+			this.staleSince ??= now;
+			this.StaleText = "Not connected since " + this.staleSince.Value.ToString("HH:mm", CultureInfo.CurrentCulture);
+			this.Head();
+			return;
+		}
+
+		this.staleSince = null;
+		this.StaleText = null;
 		this.RefreshTiles(rows);
 		this.RefreshLatest(rows, now);
 		bool problemOpened = this.RefreshProblems(rows, now);
@@ -620,7 +660,7 @@ public sealed partial class BigScreenViewModel : ObservableObject
 			else if (this.Tiles.IndexOf(tile) is int at && at != i && i < this.Tiles.Count)
 				this.Tiles.Move(at, i);
 
-			tile.Apply(row);
+			tile.Apply(row, this.IsKiosk);
 		}
 
 		this.HasTiles = this.Tiles.Count > 0;

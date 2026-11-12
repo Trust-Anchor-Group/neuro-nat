@@ -157,10 +157,31 @@ public static class ShellWindows
 	}
 
 	/// <summary>F11: opens the big screen, or closes it when it is open.</summary>
+	/// <summary>True in a kiosk: the big screen is all there is, and Esc and F11 do not leave it.</summary>
+	public static bool IsKiosk { get; set; }
+
+	/// <summary>Opens the big screen as a kiosk's only window, and returns it.</summary>
+	public static Window? OpenKiosk()
+	{
+		IsKiosk = true;
+		if (mainVm is MainWindowViewModel vm)
+		{
+			vm.BigScreen.IsKiosk = true;
+			vm.BigScreen.AnyConnected = () => vm.Accounts.Any(a => a.IsOnline);
+		}
+
+		if (bigScreen is null)
+			ToggleBigScreen();
+		return bigScreen;
+	}
+
 	public static void ToggleBigScreen()
 	{
 		if (bigScreen is not null)
 		{
+			if (IsKiosk)
+				return;
+
 			bigScreen.Close();
 			return;
 		}
@@ -193,7 +214,9 @@ public static class ShellWindows
 		{
 			if (e.Key is Key.Escape or Key.F11)
 			{
-				window.Close();
+				// A kiosk stays: nobody is there to bring it back.
+				if (!IsKiosk)
+					window.Close();
 				e.Handled = true;
 			}
 			else if (e.KeyModifiers == KeyModifiers.None)
