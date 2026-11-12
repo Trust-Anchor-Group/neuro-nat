@@ -67,3 +67,48 @@ The icon is drawn by code (`src/Neuro.Nat.App/Watch/IconArt.cs`). After a change
 ```powershell
 ./tools/installer/Make-Icon.ps1
 ```
+
+## Kiosk
+
+NAT can run from a config file instead of the window, for a screen on a wall.
+
+| Option | What it does |
+|:-------|:-------------|
+| `--config <file>` | Signs in with the accounts in the file. Nothing is kept between runs and no data folder is used, so a kiosk never touches a normal NAT on the same computer |
+| `--kiosk` | Shows only the Big screen, full screen, for good. Needs `--config` |
+
+```powershell
+NAT.exe --kiosk --config C:\Kiosk\nat-kiosk.json
+```
+
+An example `nat-kiosk.json`:
+
+```json
+{
+  "accounts": [
+    { "host": "neuron.example.com", "userName": "kiosk", "password": "<password>" }
+  ],
+  "neurons": [ "neuron.example.com" ],
+  "pages": [ "neurons", "problems", "app-numbers" ],
+  "seconds": 20,
+  "look": "dark"
+}
+```
+
+| Key | What it is |
+|:----|:-----------|
+| `accounts` | One or more accounts: `host`, `userName`, `password`, and optionally `port`, `domain`, `webAddress`, `trustServerCertificate` |
+| `neurons` | The domains of the Neurons this kiosk shows. Their presence subscriptions are accepted without asking |
+| `pages` | The Big screen pages to show. Neurons always shows |
+| `seconds` | How long each page shows: 10, 20, 30 or 60 |
+| `look` | `light`, `dark` or `system` |
+
+The file holds passwords, so NAT refuses to start when another user can read it. Let only the kiosk's
+own user read it: `chmod 600 nat-kiosk.json` on Linux, or on Windows:
+
+```powershell
+icacls nat-kiosk.json /inheritance:r /grant:r "${env:USERNAME}:F"
+```
+
+The account needs admin rights on a Neuron (its notification address, or the Admin privilege) for the
+kiosk to show that Neuron's events. Without them it shows state, problems and notifications.

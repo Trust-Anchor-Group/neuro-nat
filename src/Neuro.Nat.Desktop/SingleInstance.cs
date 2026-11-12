@@ -22,7 +22,10 @@ internal sealed class SingleInstance : IDisposable
 	/// <summary>"Show the window and open this link."</summary>
 	internal const byte LinkMessage = 2;
 
-	private static readonly string name = "Neuro.Nat." + Environment.UserName;
+	private static string name = "Neuro.Nat." + Environment.UserName;
+
+	/// <summary>A kiosk is one of its own: it neither brings a normal NAT forward nor is brought forward by one. Call before <see cref="TryClaim"/>.</summary>
+	public static void ForKiosk() => name = "Neuro.Nat.Kiosk." + Environment.UserName;
 	private readonly Mutex mutex;
 	private readonly CancellationTokenSource stop = new();
 

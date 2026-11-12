@@ -33,6 +33,37 @@ internal static class Program
 		// Started by a click on a NAT link in another program: the link is the argument.
 		string? startLink = LinkIn(args);
 
+		// A kiosk, or any start from a config file: the accounts come from the file, and nothing
+		// is read from or written to a data folder.
+		Kiosk.KioskConfig? config = null;
+		bool kiosk = args.Contains(KioskArgument, StringComparer.OrdinalIgnoreCase);
+		string? configPath = ValueOf(args, ConfigArgument);
+		if (kiosk && configPath is null)
+		{
+			Tell("NAT --kiosk needs --config with the path of a nat-kiosk.json that names the accounts to show.");
+			return 1;
+		}
+
+		if (configPath is not null)
+		{
+			try
+			{
+				config = Kiosk.KioskConfig.Load(configPath);
+			}
+			catch (Kiosk.KioskConfigException ex)
+			{
+				Tell(ex.Message);
+				return 1;
+			}
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				Tell($"NAT could not read {Path.GetFileName(configPath)}: {ex.Message}");
+				return 1;
+			}
+
+			SingleInstance.ForKiosk();
+		}
+
 		// One NAT per user: starting it again brings the running one (perhaps in the tray) forward,
 		// with the link to open when there is one.
 		using SingleInstance? single = SingleInstance.TryClaim();
@@ -44,6 +75,9 @@ internal static class Program
 		}
 
 		single.Listen(App.App.ShowMainWindow, App.App.OpenLink);
+
+		if (config is not null)
+			return RunFromConfig(config, kiosk, args);
 
 		// Before the log file is opened: the data folder of Neuro.AA, as the app was called before,
 		// moves to its new name once. Not when NAT_DATA_FOLDER names a folder to use instead.
@@ -151,11 +185,63 @@ internal static class Program
 	internal static string? LinkIn(IEnumerable<string> args)
 		=> args.FirstOrDefault(a => Engine.Links.NatLink.LooksLike(a) && a.Length <= Engine.Links.NatLink.MaxLength)?.Trim();
 
+	/// <summary>Starts NAT from a config file: <c>--config nat-kiosk.json</c>.</summary>
+	public const string ConfigArgument = "--config";
+
+	/// <summary>Shows only the Big screen, for good: <c>--kiosk</c>, with <see cref="ConfigArgument"/>.</summary>
+	public const string KioskArgument = "--kiosk";
+
+	/// <summary>The value after an option, as in <c>--config path</c> or <c>--config=path</c>.</summary>
+	private static string? ValueOf(string[] args, string option)
+	{
+		for (int i = 0; i < args.Length; i++)
+		{
+			if (string.Equals(args[i], option, StringComparison.OrdinalIgnoreCase))
+				return i + 1 < args.Length ? args[i + 1] : null;
+			if (args[i].StartsWith(option + "=", StringComparison.OrdinalIgnoreCase))
+				return args[i][(option.Length + 1)..];
+		}
+
+		return null;
+	}
+
+	/// <summary>
+	/// Runs from a config file: its accounts are added at every start, and nothing is kept. No
+	/// data folder, no database, no log file, no updates, no "Start with Windows".
+	/// </summary>
+	private static int RunFromConfig(Kiosk.KioskConfig config, bool kiosk, string[] args)
+	{
+		System.Reflection.Assembly[] uiAssemblies = [typeof(App.App).Assembly, typeof(Waher.Content.Markdown.MarkdownDocument).Assembly];
+		EngineRuntime.PrepareTypes(uiAssemblies);
+		EngineRuntime.Initialize();
+
+		HostStores stores = Kiosk.KioskSetup.Stores(config);
+		AccountManager accounts = new(stores.Accounts, stores.SignIns);
+		AttentionInbox attention = new(stores.Inbox);
+		MonitorService monitors = new(accounts, new EventHub(), attention, stores.KnownNeurons);
+		Engine.Chat.ChatService chat = new(accounts, monitors, stores.Chat);
+		Engine.Identity.IdentityService identities = new(accounts, chat);
+		Engine.Devices.DevicesService devices = new(accounts);
+		Engine.PubSub.PubSubService pubsub = new(accounts);
+
+		App.App.Services = new AppServices(accounts, monitors, new FleetService(monitors), chat, identities, devices, pubsub, string.Empty)
+		{
+			AlertSettings = stores.AlertSettings,
+			UiSettings = stores.UiSettings,
+			KeepsData = false,
+			Features = new App.Features.FeatureSet([new Features.Telemetry.TelemetryFeature(stores.FeatureAnswers)]),
+		};
+
+		return BuildAvaloniaApp()
+			.AfterSetup(_ => Dispatcher.UIThread.UnhandledException += (_, e) => e.Handled = true)
+			.StartWithClassicDesktopLifetime(args);
+	}
+
 	/// <summary>Restarts NAT and sets what it had saved aside first: the choice "Start fresh".</summary>
 	private const string StartFreshArgument = "--start-fresh";
 
 	/// <summary>Where everything NAT keeps lives while it runs.</summary>
-	private sealed record HostStores(
+	internal sealed record HostStores(
 		IAccountStore Accounts, ICredentialVault SignIns, IAttentionStore? Inbox, Engine.Chat.IChatStore? Chat,
 		Engine.Alerts.IAlertSettingsStore AlertSettings, App.ViewModels.IUiSettingsStore UiSettings, IKnownNeuronStore KnownNeurons, bool KeepsData)
 	{
