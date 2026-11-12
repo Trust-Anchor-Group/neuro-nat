@@ -41,7 +41,7 @@ It speaks the Neuron's own protocols with the Neuron's own libraries, so everyth
 ## Capabilities and Constraints
 
 - Never modify Neuron, IoTGateway or iotbroker source.
-- Must do everything IoTClient does (see PLAN.md section 2.1), and more.
+- Must do everything IoTClient does (see docs/history/PLAN-2026-11.md section 2.1), and more.
 - Runs on Windows, macOS and Linux.
 - Event volume can be high; lists must stay fast with hundreds of thousands of rows.
 - Destructive server actions (reboot, stop, repair, upgrade, delete node) must always be explicit about which server they hit.

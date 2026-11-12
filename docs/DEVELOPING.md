@@ -1,0 +1,67 @@
+# Developing NAT
+
+## Build from source
+
+You need the .NET SDK named in `global.json` (10.0).
+
+```powershell
+dotnet build Neuro.Nat.slnx
+dotnet run --project src/Neuro.Nat.Desktop
+```
+
+The program is `NAT.exe`. The solution has three projects and two test projects:
+
+| Project | What's in it |
+|:--------|:-------------|
+| `Neuro.Nat.Engine` | Accounts, connections, events, chat, the encrypted database. No UI |
+| `Neuro.Nat.App` | Every screen (Avalonia), the tray, the icon |
+| `Neuro.Nat.Desktop` | The program: starts it all, Windows vault, installer hooks, updates |
+| `Neuro.Nat.Engine.Tests` | Tests of the engine |
+| `Neuro.Nat.App.Tests` | Tests of the screens, rendered without a window |
+
+## Run the tests
+
+```powershell
+dotnet test Neuro.Nat.slnx
+```
+
+Tests that need a Neuron skip by themselves and name the keys they miss. Render tests write
+pictures to `.impeccable/review`, which git ignores: look at them after a change to a screen.
+
+## The local test Neuron
+
+Live tests run against a Neuron of your own on this computer, the instance `NeuroAA`. How to set it
+up and start it is in [tools/neuron-dev/README.md](../tools/neuron-dev/README.md). Its addresses and
+passwords are in `.local/test-neuron.env`, which git ignores. Load them before a test run:
+
+```powershell
+Get-Content .local/test-neuron.env | Where-Object { $_ -match '^\s*NAT_\w+\s*=' } | ForEach-Object {
+	$k, $v = $_ -split '=', 2; Set-Item "Env:$($k.Trim())" $v.Trim() }
+dotnet test Neuro.Nat.slnx
+```
+
+| Key | What it is |
+|:----|:-----------|
+| `NAT_TEST_HOST`, `NAT_TEST_PORT` | Where the test Neuron's XMPP server is |
+| `NAT_TEST_USER`, `NAT_TEST_PASSWORD` | The test account, an administrator of the Neuron |
+| `NAT_TEST_USER2`, `NAT_TEST_PASSWORD2` | A second account, a coworker |
+| `NAT_TEST_NEURON` | The Neuron's own address |
+| `NAT_TEST_DOMAIN` | The XMPP domain, when it is not the host name |
+
+## Try the app against a copy of your data
+
+`NAT_DATA_FOLDER` makes NAT use another data folder than `%AppData%\Neuro.Nat`. Copy your data folder
+somewhere, point the variable at the copy, and start NAT. Nothing is moved when it is set.
+
+```powershell
+$env:NAT_DATA_FOLDER = "C:\Temp\nat-copy"
+dotnet run --project src/Neuro.Nat.Desktop
+```
+
+## Draw the icon again
+
+The icon is drawn by code (`src/Neuro.Nat.App/Watch/IconArt.cs`). After a change to the design:
+
+```powershell
+./tools/installer/Make-Icon.ps1
+```

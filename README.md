@@ -1,45 +1,45 @@
 # NAT
 
-NAT (Neuro Administration Tool) is a desktop app for the people who run Neurons.
+**One app to watch and run your Neurons.**
 
-## Installing on Windows
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/neurons-dark.png">
+  <img alt="The Neurons list in NAT: each Neuron with its event stream, version, processor, memory, disk and errors." src="docs/images/neurons-light.png">
+</picture>
 
-`./tools/installer/Build-Installer.ps1` builds `artifacts/installer/releases/Neuro.Nat-win-Setup.exe`
-(Velopack, per user, no admin rights). The installer adds Start menu and desktop shortcuts and turns
-on **Start with Windows**, which starts NAT in the tray (`--tray`) at sign-in; the tray menu
-toggles it. The installer is not signed, so SmartScreen warns ("More info" > "Run anyway").
+## What you can do
 
-Installed copies look for updates every few hours, download them in the background, offer
-"Restart to update" in the tray menu, and otherwise install them on quit. They update from the
-source built in: `UpdateSource` in `Directory.Build.props`, the only place the address is written
-(GitHub releases of this repository, which needs `NAT_GITHUB_TOKEN` while the repository is
-private), or the folder, share or URL passed to the installer script with `-UpdateSource`. A
-machine can point elsewhere with `NAT_UPDATE_SOURCE` or the first line of `update-source.txt` in
-the data folder. To release, raise the version (`-Version 0.2.0`) and copy the releases folder to
-the source, or pass `-PublishGitHub`.
+| Place | What it is for |
+|:------|:---------------|
+| Inbox | What needs you: messages, requests, and notices from your Neurons |
+| Neurons | Every Neuron at a glance, with a page each for software, sources, traffic and more |
+| Events | Events from all your Neurons as they happen, grouped into problems |
+| Chat | Your coworkers and rooms, end-to-end encrypted where both sides can |
+| Console | Commands on one Neuron or many at once, answers side by side |
 
-## Data
+## Install
 
-NAT keeps its data in `%AppData%\Neuro.Nat`. Everything it remembers is in one encrypted database
-(`database\`): accounts, sign-ins, chat history and room passwords, Inbox items, settings, and the
-signing keys of legal identities. Only three things are outside it:
+1. Download `Neuro.Nat-win-Setup.exe` from the [latest release](https://github.com/berggrenmille/Neuro-AA/releases/latest).
+2. Run it. It installs for you only and needs no admin rights.
+3. Add your account on a Neuron, and NAT finds the Neurons in your contacts.
 
-- `secrets\database.key`, the key to the database, protected by Windows for the signed-in user;
-- `logs\nat.log`, the log, which never holds message texts, passwords, tokens or sign-ins;
-- `update-source.txt`, read by the updater before the app has started.
+The installer is not signed yet, so Windows warns the first time. Choose "More info", then "Run anyway".
+NAT updates itself after that.
 
-Older versions kept accounts, chats, the Inbox and settings in plain JSON files and each sign-in in
-a file of its own. At start NAT moves what it finds of those into the database, checks that all of
-it came across, and only then deletes the old file; what fails keeps its file and is tried again at
-the next start. If the database cannot be opened, NAT says so and offers Try again, Start fresh (the
-database is moved aside into a dated folder; nothing is deleted) and Quit.
+## What you need
 
-On macOS and Linux there is no vault for the key yet, so there is no database: nothing is kept
-between runs, and Settings says so.
+- Windows 10 or 11.
+- An account on a Neuron.
+- Admin rights on a Neuron to see its events and run commands there: be its notification address,
+  or have the Admin privilege.
 
-The data folder of the version before the rename moves to `%AppData%\Neuro.Nat` once, at the first
-start. `NAT_DATA_FOLDER` names another folder to use instead, for example a copy to try the app
-against; nothing is moved then.
+## Read more
 
-The icon file `src/Neuro.Nat.Desktop/Assets/NAT.ico` is drawn from the same code as the live icons
-(`IconArt.cs`); `./tools/installer/Make-Icon.ps1` draws it again.
+| Page | What's inside |
+|:-----|:--------------|
+| [Developing](docs/DEVELOPING.md) | Build from source, run the tests, the local test Neuron |
+| [Releasing](docs/RELEASING.md) | Make a release, where updates come from, renaming the repository |
+| [Design](DESIGN.md) | How NAT looks and words things |
+| [Product](PRODUCT.md) | Who NAT is for and what was decided |
+| [Where your data is kept](docs/DATA.md) | The encrypted store, what stays outside it, and moving from older versions |
+| [History](docs/history/PLAN-2026-11.md) | The plan of the first version |
