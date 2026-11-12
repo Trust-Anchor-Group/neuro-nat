@@ -1,5 +1,4 @@
 using Neuro.Nat.Engine.Accounts;
-using Xunit.Abstractions;
 
 namespace Neuro.Nat.Engine.Tests;
 
@@ -36,10 +35,7 @@ public class LocalNeuronTests(ITestOutputHelper output)
 	{
 		AccountProfile? profile = Profile(out string password);
 		if (profile is null)
-		{
-			output.WriteLine("Not run: set NAT_TEST_HOST, NAT_TEST_USER and NAT_TEST_PASSWORD to test against a local Neuron.");
-			return;
-		}
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD");
 
 		EngineRuntime.Initialize();
 		InMemoryCredentialVault vault = new();

@@ -6,24 +6,10 @@ using Neuro.Nat.Engine.Accounts;
 
 namespace Neuro.Nat.Desktop;
 
-/// <summary>Picks the credential vault for the operating system.</summary>
-internal static class CredentialVaults
-{
-	public static ICredentialVault ForCurrentPlatform(string dataFolder)
-	{
-		if (OperatingSystem.IsWindows())
-			return new DpapiCredentialVault(Path.Combine(dataFolder, "secrets"));
-
-		// macOS Keychain and Linux Secret Service adapters are the next Phase 0 step.
-		// Until then secrets are kept in memory only, so the operator re-enters
-		// passwords after a restart on those platforms. Nothing is written in clear text.
-		return new InMemoryCredentialVault();
-	}
-}
-
 /// <summary>
-/// Windows vault: each secret is encrypted with DPAPI for the current Windows user and
-/// stored as one file per account. Other users and other machines cannot decrypt it.
+/// How sign-ins were kept before the database: each encrypted with DPAPI for the current
+/// Windows user, one file per account. Now only read, once, to move them into the database
+/// (Storage/LegacyImport.cs in the engine). Tests use it too.
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal sealed class DpapiCredentialVault(string folder) : ICredentialVault

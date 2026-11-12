@@ -48,6 +48,7 @@ It speaks the Neuron's own protocols with the Neuron's own libraries, so everyth
 
 Decided:
 - The app opens on the screen it was closed on, with its windows where they were. The first time, with an account set up, it opens on the Neurons list.
+- Everything NAT remembers (accounts, sign-ins, chat history, room passwords, Inbox items, settings) is kept in one encrypted database on the computer (Mille, 2026-11-12). Outside it are only the key to it, protected by the operating system, the log and update-source.txt. Where there is no vault for the key yet (macOS, Linux), nothing is kept between runs, and Settings says so.
 
 Undecided:
 - Whether contracts (browse and sign) are in scope, or only identities.

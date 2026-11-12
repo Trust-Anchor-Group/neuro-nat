@@ -1,6 +1,5 @@
 using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.PubSub;
-using Xunit.Abstractions;
 
 namespace Neuro.Nat.Engine.Tests;
 
@@ -15,10 +14,7 @@ public class LivePubSubTests(ITestOutputHelper output)
 		string? user = Environment.GetEnvironmentVariable("NAT_TEST_USER");
 		string? password = Environment.GetEnvironmentVariable("NAT_TEST_PASSWORD");
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password))
-		{
-			output.WriteLine("Not run: NAT_TEST_* not set.");
-			return;
-		}
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD");
 
 		EngineRuntime.Initialize();
 		string dir = Path.Combine(Path.GetTempPath(), "Nat.Live." + Guid.NewGuid().ToString("N"));

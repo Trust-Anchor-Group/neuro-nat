@@ -1,7 +1,6 @@
 using Neuro.Nat.Engine.Accounts;
 using Waher.Networking.XMPP;
 using Waher.Networking.XMPP.Concentrator;
-using Xunit.Abstractions;
 
 namespace Neuro.Nat.Engine.Tests;
 
@@ -22,10 +21,7 @@ public class NeuronProbeTests(ITestOutputHelper output)
 		string? neuron = Environment.GetEnvironmentVariable("NAT_TEST_NEURON");
 
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(neuron))
-		{
-			output.WriteLine("Not run: NAT_TEST_HOST/USER/PASSWORD/NEURON not set.");
-			return;
-		}
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD", "NAT_TEST_NEURON");
 
 		EngineRuntime.Initialize();
 		InMemoryCredentialVault vault = new();

@@ -94,7 +94,10 @@ public class RenameTests : IDisposable
 	public async Task AMoveThatFailsChangesNothing()
 	{
 		if (!OperatingSystem.IsWindows())
+		{
+			Assert.Skip("Windows only: the vault and the registry are Windows features.");
 			return;
+		}
 
 		Directory.CreateDirectory(Path.Combine(this.Old, "logs"));
 		string log = Path.Combine(this.Old, "logs", "neuro.aa.log");
@@ -122,7 +125,10 @@ public class RenameTests : IDisposable
 	public async Task SecretsSavedBeforeTheRenameStillOpen()
 	{
 		if (!OperatingSystem.IsWindows())
+		{
+			Assert.Skip("Windows only: the vault and the registry are Windows features.");
 			return;
+		}
 
 		Guid id = Guid.NewGuid();
 		await new DpapiCredentialVault(Path.Combine(this.Old, "secrets")).SetAsync(id, AccountSecret.FromPassword("secret before"), Ct);
@@ -176,7 +182,10 @@ public class RenameTests : IDisposable
 	public void StartWithWindowsMovesToTheNewEntry()
 	{
 		if (!OperatingSystem.IsWindows())
+		{
+			Assert.Skip("Windows only: the vault and the registry are Windows features.");
 			return;
+		}
 
 		// A key of its own, not the real Run key.
 		string path = @"Software\Neuro.Nat.Tests\" + Guid.NewGuid().ToString("N");

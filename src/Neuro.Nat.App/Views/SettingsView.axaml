@@ -293,6 +293,7 @@
         <StackPanel Spacing="4">
           <TextBlock Classes="section" Text="NAT" />
           <TextBlock Classes="hint" Text="{x:Static vm:SettingsViewModel.About}" />
+          <TextBlock Classes="hint" Text="{Binding StorageNote}" IsVisible="{Binding HasStorageNote}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
     </StackPanel>

@@ -80,6 +80,33 @@ public static class EngineRuntime
 		}
 	}
 
+	/// <summary>
+	/// Makes the runtime's types known. Call before <see cref="Storage.LocalDatabase.OpenAsync"/>,
+	/// then hand the open database to <see cref="UseDatabase"/>.
+	/// </summary>
+	public static void PrepareTypes(params Assembly[] additionalAssemblies)
+	{
+		lock (initLock)
+			InitializeTypes(additionalAssemblies);
+	}
+
+	/// <summary>
+	/// Initializes the runtime with a database the host has opened: it keeps legal identity
+	/// signing keys and encryption counters, and everything else NAT remembers.
+	/// </summary>
+	public static void UseDatabase(FilesProvider db)
+	{
+		lock (initLock)
+		{
+			if (initialized || Database.HasProvider)
+				throw new InvalidOperationException("The runtime already has a database.");
+
+			Database.Register(db);
+			database = db;
+			initialized = true;
+		}
+	}
+
 	/// <summary>Writes pending database changes and closes it. Call once, when the app exits.</summary>
 	public static async Task ShutdownAsync()
 	{

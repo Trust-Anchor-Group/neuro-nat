@@ -4,7 +4,6 @@ using Neuro.Nat.Engine.Events;
 using Neuro.Nat.Engine.Identity;
 using Waher.Networking.XMPP.Contracts;
 using Waher.Security;
-using Xunit.Abstractions;
 
 namespace Neuro.Nat.Engine.Tests;
 
@@ -25,10 +24,7 @@ public class LiveIdentityTests(ITestOutputHelper output)
 		string? adminPassword = Environment.GetEnvironmentVariable("NAT_TEST_PASSWORD");
 		string? neuron = Environment.GetEnvironmentVariable("NAT_TEST_NEURON");
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(admin) || string.IsNullOrEmpty(neuron))
-		{
-			output.WriteLine("Not run: NAT_TEST_* not set.");
-			return;
-		}
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER2", "NAT_TEST_PASSWORD2", "NAT_TEST_USER", "NAT_TEST_NEURON");
 
 		EngineRuntime.Initialize();
 		System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();

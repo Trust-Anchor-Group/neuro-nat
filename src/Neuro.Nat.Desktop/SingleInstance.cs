@@ -66,8 +66,14 @@ internal sealed class SingleInstance : IDisposable
 		});
 	}
 
+	private bool disposed;
+
 	public void Dispose()
 	{
+		if (this.disposed)
+			return;
+
+		this.disposed = true;
 		this.stop.Cancel();
 		try
 		{

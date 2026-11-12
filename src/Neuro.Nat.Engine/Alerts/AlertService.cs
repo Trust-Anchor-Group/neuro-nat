@@ -116,7 +116,36 @@ public sealed record AlertSettings
 }
 
 /// <summary>Keeps alert settings between runs.</summary>
-public sealed class JsonAlertSettingsStore(string path)
+public interface IAlertSettingsStore
+{
+	AlertSettings Load();
+
+	void Save(AlertSettings settings);
+}
+
+/// <summary>Alert settings in the database.</summary>
+public sealed class DatabaseAlertSettingsStore(Storage.DatabaseSettings settings) : IAlertSettingsStore
+{
+	/// <summary>The settings group's name in the database.</summary>
+	public const string Name = "alerts";
+
+	public AlertSettings Load() => settings.Get<AlertSettings>(Name) ?? new();
+
+	public void Save(AlertSettings value) => settings.Set(Name, value);
+}
+
+/// <summary>Alert settings for this run only, where nothing can be kept.</summary>
+public sealed class MemoryAlertSettingsStore : IAlertSettingsStore
+{
+	private AlertSettings settings = new();
+
+	public AlertSettings Load() => this.settings;
+
+	public void Save(AlertSettings value) => this.settings = value;
+}
+
+/// <summary>Alert settings in a JSON file: how they were kept before the database. Tests use it.</summary>
+public sealed class JsonAlertSettingsStore(string path) : IAlertSettingsStore
 {
 	private static readonly JsonSerializerOptions options = new() { WriteIndented = true };
 

@@ -2,7 +2,6 @@ using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.Chat;
 using Neuro.Nat.Engine.Events;
 using Neuro.Nat.Engine.Software;
-using Xunit.Abstractions;
 
 namespace Neuro.Nat.Engine.Tests;
 
@@ -56,10 +55,7 @@ public class LiveSoftwareTests(ITestOutputHelper output)
 		string? password = Environment.GetEnvironmentVariable("NAT_TEST_PASSWORD");
 		string? neuron = Environment.GetEnvironmentVariable("NAT_TEST_NEURON");
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(neuron))
-		{
-			output.WriteLine("Not run: NAT_TEST_* not set.");
-			return;
-		}
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD", "NAT_TEST_NEURON");
 
 		EngineRuntime.Initialize();
 		string dir = Path.Combine(Path.GetTempPath(), "Nat.Live." + Guid.NewGuid().ToString("N"));

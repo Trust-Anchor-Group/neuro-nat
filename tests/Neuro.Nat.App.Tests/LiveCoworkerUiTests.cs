@@ -43,7 +43,7 @@ public class LiveCoworkerUiTests
 		string? user2 = Environment.GetEnvironmentVariable("NAT_TEST_USER2");
 		string? password2 = Environment.GetEnvironmentVariable("NAT_TEST_PASSWORD2");
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(user2) || string.IsNullOrEmpty(password2))
-			return;
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD", "NAT_TEST_USER2", "NAT_TEST_PASSWORD2");
 
 		Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
 		EngineRuntime.Initialize();

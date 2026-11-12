@@ -3,7 +3,6 @@ using Neuro.Nat.Engine.Devices;
 using Waher.Networking.XMPP;
 using Waher.Networking.XMPP.Provisioning;
 using Waher.Networking.XMPP.Provisioning.Events;
-using Xunit.Abstractions;
 
 namespace Neuro.Nat.Engine.Tests;
 
@@ -24,10 +23,7 @@ public class LiveDevicesTests(ITestOutputHelper output)
 		string? user2 = Environment.GetEnvironmentVariable("NAT_TEST_USER2");
 		string? password2 = Environment.GetEnvironmentVariable("NAT_TEST_PASSWORD2");
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(user2) || string.IsNullOrEmpty(password2))
-		{
-			output.WriteLine("Not run: NAT_TEST_* not set.");
-			return;
-		}
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD", "NAT_TEST_USER2", "NAT_TEST_PASSWORD2");
 
 		EngineRuntime.Initialize();
 		string dir = Path.Combine(Path.GetTempPath(), "Nat.Live." + Guid.NewGuid().ToString("N"));

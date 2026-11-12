@@ -46,7 +46,7 @@ public class LiveIdentitiesUiTests
 		string? password2 = Environment.GetEnvironmentVariable("NAT_TEST_PASSWORD2");
 		string? neuron = Environment.GetEnvironmentVariable("NAT_TEST_NEURON");
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(user2) || string.IsNullOrEmpty(password2) || string.IsNullOrEmpty(neuron))
-			return;
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD", "NAT_TEST_USER2", "NAT_TEST_PASSWORD2", "NAT_TEST_NEURON");
 
 		Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
 		EngineRuntime.Initialize();

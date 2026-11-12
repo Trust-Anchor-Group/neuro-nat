@@ -339,7 +339,8 @@ Cool neutrals, one cobalt accent, a state set, a severity ramp and the account h
 - **Chat**: people and rooms, the conversation, and the person's details as a third column when there is room.
 - **Console**: tick one or several Neurons, run a command, read the answers side by side.
 - **Accounts**: each account with Connection (and its traffic), Devices, Identities and Storage.
-- **Settings**: your status, pop-ups and sounds, look, text size, the tray, and every keyboard shortcut.
+- **Settings**: your status, pop-ups and sounds, look, text size, the tray, and every keyboard shortcut. At the bottom, the app's long name and version, and, where nothing is kept between runs (no vault for the database key yet), one plain line saying so.
+- **When what NAT saved cannot be opened**, a small window says so before anything else ("NAT cannot open what it has saved on this computer.") with Try again (primary), Start fresh and Quit (`Views/DatabaseProblemWindow.axaml`). NAT never starts empty without a word.
 
 **List and detail.** Most screens are a list pane beside what is open. The list pane has a width of its own per screen, the line between the panes can be dragged (`c:Pane.Key`; double-click puts it back) and the width is remembered. "Put the layout back" in Settings clears all of them.
 

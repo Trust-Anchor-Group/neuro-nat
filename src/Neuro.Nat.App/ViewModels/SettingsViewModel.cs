@@ -58,7 +58,36 @@ public sealed record UiSettings
 }
 
 /// <summary>Keeps <see cref="UiSettings"/> between runs.</summary>
-public sealed class JsonUiSettingsStore(string path)
+public interface IUiSettingsStore
+{
+	UiSettings Load();
+
+	void Save(UiSettings settings);
+}
+
+/// <summary><see cref="UiSettings"/> in the database.</summary>
+public sealed class DatabaseUiSettingsStore(Engine.Storage.DatabaseSettings settings) : IUiSettingsStore
+{
+	/// <summary>The settings group's name in the database.</summary>
+	public const string Name = "ui";
+
+	public UiSettings Load() => settings.Get<UiSettings>(Name) ?? new();
+
+	public void Save(UiSettings value) => settings.Set(Name, value);
+}
+
+/// <summary><see cref="UiSettings"/> for this run only, where nothing can be kept.</summary>
+public sealed class MemoryUiSettingsStore : IUiSettingsStore
+{
+	private UiSettings settings = new();
+
+	public UiSettings Load() => this.settings;
+
+	public void Save(UiSettings value) => this.settings = value;
+}
+
+/// <summary><see cref="UiSettings"/> in a JSON file: how they were kept before the database. Tests use it.</summary>
+public sealed class JsonUiSettingsStore(string path) : IUiSettingsStore
 {
 	private static readonly JsonSerializerOptions options = new() { WriteIndented = true };
 
@@ -96,6 +125,16 @@ public sealed record ShortcutGroup(string Name, IReadOnlyList<ShortcutRow> Rows)
 
 public sealed partial class SettingsViewModel(ChatService chat) : ObservableObject
 {
+	/// <summary>Said in Settings where there is no encrypted database to keep things in.</summary>
+	public const string NothingKept = "On this computer NAT keeps nothing between runs yet: accounts, chats and settings are gone when it quits.";
+
+	/// <summary>A line about what is kept, when it needs saying. Null when everything is kept.</summary>
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasStorageNote))]
+	private string? storageNote;
+
+	public bool HasStorageNote => this.StorageNote is not null;
+
 	/// <summary>The app's long name and version, at the bottom of Settings.</summary>
 	public static string About { get; } = $"Neuro Administration Tool, version {typeof(SettingsViewModel).Assembly.GetName().Version?.ToString(3)}";
 
@@ -155,8 +194,8 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 	];
 
 	private AlertService? alerts;
-	private JsonAlertSettingsStore? alertStore;
-	private JsonUiSettingsStore? uiStore;
+	private IAlertSettingsStore? alertStore;
+	private IUiSettingsStore? uiStore;
 	private Watch.IAutostart? autostart;
 	private AlertSettings local = new();
 	private UiSettings ui = new();
@@ -188,7 +227,7 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 	}
 
 	/// <summary>Connects the settings to the running alert service and to their files. Called once by the host.</summary>
-	public void Attach(AlertService alerts, JsonAlertSettingsStore alertStore, JsonUiSettingsStore? uiStore = null, Watch.IAutostart? autostart = null)
+	public void Attach(AlertService alerts, IAlertSettingsStore alertStore, IUiSettingsStore? uiStore = null, Watch.IAutostart? autostart = null)
 	{
 		this.alerts = alerts;
 		this.alertStore = alertStore;

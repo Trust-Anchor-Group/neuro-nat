@@ -16,4 +16,13 @@ public sealed record AppServices(AccountManager Accounts, MonitorService Monitor
 
 	/// <summary>Updates of NAT itself, when it was installed with its installer.</summary>
 	public Watch.IAppUpdates? Updates { get; init; }
+
+	/// <summary>Where the alert settings are kept. In memory unless the host gives a store.</summary>
+	public Engine.Alerts.IAlertSettingsStore AlertSettings { get; init; } = new Engine.Alerts.MemoryAlertSettingsStore();
+
+	/// <summary>Where the look, sizes and windows are kept. In memory unless the host gives a store.</summary>
+	public ViewModels.IUiSettingsStore UiSettings { get; init; } = new ViewModels.MemoryUiSettingsStore();
+
+	/// <summary>False where there is no encrypted database yet (macOS and Linux): nothing is kept between runs.</summary>
+	public bool KeepsData { get; init; }
 }

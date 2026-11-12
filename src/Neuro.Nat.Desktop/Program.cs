@@ -6,6 +6,7 @@ using Neuro.Nat.Engine;
 using Neuro.Nat.Engine.Accounts;
 using Neuro.Nat.Engine.Attention;
 using Neuro.Nat.Engine.Events;
+using Neuro.Nat.Engine.Storage;
 using Velopack;
 
 namespace Neuro.Nat.Desktop;
@@ -88,37 +89,20 @@ internal static class Program
 		try
 		{
 			System.Reflection.Assembly[] uiAssemblies = [typeof(App.App).Assembly, typeof(Waher.Content.Markdown.MarkdownDocument).Assembly];
-			byte[]? databaseKey = null;
-			try
-			{
-				databaseKey = DatabaseKeys.ForCurrentPlatform(dataFolder);
-			}
-			catch (Exception ex)
-			{
-				AppLog.Error("The database key could not be read; signing keys are kept for this session only.", ex);
-			}
+			EngineRuntime.PrepareTypes(uiAssemblies);
 
-			if (databaseKey is not null)
-			{
-				// Legal identity signing keys and identity state, encrypted with a key from the OS vault.
-				EngineRuntime.InitializeAsync(Path.Combine(dataFolder, "database"), databaseKey, uiAssemblies).GetAwaiter().GetResult();
-				System.Security.Cryptography.CryptographicOperations.ZeroMemory(databaseKey);
-			}
-			else
-				EngineRuntime.Initialize(uiAssemblies);
+			HostStores? stores = OpenStores(dataFolder, args);
+			if (stores is null)
+				return AskAboutDatabase(args, single);
 
-			AppLog.Info($"Engine runtime initialized; signing keys {(EngineRuntime.KeepsKeys ? "kept encrypted between runs" : "kept for this session only")}.");
+			AccountManager accounts = new(stores.Accounts, stores.SignIns);
 
-			AccountManager accounts = new(
-				new JsonAccountStore(Path.Combine(dataFolder, "accounts.json")),
-				CredentialVaults.ForCurrentPlatform(dataFolder));
-
-			AttentionInbox attention = new(new JsonAttentionStore(Path.Combine(dataFolder, "attention.json")));
+			AttentionInbox attention = new(stores.Inbox);
 			attention.Load();
-			AppLog.Info($"Attention items loaded: {attention.Items.Count}.");
+			AppLog.Info($"Inbox items loaded: {attention.Items.Count}.");
 
 			MonitorService monitors = new(accounts, new EventHub(), attention);
-			Engine.Chat.ChatService chat = new(accounts, monitors, new Engine.Chat.JsonChatStore(Path.Combine(dataFolder, "chat.json")));
+			Engine.Chat.ChatService chat = new(accounts, monitors, stores.Chat);
 			chat.Load();
 
 			Engine.Identity.IdentityService identities = new(accounts, chat);
@@ -131,6 +115,9 @@ internal static class Program
 				StartHidden = startHidden,
 				Autostart = OperatingSystem.IsWindows() ? new WindowsAutostart() : null,
 				Updates = VelopackUpdates.TryStart(dataFolder),
+				AlertSettings = stores.AlertSettings,
+				UiSettings = stores.UiSettings,
+				KeepsData = stores.KeepsData,
 			};
 			if (startHidden)
 				AppLog.Info("Started in the tray.");
@@ -148,6 +135,120 @@ internal static class Program
 			AppLog.Error("Fatal error during startup.", ex);
 			throw;
 		}
+	}
+
+	/// <summary>Restarts NAT and sets what it had saved aside first: the choice "Start fresh".</summary>
+	private const string StartFreshArgument = "--start-fresh";
+
+	/// <summary>Where everything NAT keeps lives while it runs.</summary>
+	private sealed record HostStores(
+		IAccountStore Accounts, ICredentialVault SignIns, IAttentionStore? Inbox, Engine.Chat.IChatStore? Chat,
+		Engine.Alerts.IAlertSettingsStore AlertSettings, App.ViewModels.IUiSettingsStore UiSettings, bool KeepsData);
+
+	/// <summary>
+	/// Opens the encrypted database and moves the old plain files into it. Returns null when the
+	/// database cannot be opened; the user is then asked what to do.
+	/// </summary>
+	private static HostStores? OpenStores(string dataFolder, string[] args)
+	{
+		string databaseFolder = Path.Combine(dataFolder, "database");
+
+		if (args.Contains(StartFreshArgument, StringComparer.OrdinalIgnoreCase))
+		{
+			string? aside = LocalDatabase.SetAside(databaseFolder, DateTime.Now);
+			AppLog.Info(aside is null ? "Starting fresh: there was no database to move aside." : $"Starting fresh: the database was moved aside to {aside}.");
+			if (aside is not null)
+				Tell($"What NAT had saved was moved to this folder:\n\n{aside}\n\nNothing was deleted. NAT starts fresh now.");
+		}
+
+		if (!OperatingSystem.IsWindows())
+		{
+			// No vault for the database key here yet, so no database: nothing is kept between runs, and Settings says so.
+			EngineRuntime.Initialize();
+			AppLog.Info("No vault for a database key on this system: nothing is kept between runs.");
+			return new HostStores(new InMemoryAccountStore(), new InMemoryCredentialVault(), null, null,
+				new Engine.Alerts.MemoryAlertSettingsStore(), new App.ViewModels.MemoryUiSettingsStore(), KeepsData: false);
+		}
+
+		DatabaseOpening opening;
+		byte[]? key = null;
+		try
+		{
+			key = DatabaseKeys.ForCurrentPlatform(dataFolder) ?? throw new InvalidOperationException("No database key.");
+			opening = LocalDatabase.OpenAsync(databaseFolder, key).GetAwaiter().GetResult();
+		}
+		catch (Exception ex)
+		{
+			opening = new DatabaseOpening(null, "The database key could not be read.", ex);
+		}
+		finally
+		{
+			if (key is not null)
+				System.Security.Cryptography.CryptographicOperations.ZeroMemory(key);
+		}
+
+		if (opening.Database is not Waher.Persistence.Files.FilesProvider db)
+		{
+			AppLog.Error("The database could not be opened: " + opening.Problem, opening.Error);
+			return null;
+		}
+
+		EngineRuntime.UseDatabase(db);
+		AppLog.Info("Database open; everything NAT keeps is encrypted.");
+
+		// Once: what was kept in plain files before moves into the database. What fails keeps its file and is tried again next start.
+		LegacyImport import = new(db, dataFolder)
+		{
+			ReadOldSignIn = id => OperatingSystem.IsWindows()
+				? new DpapiCredentialVault(Path.Combine(dataFolder, "secrets")).GetAsync(id)
+				: Task.FromResult<AccountSecret?>(null),
+		};
+		if (import.HasWork())
+		{
+			IReadOnlyList<ImportStep> steps = import.RunAsync().GetAwaiter().GetResult();
+			foreach (ImportStep s in steps)
+			{
+				if (s.Failed)
+					AppLog.Error($"Could not move the old {s.What} into the database; the old file stays and this is tried again next start.", s.Error);
+				else
+					AppLog.Info($"Moved the old {s.What} into the database ({s.Count}) and removed the old file.");
+			}
+
+			if (steps.Any(s => s.Failed))
+				Tell("NAT could not move some of what it saved earlier into its encrypted store. Nothing was lost: the old files stay, and NAT tries again the next time it starts.");
+		}
+
+		DatabaseSettings settings = new(db);
+		return new HostStores(new DatabaseAccountStore(db), new DatabaseCredentialVault(db), new DatabaseAttentionStore(db), new DatabaseChatStore(db),
+			new Engine.Alerts.DatabaseAlertSettingsStore(settings), new App.ViewModels.DatabaseUiSettingsStore(settings), KeepsData: true);
+	}
+
+	/// <summary>
+	/// What NAT saved cannot be opened: never start empty without a word. Asks Try again, Start
+	/// fresh or Quit. The first two start NAT again, since a failed open keeps the files busy
+	/// until this process ends.
+	/// </summary>
+	private static int AskAboutDatabase(string[] args, SingleInstance single)
+	{
+		App.ViewModels.DatabaseProblemViewModel problem = new();
+		App.App.DatabaseProblem = problem;
+		BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+
+		AppLog.Info($"Database problem: the user chose {problem.Choice}.");
+		if (problem.Choice is not (App.ViewModels.DatabaseChoice.TryAgain or App.ViewModels.DatabaseChoice.StartFresh))
+			return 1;
+
+		List<string> again = [.. args.Where(a => !string.Equals(a, StartFreshArgument, StringComparison.OrdinalIgnoreCase))];
+		if (problem.Choice == App.ViewModels.DatabaseChoice.StartFresh)
+			again.Add(StartFreshArgument);
+
+		// Let go of "one NAT per user" first, or the new start would only bring this one forward.
+		single.Dispose();
+		System.Diagnostics.ProcessStartInfo start = new(Environment.ProcessPath ?? throw new InvalidOperationException("The path of NAT is not known.")) { UseShellExecute = false };
+		foreach (string a in again)
+			start.ArgumentList.Add(a);
+		System.Diagnostics.Process.Start(start);
+		return 0;
 	}
 
 	/// <summary>Used by the Avalonia previewer as well as by <see cref="Main"/>.</summary>

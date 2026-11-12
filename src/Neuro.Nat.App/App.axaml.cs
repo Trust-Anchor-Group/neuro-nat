@@ -11,6 +11,12 @@ public partial class App : Application
 	/// <summary>Set by the desktop host before the app starts.</summary>
 	public static AppServices? Services { get; set; }
 
+	/// <summary>
+	/// Set by the desktop host instead of <see cref="Services"/> when what NAT saved cannot be
+	/// opened. The app then only asks what to do, and the host acts on the choice.
+	/// </summary>
+	public static DatabaseProblemViewModel? DatabaseProblem { get; set; }
+
 	/// <summary>Brings the window back, from the tray or when NAT is started a second time. Any thread.</summary>
 	public static void ShowMainWindow()
 	{
@@ -28,6 +34,13 @@ public partial class App : Application
 	{
 		AppLog.Info($"Framework initialized; lifetime: {this.ApplicationLifetime?.GetType().Name ?? "none"}.");
 
+		if (this.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime problemDesktop && DatabaseProblem is DatabaseProblemViewModel problem)
+		{
+			problemDesktop.MainWindow = new DatabaseProblemWindow(problem);
+			base.OnFrameworkInitializationCompleted();
+			return;
+		}
+
 		if (this.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
 		{
 			try
@@ -43,7 +56,7 @@ public partial class App : Application
 					desktop.MainWindow = window;
 
 				// Noticing things: pop-ups, sounds and counts, in the window and from the tray.
-				Engine.Alerts.JsonAlertSettingsStore alertStore = new(Path.Combine(services.DataFolder, "alerts.json"));
+				Engine.Alerts.IAlertSettingsStore alertStore = services.AlertSettings;
 				Engine.Alerts.AlertService alerts = new(services.Monitors, alertStore.Load())
 				{
 					AccountLabel = id => services.Accounts.Sessions.FirstOrDefault(s => s.Profile.Id == id)?.Profile.Label,
@@ -52,7 +65,8 @@ public partial class App : Application
 				alerts.Watch(services.Chat);
 				alerts.Watch(services.Devices);
 				alerts.Watch(services.Identities);
-				vm.Settings.Attach(alerts, alertStore, new JsonUiSettingsStore(Path.Combine(services.DataFolder, "ui.json")), services.Autostart);
+				vm.Settings.Attach(alerts, alertStore, services.UiSettings, services.Autostart);
+				vm.Settings.StorageNote = services.KeepsData ? null : SettingsViewModel.NothingKept;
 
 				// Short motion where something changes, unless the system or Settings says less.
 				bool systemAllowsMotion = Controls.Motion.SystemAllows();

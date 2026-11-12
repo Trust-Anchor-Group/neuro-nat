@@ -48,7 +48,7 @@ public class LiveSourcesTests
 		string? password = Environment.GetEnvironmentVariable("NAT_TEST_PASSWORD");
 		string? neuron = Environment.GetEnvironmentVariable("NAT_TEST_NEURON");
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(neuron))
-			return;
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD", "NAT_TEST_NEURON");
 
 		Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
 		EngineRuntime.Initialize();
@@ -142,7 +142,7 @@ public class LiveSourcesTests
 		string? password = Environment.GetEnvironmentVariable("NAT_TEST_PASSWORD");
 		string? neuron = Environment.GetEnvironmentVariable("NAT_TEST_NEURON");
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(neuron))
-			return;
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD", "NAT_TEST_NEURON");
 
 		Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
 		EngineRuntime.Initialize();

@@ -1044,8 +1044,8 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			RoomInfo room = await this.chat.JoinRoomAsync(a.Id, this.JoinRoom, this.JoinNick.Trim());
 			this.IsJoinOpen = false;
 			this.JoinRoom = string.Empty;
-			this.Refresh();
-			this.SelectedPerson = this.People.FirstOrDefault(p => p.AccountId == a.Id && string.Equals(p.BareJid, room.RoomJid, StringComparison.OrdinalIgnoreCase));
+			// The room may be in the half of the list that is not on screen: go there, as opening any conversation does.
+			this.Open(a.Id, room.RoomJid);
 		}
 		catch (Exception ex)
 		{
@@ -1063,8 +1063,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 		try
 		{
 			await this.chat.AcceptInvitationAsync(i, nick);
-			this.Refresh();
-			this.SelectedPerson = this.People.FirstOrDefault(p => p.AccountId == i.AccountId && string.Equals(p.BareJid, i.RoomJid, StringComparison.OrdinalIgnoreCase));
+			this.Open(i.AccountId, i.RoomJid);
 		}
 		catch (Exception ex)
 		{

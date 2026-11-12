@@ -4,7 +4,6 @@ using Neuro.Nat.Engine.Events;
 using Waher.Networking.XMPP.Concentrator;
 using Waher.Networking.XMPP.DataForms;
 using Waher.Things;
-using Xunit.Abstractions;
 
 namespace Neuro.Nat.Engine.Tests;
 
@@ -23,10 +22,7 @@ public class LiveConcentratorTests(ITestOutputHelper output)
 		string? neuron = Environment.GetEnvironmentVariable("NAT_TEST_NEURON");
 
 		if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(neuron))
-		{
-			output.WriteLine("Not run: NAT_TEST_HOST/USER/PASSWORD/NEURON not set.");
-			return null;
-		}
+			Live.Skip("NAT_TEST_HOST", "NAT_TEST_USER", "NAT_TEST_PASSWORD", "NAT_TEST_NEURON");
 
 		EngineRuntime.Initialize();
 		string file = Path.Combine(Path.GetTempPath(), "Nat.Live." + Guid.NewGuid().ToString("N"), "accounts.json");
@@ -203,7 +199,10 @@ public class LiveConcentratorTests(ITestOutputHelper output)
 	public async Task ProbeScript()
 	{
 		string? script = Environment.GetEnvironmentVariable("NAT_PROBE_SCRIPT");
-		if (string.IsNullOrEmpty(script) || await ConnectAsync(output) is not var (manager, monitor, c))
+		if (string.IsNullOrEmpty(script))
+			Live.Skip("NAT_PROBE_SCRIPT");
+
+		if (await ConnectAsync(output) is not var (manager, monitor, c))
 			return;
 
 		await using (manager)
