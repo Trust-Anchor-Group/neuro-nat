@@ -35,6 +35,9 @@ public static class Links
 			case TreeItemViewModel tree when !tree.IsPlaceholder && tree.Owner.SelectedNeuron is NeuronChoice neuron && PathOf(tree) is { Count: > 0 } path:
 				return NatLink.Node(neuron.BareJid, path);
 
+			case CompareViewModel compare:
+				return compare.Link;
+
 			case PersonViewModel p when !p.IsPrivate:
 				return p.IsRoom ? NatLink.Room(p.BareJid) : NatLink.Chat(p.BareJid);
 

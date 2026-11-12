@@ -389,6 +389,17 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 			Icon = "Console",
 			IsEnabled = this.Shell is not null,
 		});
+		if (rows.Count == 2)
+		{
+			list.Add(new ItemAction("Compare", ActionGroup.Do, () => this.Shell?.CompareNeurons((rows[0].AccountId, rows[0].BareJid), (rows[1].AccountId, rows[1].BareJid)))
+			{
+				InBar = true,
+				BarText = "Compare",
+				Icon = "Compare",
+				IsEnabled = this.Shell is not null,
+			});
+		}
+
 		list.Do("Read their health now", () => this.RefreshNowCommand.Execute(null), icon: "Refresh");
 		list.Add(new ItemAction("Check for updates", ActionGroup.Do, () => this.Shell?.CheckUpdatesAsync([.. rows.Select(r => (r.AccountId, r.BareJid))]) ?? Task.CompletedTask)
 		{

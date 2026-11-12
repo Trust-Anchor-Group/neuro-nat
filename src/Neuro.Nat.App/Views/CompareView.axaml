@@ -1,0 +1,224 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Neuro.Nat.App.ViewModels"
+             xmlns:c="using:Neuro.Nat.App.Controls"
+             x:Class="Neuro.Nat.App.Views.CompareView"
+             x:DataType="vm:CompareViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.row">
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Padding" Value="10,7" />
+    </Style>
+    <Style Selector="TextBlock.value">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="TextBlock.value.mono">
+      <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="TextBlock.quiet">
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Secondary}" />
+    </Style>
+    <Style Selector="TextBlock.mark">
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink.Tertiary}" />
+      <Setter Property="FontSize" Value="{StaticResource Type.Section}" />
+      <Setter Property="Margin" Value="0,-2,0,0" />
+    </Style>
+    <Style Selector="TextBlock.mark.different">
+      <Setter Property="Foreground" Value="{DynamicResource State.Busy}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.only">
+      <Setter Property="Background" Value="{DynamicResource State.Busy.Subtle}" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius.Small}" />
+      <Setter Property="Padding" Value="5,1" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.only TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Type.Caption}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource State.Busy}" />
+    </Style>
+    <Style Selector="TextBlock.btnLabel.compareAction">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector=".maxw1100 TextBlock.btnLabel.compareAction">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector=".maxw860 Border.row">
+      <Setter Property="Padding" Value="6,7" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <!-- Choosing what to compare, in place -->
+    <DockPanel IsVisible="{Binding IsChoosing}" Margin="20,16,20,20" MaxWidth="560" HorizontalAlignment="Left" MinWidth="0">
+      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+        <Button DockPanel.Dock="Right" Classes="ghost" Content="Cancel" Command="{Binding CancelChoiceCommand}" IsVisible="{Binding HasResult}" />
+        <TextBlock Classes="section" Text="{Binding ChooseTitle}" TextWrapping="Wrap" VerticalAlignment="Center" />
+      </DockPanel>
+      <StackPanel DockPanel.Dock="Top" Spacing="8" IsVisible="{Binding !HasChoices}" Margin="0,8,0,0">
+        <TextBlock Text="{Binding ChooseEmpty}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <Button Content="Keep a copy now" Command="{Binding KeepFromChoiceCommand}" IsVisible="{Binding CanKeepFromChoice}" HorizontalAlignment="Left" />
+      </StackPanel>
+      <ScrollViewer IsVisible="{Binding HasChoices}">
+        <ItemsControl ItemsSource="{Binding Choices}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CompareChoice">
+              <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,8" Margin="0,0,0,2"
+                      Command="{Binding $parent[ItemsControl].((vm:CompareViewModel)DataContext).PickCommand}" CommandParameter="{Binding}"
+                      ToolTip.Tip="{Binding Title}">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Classes="meta" Text="{Binding Meta}" IsVisible="{Binding HasMeta}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </DockPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+
+    <!-- Reading, before there is anything to show -->
+    <StackPanel IsVisible="{Binding IsBusy}" Margin="20,16,20,0" Spacing="12" VerticalAlignment="Top">
+      <TextBlock Classes="meta" Text="{Binding BusyText}" IsVisible="{Binding !HasResult}" />
+      <c:Placeholder Rows="6" RowHeight="30" IsVisible="{Binding !HasResult}" />
+    </StackPanel>
+
+    <!-- The comparison. Four columns: what it is, the left Neuron, the mark, the right Neuron. -->
+    <DockPanel IsVisible="{Binding HasResult}" Margin="20,14,20,0">
+
+      <!-- What to see, and what to do with it -->
+      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+        <StackPanel x:Name="Tools" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" Margin="12,0,0,0">
+          <TextBlock Classes="meta" Text="Reading…" IsVisible="{Binding IsBusy}" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <Button Classes="ghost" Command="{Binding ReadAgainCommand}" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Read again (F5)" AutomationProperties.Name="Read again">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Refresh}" />
+              <TextBlock Classes="btnLabel compareAction" Text="Read again" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Command="{Binding CopyTextCommand}" ToolTip.Tip="Copy as text" AutomationProperties.Name="Copy as text">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Copy}" />
+              <TextBlock Classes="btnLabel compareAction" Text="Copy as text" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Command="{Binding SaveTextCommand}" ToolTip.Tip="Save as file" AutomationProperties.Name="Save as file">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Save}" />
+              <TextBlock Classes="btnLabel compareAction" Text="Save" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Command="{Binding CopyLinkCommand}" ToolTip.Tip="Copy link" AutomationProperties.Name="Copy link">
+            <StackPanel Classes="btn">
+              <c:LineIcon Classes="btn" Data="{StaticResource Icon.Link}" />
+              <TextBlock Classes="btnLabel compareAction" Text="Copy link" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Padding="7,5" c:ActionMenu.Source="{Binding}" c:ActionMenu.Item="{Binding}" c:ActionMenu.OnClick="True"
+                  ToolTip.Tip="More" AutomationProperties.Name="More">
+            <c:LineIcon Classes="btn" Data="{StaticResource Icon.More}" />
+          </Button>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <CheckBox x:Name="OnlyDifferences" IsChecked="{Binding OnlyDifferences}" Content="Only differences" VerticalAlignment="Center" />
+          <TextBlock x:Name="CountText" Text="{Binding CountText}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </DockPanel>
+
+      <!-- What could not be read, by Neuron -->
+      <Border DockPanel.Dock="Top" IsVisible="{Binding HasNotes}" Background="{DynamicResource State.Busy.Subtle}"
+              CornerRadius="{StaticResource Radius}" Padding="12,9" Margin="0,0,0,12">
+        <ItemsControl ItemsSource="{Binding Notes}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+
+      <!-- The two Neurons, over their columns -->
+      <Border DockPanel.Dock="Top" Background="{DynamicResource Surface.Header}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+              CornerRadius="6,6,0,0" Padding="10,8">
+        <Grid ColumnDefinitions="2*,3*,32,3*">
+          <StackPanel Grid.Column="1" Spacing="2" Margin="0,0,8,0">
+            <TextBlock x:Name="LeftName" Text="{Binding LeftName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Result.Left.NeuronJid}" />
+            <TextBlock Classes="meta" Text="{Binding LeftWhen}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <StackPanel Grid.Column="3" Spacing="2">
+            <TextBlock x:Name="RightName" Text="{Binding RightName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Result.Right.NeuronJid}" />
+            <TextBlock Classes="meta" Text="{Binding RightWhen}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Border BorderBrush="{DynamicResource Line}" BorderThickness="1,0,1,0" Background="{DynamicResource Surface.Panel}">
+        <ScrollViewer x:Name="Rows" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="0,0,0,20">
+            <Border Padding="10,14" IsVisible="{Binding ShowsNoDifferences}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <c:LineIcon Data="{StaticResource Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource State.Ok}" VerticalAlignment="Center" />
+                <TextBlock Text="No differences" FontWeight="SemiBold" VerticalAlignment="Center" />
+              </StackPanel>
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding Groups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CompareGroupViewModel">
+                  <StackPanel>
+                    <Border Padding="10,14,10,6" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Bottom" />
+                        <TextBlock Classes="meta" Text="{Binding Meta}" VerticalAlignment="Bottom" Margin="0,0,0,1" />
+                      </StackPanel>
+                    </Border>
+                    <ItemsControl ItemsSource="{Binding Sections}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CompareSectionViewModel">
+                          <StackPanel>
+                            <TextBlock Classes="caption" Text="{Binding Title}" IsVisible="{Binding HasTitle}" Margin="10,10,10,4" />
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CompareRowViewModel">
+                                  <Border Classes="row">
+                                    <Grid ColumnDefinitions="2*,3*,32,3*">
+                                      <TextBlock Classes="value" Text="{Binding Label}" Classes.quiet="{Binding IsQuiet}" Margin="0,0,12,0" ToolTip.Tip="{Binding Label}" />
+                                      <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                        <TextBlock Classes="value" Classes.mono="{Binding IsMono}" Classes.quiet="{Binding IsQuiet}" Text="{Binding Left}" />
+                                        <Border Classes="only" IsVisible="{Binding IsOnlyLeft}">
+                                          <TextBlock Text="Only here" />
+                                        </Border>
+                                      </StackPanel>
+                                      <TextBlock Grid.Column="2" Classes="mark" Classes.different="{Binding IsDifferent}" Text="{Binding Mark}" />
+                                      <StackPanel Grid.Column="3">
+                                        <TextBlock Classes="value" Classes.mono="{Binding IsMono}" Classes.quiet="{Binding IsQuiet}" Text="{Binding Right}" />
+                                        <Border Classes="only" IsVisible="{Binding IsOnlyRight}">
+                                          <TextBlock Text="Only here" />
+                                        </Border>
+                                      </StackPanel>
+                                    </Grid>
+                                  </Border>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </DockPanel>
+  </Panel>
+</UserControl>

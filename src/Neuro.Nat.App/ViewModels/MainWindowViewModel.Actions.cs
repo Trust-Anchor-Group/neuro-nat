@@ -181,6 +181,7 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 			Guid a = row.AccountId;
 			list.Window("Open in a new window", () => this.OpenNeuronWindow(neuronJid, a));
 			list.Do("Read its health now", () => this.Fleet.RefreshNowCommand.Execute(null), icon: "Refresh");
+			this.AddCompareActions(list, neuronJid, a);
 			list.Do("Watch its traffic", () => this.WatchTrafficOf(a, neuronJid), icon: "Sniffer");
 			list.Do("Check for updates", () =>
 			{
@@ -409,6 +410,10 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 			case WorkspaceKind.Topology:
 				if (this.Topology.ScanCommand.CanExecute(null))
 					this.Topology.ScanCommand.Execute(null);
+				break;
+			case WorkspaceKind.Compare:
+				if (this.Compare.ReadAgainCommand.CanExecute(null))
+					this.Compare.ReadAgainCommand.Execute(null);
 				break;
 			default:
 				return;

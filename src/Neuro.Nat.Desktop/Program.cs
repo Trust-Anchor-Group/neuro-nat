@@ -123,6 +123,7 @@ internal static class Program
 				AlertSettings = stores.AlertSettings,
 				UiSettings = stores.UiSettings,
 				KeepsData = stores.KeepsData,
+				NeuronCopies = stores.NeuronCopies,
 			};
 			if (startHidden)
 				AppLog.Info("Started in the tray.");
@@ -152,7 +153,11 @@ internal static class Program
 	/// <summary>Where everything NAT keeps lives while it runs.</summary>
 	private sealed record HostStores(
 		IAccountStore Accounts, ICredentialVault SignIns, IAttentionStore? Inbox, Engine.Chat.IChatStore? Chat,
-		Engine.Alerts.IAlertSettingsStore AlertSettings, App.ViewModels.IUiSettingsStore UiSettings, IKnownNeuronStore KnownNeurons, bool KeepsData);
+		Engine.Alerts.IAlertSettingsStore AlertSettings, App.ViewModels.IUiSettingsStore UiSettings, IKnownNeuronStore KnownNeurons, bool KeepsData)
+	{
+		/// <summary>Copies of what comparisons read.</summary>
+		public INeuronCopyStore NeuronCopies { get; init; } = new MemoryNeuronCopyStore();
+	}
 
 	/// <summary>
 	/// Opens the encrypted database and moves the old plain files into it. Returns null when the
@@ -229,7 +234,10 @@ internal static class Program
 
 		DatabaseSettings settings = new(db);
 		return new HostStores(new DatabaseAccountStore(db), new DatabaseCredentialVault(db), new DatabaseAttentionStore(db), new DatabaseChatStore(db),
-			new Engine.Alerts.DatabaseAlertSettingsStore(settings), new App.ViewModels.DatabaseUiSettingsStore(settings), new DatabaseKnownNeuronStore(db), KeepsData: true);
+			new Engine.Alerts.DatabaseAlertSettingsStore(settings), new App.ViewModels.DatabaseUiSettingsStore(settings), new DatabaseKnownNeuronStore(db), KeepsData: true)
+		{
+			NeuronCopies = new DatabaseNeuronCopyStore(db),
+		};
 	}
 
 	/// <summary>

@@ -173,6 +173,9 @@ public interface IShell
 	/// <summary>Opens a publish/subscribe node: one on a Neuron's service, or one in an account's own storage.</summary>
 	void ShowNode(Guid accountId, string service, string node, bool people = false);
 
+	/// <summary>Puts two Neurons side by side.</summary>
+	void CompareNeurons((Guid Account, string Jid) a, (Guid Account, string Jid) b);
+
 	/// <summary>Asks several Neurons whether newer software is waiting, and says how many have some.</summary>
 	Task CheckUpdatesAsync(IReadOnlyList<(Guid Account, string Jid)> neurons);
 	void ShowAccount(Guid accountId);

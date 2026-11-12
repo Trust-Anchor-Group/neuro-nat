@@ -343,6 +343,7 @@ Cool neutrals, one cobalt accent, a state set, a severity ramp and the account h
 **The places:**
 - **Inbox**: everything that waits for you in one list (messages, requests, notifications from Neurons), with the thing open beside it so it can be answered there.
 - **Neurons**: List, Map and Big screen. A Neuron opens as a page with Overview, Events, Sources, Console, Software and Identity.
+- **Compare** (under Neurons): two Neurons side by side, or a Neuron beside a kept copy of how it was, in Software, Settings and State now (`Views/CompareView.axaml`, `Engine/Compare/`). It starts from two Neurons selected in the list, "Compare with" on a Neuron, or "compare" and two names in the search box. "Only differences" is on from the start, with the count; State now is shown and never counted. Passwords and keys only say Same or Different. Every comparison keeps a copy of what it read; "Keep a copy now" and "Compare with earlier" are on every Neuron's menu.
 - **Events**: problems on the left (events grouped by what went wrong), all events on the right.
 - **Chat**: people and rooms, the conversation, and the person's details as a third column when there is room.
 - **Console**: tick one or several Neurons, run a command, read the answers side by side.
@@ -404,7 +405,7 @@ Every list implements `IActionSource.ActionsFor(items)` and returns an `ActionLi
 Copy is always there: Ctrl+C copies what is selected as text, Ctrl+Shift+C the other way (with times, or as Markdown), Ctrl+S saves it to a file. In traffic, dragging over lines selects them.
 
 ### Links
-Anything you can point at has a link that reads plainly: `neuro-nat://neuron/<domain>/<tab>`, `problem/<domain>/<fingerprint>`, `event/<domain>/<id>?at=<UTC time>`, `node/<domain>/<source>/<node>/…`, `chat/<address>`, `room/<address>` (`Engine/Links/NatLink.cs`). A Neuron is named by its domain; the account is never in a link. "Copy link" is added once, in `Links.WithLink` (`ViewModels/Links.cs`), so every menu and selection bar has it. In a chat message a link shows as a small card with the name of the thing and its state now; pasted into the search box it opens. A link only opens a screen. What cannot be followed gets one note.
+Anything you can point at has a link that reads plainly: `neuro-nat://neuron/<domain>/<tab>`, `problem/<domain>/<fingerprint>`, `event/<domain>/<id>?at=<UTC time>`, `node/<domain>/<source>/<node>/…`, `chat/<address>`, `room/<address>`, `compare/<domain>/<domain>` and `compare/<domain>/kept/<copy id>` (`Engine/Links/NatLink.cs`). A Neuron is named by its domain; the account is never in a link. "Copy link" is added once, in `Links.WithLink` (`ViewModels/Links.cs`), so every menu and selection bar has it. In a chat message a link shows as a small card with the name of the thing and its state now; pasted into the search box it opens. A link only opens a screen. What cannot be followed gets one note.
 
 ### The note, and Undo
 `Ui.Say("Copied 3 events")` shows a short note in the status bar for 2.4 seconds (class `flash`), in the window in front. `Ui.Say(note, undo)` adds an Undo button and keeps the note for 7 seconds; Ctrl+Z does the same while it shows. Use the second form for anything that takes one click and is easy to do to the wrong row: acknowledge, mute, mark fixed, reopen. What cannot be taken back asks first instead.

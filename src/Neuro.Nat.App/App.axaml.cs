@@ -72,6 +72,7 @@ public partial class App : Application
 			{
 				AppServices services = Services ?? throw new InvalidOperationException("App.Services must be set by the host.");
 				MainWindowViewModel vm = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub);
+				vm.Compare.Store = services.NeuronCopies;
 				MainWindow window = new() { DataContext = vm };
 				UiHost.Attach(window);
 

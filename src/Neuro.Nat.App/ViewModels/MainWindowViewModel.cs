@@ -40,6 +40,9 @@ public enum WorkspaceKind
 
 	/// <summary>The Storage tab of an account's page.</summary>
 	AccountStorage,
+
+	/// <summary>Two Neurons side by side, or a Neuron beside a kept copy of it.</summary>
+	Compare,
 }
 
 /// <summary>Shell view model: workspace navigation, the account lens, and the Accounts workspace.</summary>
@@ -107,7 +110,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			OpenNeuronFor = (account, jid) => this.OpenNeuron(jid, account),
 			OpenConsoleFor = (account, jid) => this.OpenNeuron(jid, account, WorkspaceKind.NeuronConsole),
 		};
-		this.Updates = new UpdatesViewModel(software ?? new Engine.Software.SoftwareService(fleet.Monitors, chatService), fleet.Monitors, accounts);
+		Engine.Software.SoftwareService softwareService = software ?? new Engine.Software.SoftwareService(fleet.Monitors, chatService);
+		this.Updates = new UpdatesViewModel(softwareService, fleet.Monitors, accounts);
+		this.StartCompare(softwareService);
 		this.Devices = new DevicesViewModel(this.devicesService, accounts);
 		Engine.PubSub.PubSubService pubsubService = pubsub ?? new Engine.PubSub.PubSubService(accounts);
 		this.Inbox = new InboxViewModel(this.Attention, this.Chat, chatService, this.devicesService, this.identityService, accounts, pubsubService)
@@ -278,6 +283,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 				this.ShowAccountTab(screen);
 				break;
 			case WorkspaceKind.Settings: this.ShowSettings(); break;
+			case WorkspaceKind.Compare: this.ShowCompare(); break;
 			default: this.ShowAccounts(); break;
 		}
 	}
@@ -547,6 +553,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		yield return new SearchItem("Storage", "Your account's personal storage", Icon("PubSub"), this.ShowPubSub);
 		yield return new SearchItem("Settings", "Status, look, pop-ups and sounds", Icon("Settings"), this.ShowSettings);
 
+		foreach (SearchItem i in this.CompareSearchItems(Icon))
+			yield return i;
+
 		foreach (NeuronChipViewModel chip in this.NeuronChips)
 		{
 			string jid = chip.BareJid;
@@ -743,7 +752,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	public FleetViewModel Fleet { get; }
 
 	[ObservableProperty]
-	[NotifyPropertyChangedFor(nameof(IsAccounts), nameof(IsEvents), nameof(IsFleet), nameof(IsAttention), nameof(IsSources), nameof(IsChat), nameof(IsConsole), nameof(IsIdentities), nameof(IsTopology), nameof(IsUpdates), nameof(IsDevices), nameof(IsPubSub), nameof(IsSettings), nameof(WorkspaceTitle),
+	[NotifyPropertyChangedFor(nameof(IsAccounts), nameof(IsEvents), nameof(IsFleet), nameof(IsAttention), nameof(IsSources), nameof(IsChat), nameof(IsConsole), nameof(IsIdentities), nameof(IsTopology), nameof(IsUpdates), nameof(IsDevices), nameof(IsPubSub), nameof(IsSettings), nameof(IsCompare), nameof(HasCrumb), nameof(WorkspaceTitle),
 		nameof(Place), nameof(IsPlaceInbox), nameof(IsPlaceNeurons), nameof(IsPlaceAccounts), nameof(IsLensVisible),
 		nameof(IsNeuronPage), nameof(IsNeuronBoard), nameof(IsNeuronOverview), nameof(IsNeuronEvents), nameof(IsNeuronConsole), nameof(IsAccountIdentities), nameof(IsAccountStorage))]
 	private WorkspaceKind workspace = WorkspaceKind.Accounts;
@@ -829,7 +838,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	}
 
 	/// <summary>The name of the current place, shown in the top bar. On a Neuron's page, the Neuron.</summary>
-	public string WorkspaceTitle => this.IsNeuronPage && this.Page is NeuronPageViewModel p ? p.Label : this.Place.ToString();
+	public string WorkspaceTitle => this.IsNeuronPage && this.Page is NeuronPageViewModel p ? p.Label : this.IsCompare ? "Compare" : this.Place.ToString();
 
 	[RelayCommand]
 	private void ShowAccounts() => this.Workspace = WorkspaceKind.Accounts;

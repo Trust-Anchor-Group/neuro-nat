@@ -257,6 +257,9 @@ public sealed partial class MainWindowViewModel
 				Ui.Say(EventGone);
 				return LinkOutcome.Gone;
 
+			case LinkKind.Compare:
+				return await this.GoCompareAsync(link, row);
+
 			case LinkKind.Node:
 				this.OpenNeuron(row.BareJid, row.AccountId, WorkspaceKind.Sources);
 				if (await this.Sources.RevealAsync(link.Parts))
@@ -336,6 +339,9 @@ public sealed partial class MainWindowViewModel
 
 				return new LinkInfo(e.Title, $"{e.Severity} on {name} at {e.Timestamp:yyyy-MM-dd HH:mm:ss}",
 					e.Severity >= EventSeverity.Error ? "bad" : e.Severity == EventSeverity.Warning ? "busy" : "idle");
+
+			case LinkKind.Compare:
+				return this.DescribeCompare(link, name);
 
 			default:
 				return new LinkInfo(link.Id, "In the sources of " + name, neuronTone);

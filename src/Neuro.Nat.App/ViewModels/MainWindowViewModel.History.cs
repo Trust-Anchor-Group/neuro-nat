@@ -89,6 +89,7 @@ public sealed partial class MainWindowViewModel
 					WorkspaceKind.Events => "Events",
 					WorkspaceKind.Console => "the Console",
 					WorkspaceKind.Settings => "Settings",
+					WorkspaceKind.Compare => "the comparison",
 					_ => this.Place.ToString(),
 				});
 		}

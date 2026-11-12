@@ -25,6 +25,9 @@ public enum LinkKind
 
 	/// <summary>A room.</summary>
 	Room,
+
+	/// <summary>Two Neurons side by side, or a Neuron beside a kept copy of it.</summary>
+	Compare,
 }
 
 /// <summary>
@@ -70,7 +73,11 @@ public sealed record NatLink(LinkKind Kind, string Domain, IReadOnlyList<string>
 		["node"] = LinkKind.Node,
 		["chat"] = LinkKind.Chat,
 		["room"] = LinkKind.Room,
+		["compare"] = LinkKind.Compare,
 	};
+
+	/// <summary>The word in a comparison link before the id of a kept copy.</summary>
+	public const string Kept = "kept";
 
 	// ----- Making links -----
 
@@ -97,6 +104,20 @@ public sealed record NatLink(LinkKind Kind, string Domain, IReadOnlyList<string>
 	/// <summary>A room.</summary>
 	public static NatLink Room(string roomJid)
 		=> new(LinkKind.Room, DomainOf(roomJid), [roomJid.ToLowerInvariant()]);
+
+	/// <summary>Two Neurons side by side: <c>neuro-nat://compare/lab.example.com/prod.example.com</c>.</summary>
+	public static NatLink Compare(string leftJid, string rightJid)
+		=> new(LinkKind.Compare, DomainOf(leftJid), [DomainOf(rightJid)]);
+
+	/// <summary>A Neuron now beside a kept copy of it: <c>neuro-nat://compare/lab.example.com/kept/&lt;copy id&gt;</c>.</summary>
+	public static NatLink CompareWithKept(string neuronJid, string copyId)
+		=> new(LinkKind.Compare, DomainOf(neuronJid), [Kept, copyId.ToLowerInvariant()]);
+
+	/// <summary>For a comparison: the other Neuron's domain, or null when the other side is a kept copy.</summary>
+	public string? OtherDomain => this.Kind == LinkKind.Compare && this.Parts.Count == 1 ? this.Parts[0] : null;
+
+	/// <summary>For a comparison with a kept copy: the copy's id.</summary>
+	public string? CopyId => this.Kind == LinkKind.Compare && this.Parts.Count == 2 ? this.Parts[1] : null;
 
 	/// <summary>
 	/// The id an event has in a link: the same on every computer that has the event, whether it
@@ -237,6 +258,21 @@ public sealed record NatLink(LinkKind Kind, string Domain, IReadOnlyList<string>
 				link = new NatLink(kind, parts[0].ToLowerInvariant(), [.. parts.Skip(1)]);
 				return true;
 
+			case LinkKind.Compare:
+				if (at is not null || !IsDomain(parts[0]))
+					return false;
+				if (parts.Count == 2 && IsDomain(parts[1]))
+				{
+					link = new NatLink(kind, parts[0].ToLowerInvariant(), [parts[1].ToLowerInvariant()]);
+					return true;
+				}
+				if (parts.Count == 3 && string.Equals(parts[1], Kept, StringComparison.OrdinalIgnoreCase) && IsHex32(parts[2]))
+				{
+					link = new NatLink(kind, parts[0].ToLowerInvariant(), [Kept, parts[2].ToLowerInvariant()]);
+					return true;
+				}
+				return false;
+
 			default:
 				if (parts.Count != 1 || at is not null || !IsBareJid(parts[0]))
 					return false;
@@ -333,6 +369,8 @@ public sealed record NatLink(LinkKind Kind, string Domain, IReadOnlyList<string>
 	}
 
 	private static bool IsHex16(string s) => s.Length == 16 && s.All(char.IsAsciiHexDigit);
+
+	private static bool IsHex32(string s) => s.Length == 32 && s.All(char.IsAsciiHexDigit);
 
 	/// <summary>A data source or node id: no control characters, and never "." or "..".</summary>
 	private static bool IsId(string s)

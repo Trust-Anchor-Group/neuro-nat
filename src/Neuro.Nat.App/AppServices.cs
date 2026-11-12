@@ -26,6 +26,9 @@ public sealed record AppServices(AccountManager Accounts, MonitorService Monitor
 	/// <summary>Where the look, sizes and windows are kept. In memory unless the host gives a store.</summary>
 	public ViewModels.IUiSettingsStore UiSettings { get; init; } = new ViewModels.MemoryUiSettingsStore();
 
+	/// <summary>Copies of what comparisons read. In memory unless the host gives a store.</summary>
+	public Engine.Storage.INeuronCopyStore NeuronCopies { get; init; } = new Engine.Storage.MemoryNeuronCopyStore();
+
 	/// <summary>False where there is no encrypted database yet (macOS and Linux): nothing is kept between runs.</summary>
 	public bool KeepsData { get; init; }
 }
