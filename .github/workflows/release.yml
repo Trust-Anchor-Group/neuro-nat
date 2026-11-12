@@ -1,0 +1,109 @@
+# Releases NAT when a version tag such as v0.2.0 is pushed: tests first, then the Windows
+# installer and update packages, uploaded as a GitHub release that installed copies update from.
+# If a test fails, nothing is released.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  VPK_VERSION: "1.2.161" # keep in step with Velopack in Directory.Packages.props
+
+jobs:
+  test:
+    name: Test
+    runs-on: windows-latest
+    timeout-minutes: 40
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check the tag
+        id: version
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          $tag = $env:TAG
+          if ($tag -notmatch '^v(\d+\.\d+\.\d+)$') {
+            Write-Output "::error::The tag '$tag' is not a full version. Use a tag such as v0.2.0 (v, then major.minor.patch)."
+            exit 1
+          }
+          "version=$($Matches[1])" >> $env:GITHUB_OUTPUT
+
+      - name: Check out
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up .NET (version from global.json)
+        uses: actions/setup-dotnet@v4.3.1
+        with:
+          global-json-file: global.json
+
+      - name: Test
+        run: dotnet test Neuro.Nat.slnx --configuration Release
+
+  release:
+    name: Build and upload the release
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.test.outputs.version }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up .NET (version from global.json)
+        uses: actions/setup-dotnet@v4.3.1
+        with:
+          global-json-file: global.json
+
+      - name: Install the Velopack CLI
+        run: dotnet tool install --global vpk --version ${{ env.VPK_VERSION }}
+
+      - name: Read the repository address
+        id: repo
+        shell: pwsh
+        run: |
+          # The address is written in one place only: UpdateSource in Directory.Build.props.
+          $props = [xml](Get-Content Directory.Build.props)
+          $address = $props.Project.PropertyGroup.UpdateSource | ForEach-Object { if ($_ -is [System.Xml.XmlElement]) { $_.InnerText } else { $_ } } | Where-Object { $_ } | Select-Object -First 1
+          if (-not $address) { Write-Output "::error::No UpdateSource in Directory.Build.props."; exit 1 }
+          "address=$address" >> $env:GITHUB_OUTPUT
+
+      - name: Fetch the previous release, so update packages can be small
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_URL: ${{ steps.repo.outputs.address }}
+        run: |
+          vpk download github --repoUrl $env:REPO_URL --token $env:GITHUB_TOKEN --outputDir releases
+          # The first release has nothing before it.
+          if ($LASTEXITCODE -ne 0) { Write-Output "No earlier release found; this one has no delta package." }
+          exit 0
+
+      - name: Publish
+        run: dotnet publish src/Neuro.Nat.Desktop/Neuro.Nat.Desktop.csproj --configuration Release --runtime win-x64 --self-contained true --output publish -p:Version=${{ env.VERSION }}
+
+      - name: Pack the installer
+        run: vpk pack --packId Neuro.Nat --packVersion ${{ env.VERSION }} --packDir publish --mainExe NAT.exe --packTitle NAT --packAuthors NAT --icon src/Neuro.Nat.Desktop/Assets/NAT.ico --shortcuts Desktop,StartMenuRoot --outputDir releases
+
+      - name: Upload the release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_URL: ${{ steps.repo.outputs.address }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          vpk upload github --repoUrl $env:REPO_URL --token $env:GITHUB_TOKEN --outputDir releases --publish --releaseName "NAT $env:VERSION" --tag $env:TAG
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
