@@ -12,18 +12,65 @@ public sealed partial class AccountItemViewModel : ObservableObject, IDisposable
 	private readonly Func<Guid, AccountSecret, Task> setSecret;
 	private readonly Func<Guid, string, Task>? changePassword;
 
-	public AccountItemViewModel(AccountSession session, Func<AccountItemViewModel, Task> remove, Func<Guid, AccountSecret, Task> setSecret, Func<Guid, string, Task>? changePassword = null)
+	public AccountItemViewModel(AccountSession session, Func<AccountItemViewModel, Task> remove, Func<Guid, AccountSecret, Task> setSecret, Func<Guid, string, Task>? changePassword = null,
+		Func<AccountProfile, Task>? updateProfile = null)
 	{
 		this.Session = session;
 		this.remove = remove;
 		this.setSecret = setSecret;
 		this.changePassword = changePassword;
+		this.updateProfile = updateProfile;
+		this.webAddressText = session.Profile.WebAddress ?? string.Empty;
 		this.Sniffer = new SnifferViewModel(session.Sniffer, session.Profile.Label);
 		session.StatusChanged += this.Session_StatusChanged;
 		this.Refresh();
 	}
 
 	public AccountSession Session { get; }
+
+	// ---- The web address of the account's Neuron (empty: https on its domain) -------------
+
+	private readonly Func<AccountProfile, Task>? updateProfile;
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(IsWebAddressChanged))]
+	private string webAddressText;
+
+	[ObservableProperty] private string? webAddressError;
+
+	/// <summary>What an empty web address means: https on the account's domain.</summary>
+	public string WebAddressPlaceholder => "https://" + this.Session.Profile.EffectiveDomain + "/";
+
+	public bool IsWebAddressChanged => !string.Equals(this.WebAddressText.Trim(), this.Session.Profile.WebAddress ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+
+	partial void OnWebAddressTextChanged(string value) => this.WebAddressError = null;
+
+	/// <summary>Keeps the web address: an https address, or http on this computer. Empty goes back to https on the domain.</summary>
+	[RelayCommand]
+	private async Task SaveWebAddress()
+	{
+		string text = this.WebAddressText.Trim();
+		string? address = text.Length == 0 ? null : AccountWeb.Check(text);
+		if (text.Length > 0 && address is null)
+		{
+			this.WebAddressError = "Use an https address, or http on this computer.";
+			return;
+		}
+
+		if (this.updateProfile is null)
+			return;
+
+		try
+		{
+			await this.updateProfile(this.Session.Profile with { WebAddress = address });
+			this.WebAddressText = address ?? string.Empty;
+			this.OnPropertyChanged(nameof(this.IsWebAddressChanged));
+		}
+		catch (Exception ex)
+		{
+			this.WebAddressError = ex.Message;
+		}
+	}
 
 	public SnifferViewModel Sniffer { get; }
 

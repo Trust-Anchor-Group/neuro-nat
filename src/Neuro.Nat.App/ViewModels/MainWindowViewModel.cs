@@ -990,7 +990,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		{
 			if (!this.Accounts.Any(a => a.Session == s))
 			{
-				AccountItemViewModel item = new(s, this.RemoveAsync, (id, secret) => accounts.SetSecretAsync(id, secret), (id, password) => accounts.ChangePasswordAsync(id, password));
+				AccountItemViewModel item = new(s, this.RemoveAsync, (id, secret) => accounts.SetSecretAsync(id, secret), (id, password) => accounts.ChangePasswordAsync(id, password),
+					profile => accounts.UpdateAsync(profile));
 				item.PropertyChanged += (_, e) =>
 				{
 					if (e.PropertyName == nameof(AccountItemViewModel.IsOnline))

@@ -816,6 +816,13 @@
                              IsVisible="{Binding PasswordError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                   <TextBlock Classes="meta" Text="{Binding PasswordNote}" TextWrapping="Wrap"
                              IsVisible="{Binding PasswordNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <TextBlock Text="Web address" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1" Text="{Binding WebAddressText}" PlaceholderText="{Binding WebAddressPlaceholder}" AutomationProperties.Name="Web address" />
+                    <Button Grid.Column="2" Classes="primary" Content="Save" Command="{Binding SaveWebAddressCommand}" IsVisible="{Binding IsWebAddressChanged}" />
+                  </Grid>
+                  <TextBlock Classes="error" Text="{Binding WebAddressError}" TextWrapping="Wrap"
+                             IsVisible="{Binding WebAddressError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 </StackPanel>
               </Border>
 

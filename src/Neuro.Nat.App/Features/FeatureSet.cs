@@ -16,6 +16,7 @@ public sealed partial class FeatureSet : IFeatureHost, IAsyncDisposable
 	private readonly object sync = new();
 	private readonly Dictionary<string, string> software = new(StringComparer.OrdinalIgnoreCase);
 	private readonly HashSet<AccountSession> watched = [];
+	private readonly Dictionary<Guid, string?> webAddresses = [];
 	private AccountManager? accounts;
 	private MonitorService? monitors;
 
@@ -85,8 +86,17 @@ public sealed partial class FeatureSet : IFeatureHost, IAsyncDisposable
 			IReadOnlyList<AccountSession> now = accounts.Sessions;
 			foreach (AccountSession s in now)
 			{
+				// A new web address: features ask that account's Neuron again, as at sign-in.
+				string? web = s.Profile.WebAddress;
+				bool known = this.webAddresses.TryGetValue(s.Profile.Id, out string? was);
+				this.webAddresses[s.Profile.Id] = web;
+
 				if (!this.watched.Add(s))
+				{
+					if (known && !string.Equals(was, web, StringComparison.OrdinalIgnoreCase) && s.Status == ConnectionStatus.Connected)
+						connected.Add(s);
 					continue;
+				}
 
 				s.StatusChanged += this.Session_StatusChanged;
 				if (s.Status == ConnectionStatus.Connected)
