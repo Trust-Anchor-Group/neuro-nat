@@ -17,7 +17,7 @@ namespace Neuro.Nat.Features.Telemetry.Tests;
 /// </summary>
 public class DashboardTests
 {
-	private const string Lab = "lab.tagroot.io";
+	private const string Lab = "lab.example.com";
 	private const string Edge = "edge.example.org";
 
 	private static Task<TelemetrySample> LabAsync(bool internalAccess = true, IFeatureAnswerStore? store = null)
@@ -199,9 +199,9 @@ public class DashboardTests
 	[AvaloniaFact]
 	public async Task ANeuronTheCollectorCollectsIsNotADashboardOfItsOwn()
 	{
-		// gbg.lab.tagroot.io is one of the root's sources; its own numbers are in the root's dashboard.
-		StandInTelemetry root = new(TelemetrySample.Start), source = new(TelemetrySample.Start, ["gbg.lab.tagroot.io"]) { Stopped = null };
-		await using TelemetrySample s = await TelemetrySample.CreateAsync([(Lab, root), ("gbg.lab.tagroot.io", source)]);
+		// gbg.lab.example.com is one of the root's sources; its own numbers are in the root's dashboard.
+		StandInTelemetry root = new(TelemetrySample.Start), source = new(TelemetrySample.Start, ["gbg.lab.example.com"]) { Stopped = null };
+		await using TelemetrySample s = await TelemetrySample.CreateAsync([(Lab, root), ("gbg.lab.example.com", source)]);
 		s.StartFeatures();
 		await s.FindAsync();
 		Assert.Equal([Lab], s.Feature.Collectors().Select(c => c.Domain));
@@ -261,8 +261,8 @@ public class DashboardTests
 		await s.FindAsync();
 
 		List<FeatureInboxItem> items = [.. s.Feature.InboxItems()];
-		FeatureInboxItem stopped = Assert.Single(items, i => i.Key.EndsWith("|neuron|sto.lab.tagroot.io", StringComparison.Ordinal));
-		Assert.Equal("sto.lab.tagroot.io stopped sending numbers", stopped.Title);
+		FeatureInboxItem stopped = Assert.Single(items, i => i.Key.EndsWith("|neuron|sto.lab.example.com", StringComparison.Ordinal));
+		Assert.Equal("sto.lab.example.com stopped sending numbers", stopped.Title);
 		Assert.Equal("bad", stopped.Tone);
 		Assert.Equal(Pages.Neurons, stopped.Opens!.Part);
 

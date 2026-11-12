@@ -27,12 +27,12 @@ public class UpdatesRenderTests
 		EngineRuntime.Initialize();
 		string store = Path.Combine(Path.GetTempPath(), "Nat.Render." + Guid.NewGuid().ToString("N"), "accounts.json");
 		AccountManager manager = new(new JsonAccountStore(store), new InMemoryCredentialVault());
-		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.tagroot.io", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.example.com", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
 		MonitorService monitors = new(manager, new EventHub());
 		DateTime now = DateTime.Now;
 
 		// Synthetic sample data.
-		string[] jids = ["lab.tagroot.io", "gbg.lab.tagroot.io", "sto.lab.tagroot.io"];
+		string[] jids = ["lab.example.com", "gbg.lab.example.com", "sto.lab.example.com"];
 		string[] names = ["Lab", "Gothenburg edge", "Stockholm edge"];
 		for (int i = 0; i < jids.Length; i++)
 			monitors.For(ops.Profile.Id)!.Preview(new WatchedNeuron { AccountId = ops.Profile.Id, BareJid = jids[i], Name = names[i], State = WatchState.Live });
@@ -56,9 +56,9 @@ public class UpdatesRenderTests
 
 		SoftwarePackage[] packages =
 		[
-			new("TAG.Neuron.3.11.2.package", "48.2 MB", "2026-11-10 08:12", null, "2026-11-10 10:31", null, "lab.tagroot.io"),
-			new("TAG.Neuron.3.11.1.package", "48.0 MB", "2026-10-28 14:02", null, "2026-10-28 14:30", "2026-10-28 14:46", "lab.tagroot.io"),
-			new("TAG.Payments.2.4.0.package", "1.1 MB", "2026-10-02 09:40", null, "2026-10-02 10:05", "2026-10-02 10:05", "lab.tagroot.io"),
+			new("TAG.Neuron.3.11.2.package", "48.2 MB", "2026-11-10 08:12", null, "2026-11-10 10:31", null, "lab.example.com"),
+			new("TAG.Neuron.3.11.1.package", "48.0 MB", "2026-10-28 14:02", null, "2026-10-28 14:30", "2026-10-28 14:46", "lab.example.com"),
+			new("TAG.Payments.2.4.0.package", "1.1 MB", "2026-10-02 09:40", null, "2026-10-02 10:05", "2026-10-02 10:05", "lab.example.com"),
 		];
 		foreach (UpdateRowViewModel r in u.Rows)
 		{

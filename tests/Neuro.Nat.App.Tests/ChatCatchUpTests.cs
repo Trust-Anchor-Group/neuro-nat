@@ -25,7 +25,7 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class ChatCatchUpTests
 {
-	private const string OpsRoom = "ops-team@muc.lab.tagroot.io";
+	private const string OpsRoom = "ops-team@muc.lab.example.com";
 	private const string IncidentRoom = "incident-4471@muc.prod.example.com";
 
 	private sealed record Sample(MainWindowViewModel Vm, ChatService Chat, Guid Ops, Guid Admin,
@@ -75,7 +75,7 @@ public class ChatCatchUpTests
 		EngineRuntime.Initialize();
 		string dir = Path.Combine(Path.GetTempPath(), "Nat.Chat." + Guid.NewGuid().ToString("N"));
 		AccountManager manager = new(new JsonAccountStore(Path.Combine(dir, "accounts.json")), new InMemoryCredentialVault());
-		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.tagroot.io", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.example.com", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
 		AccountSession admin = await manager.AddAsync(new AccountProfile { Host = "prod.example.com", UserName = "admin", ConnectOnStartup = false, ColorIndex = 3 }, AccountSecret.FromPassword("x"), connect: false);
 
 		MonitorService monitors = new(manager, new EventHub());
@@ -104,15 +104,15 @@ public class ChatCatchUpTests
 			});
 		};
 
-		chat.Preview(new Contact(o, "kim@lab.tagroot.io", "Kim Lindqvist", ["On call"], SubscriptionState.Both, true, Availability.Online, null, false));
-		chat.Preview(new Contact(o, "robin@lab.tagroot.io", "Robin Ek", ["On call", "Operations"], SubscriptionState.Both, true, Availability.Away, "In a meeting", false));
+		chat.Preview(new Contact(o, "kim@lab.example.com", "Kim Lindqvist", ["On call"], SubscriptionState.Both, true, Availability.Online, null, false));
+		chat.Preview(new Contact(o, "robin@lab.example.com", "Robin Ek", ["On call", "Operations"], SubscriptionState.Both, true, Availability.Away, "In a meeting", false));
 		chat.Preview(new Contact(o, "sam@partner.example", "Sam Öberg", [], SubscriptionState.Both, false, Availability.Offline, null, false));
 
 		// A room this account owns and moderates.
 		chat.PreviewRoom(o, OpsRoom, "ops");
-		chat.Preview(o, OpsRoom, new RoomOccupant("ops", "Moderator", "Owner", "ops@lab.tagroot.io/aa"));
-		chat.Preview(o, OpsRoom, new RoomOccupant("robin", "Moderator", "Admin", "robin@lab.tagroot.io/laptop"));
-		chat.Preview(o, OpsRoom, new RoomOccupant("kim", "Participant", "Member", "kim@lab.tagroot.io/phone"));
+		chat.Preview(o, OpsRoom, new RoomOccupant("ops", "Moderator", "Owner", "ops@lab.example.com/aa"));
+		chat.Preview(o, OpsRoom, new RoomOccupant("robin", "Moderator", "Admin", "robin@lab.example.com/laptop"));
+		chat.Preview(o, OpsRoom, new RoomOccupant("kim", "Participant", "Member", "kim@lab.example.com/phone"));
 		chat.Preview(o, OpsRoom, new RoomOccupant("guest", "Participant", "None", null));
 		chat.Preview(o, OpsRoom, new RoomOccupant("sam", "Visitor", "None", "sam@partner.example/web"));
 
@@ -158,7 +158,7 @@ public class ChatCatchUpTests
 			  </field>
 			</x>
 			""");
-		return new DataForm(null, doc.DocumentElement!, null, null, OpsRoom, "ops@lab.tagroot.io/aa");
+		return new DataForm(null, doc.DocumentElement!, null, null, OpsRoom, "ops@lab.example.com/aa");
 	}
 
 	// ----- Messages -----
@@ -172,16 +172,16 @@ public class ChatCatchUpTests
 		ChatViewModel chat = s.View;
 		string t = theme.ToLowerInvariant();
 
-		s.Chat.Preview(s.Ops, "kim@lab.tagroot.io", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
-		s.Chat.Preview(s.Ops, "kim@lab.tagroot.io", "I see the 02:00 one failed and nothing after it.", "Kim Lindqvist");
-		s.Chat.Preview(s.Ops, "kim@lab.tagroot.io", "The root password is hunter2 btw", "Kim Lindqvist");
-		await s.Chat.SendAsync(s.Ops, "kim@lab.tagroot.io", "Looking at it now.");
-		await s.Chat.SendAsync(s.Ops, "kim@lab.tagroot.io", "The disk was ful. Cleared 40 GB.");
+		s.Chat.Preview(s.Ops, "kim@lab.example.com", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
+		s.Chat.Preview(s.Ops, "kim@lab.example.com", "I see the 02:00 one failed and nothing after it.", "Kim Lindqvist");
+		s.Chat.Preview(s.Ops, "kim@lab.example.com", "The root password is hunter2 btw", "Kim Lindqvist");
+		await s.Chat.SendAsync(s.Ops, "kim@lab.example.com", "Looking at it now.");
+		await s.Chat.SendAsync(s.Ops, "kim@lab.example.com", "The disk was ful. Cleared 40 GB.");
 		s.Sent.Clear();
 
 		s.Vm.ShowChatCommand.Execute(null);
 		MainWindow window = Window(s, theme);
-		Assert.True(chat.Open(s.Ops, "kim@lab.tagroot.io"));
+		Assert.True(chat.Open(s.Ops, "kim@lab.example.com"));
 		Dispatcher.UIThread.RunJobs();
 		Assert.Equal(5, chat.Messages.Count);
 
@@ -287,9 +287,9 @@ public class ChatCatchUpTests
 
 		// What you were writing stays with the conversation you were writing it in.
 		chat.Draft = "For Kim only";
-		Assert.True(chat.Open(s.Ops, "robin@lab.tagroot.io"));
+		Assert.True(chat.Open(s.Ops, "robin@lab.example.com"));
 		Assert.Equal(string.Empty, chat.Draft);
-		Assert.True(chat.Open(s.Ops, "kim@lab.tagroot.io"));
+		Assert.True(chat.Open(s.Ops, "kim@lab.example.com"));
 		Assert.Equal("For Kim only", chat.Draft);
 		window.Close();
 	}
@@ -310,7 +310,7 @@ public class ChatCatchUpTests
 		ChatViewModel chat = s.View;
 		s.Vm.ShowChatCommand.Execute(null);
 		MainWindow window = Window(s, "Light");
-		Assert.True(chat.Open(s.Ops, "kim@lab.tagroot.io"));
+		Assert.True(chat.Open(s.Ops, "kim@lab.example.com"));
 
 		// Typing a colon and a name offers emoji; Tab or Enter takes the marked one.
 		chat.Draft = "Deploy done :roc";
@@ -371,11 +371,11 @@ public class ChatCatchUpTests
 		using Sample s = await SampleAsync();
 		ChatViewModel chat = s.View;
 		for (int i = 1; i <= 130; i++)
-			s.Chat.Preview(s.Ops, "kim@lab.tagroot.io", "Message " + i, "Kim Lindqvist");
-		s.Chat.MarkRead(s.Chat.Get(s.Ops, "kim@lab.tagroot.io"));
+			s.Chat.Preview(s.Ops, "kim@lab.example.com", "Message " + i, "Kim Lindqvist");
+		s.Chat.MarkRead(s.Chat.Get(s.Ops, "kim@lab.example.com"));
 
 		chat.Refresh();
-		Assert.True(chat.Open(s.Ops, "kim@lab.tagroot.io"));
+		Assert.True(chat.Open(s.Ops, "kim@lab.example.com"));
 		Assert.Equal(ChatViewModel.PageSize, chat.Messages.Count);
 		Assert.Equal("Message 81", chat.Messages[0].Markdown);
 		Assert.True(chat.HasOlder);
@@ -386,8 +386,8 @@ public class ChatCatchUpTests
 		Assert.Equal("Message 130", chat.Messages[^1].Markdown);
 
 		// A new message does not push the old ones out again.
-		await s.Chat.SendAsync(s.Ops, "kim@lab.tagroot.io", "Got them all.");
-		chat.Open(s.Ops, "kim@lab.tagroot.io");
+		await s.Chat.SendAsync(s.Ops, "kim@lab.example.com", "Got them all.");
+		chat.Open(s.Ops, "kim@lab.example.com");
 		Assert.Equal(101, chat.Messages.Count);
 
 		chat.ShowOlderCommand.Execute(null);
@@ -396,9 +396,9 @@ public class ChatCatchUpTests
 
 		// Everything unread is shown, however much it is: the "New" line is never out of reach.
 		for (int i = 1; i <= 70; i++)
-			s.Chat.Preview(s.Ops, "robin@lab.tagroot.io", "Unread " + i, "Robin Ek");
+			s.Chat.Preview(s.Ops, "robin@lab.example.com", "Unread " + i, "Robin Ek");
 		chat.Refresh();
-		Assert.True(chat.Open(s.Ops, "robin@lab.tagroot.io"));
+		Assert.True(chat.Open(s.Ops, "robin@lab.example.com"));
 		Assert.Equal(70, chat.Messages.Count);
 		Assert.True(chat.Messages[0].IsFirstNew);
 	}
@@ -413,8 +413,8 @@ public class ChatCatchUpTests
 		using Sample s = await SampleAsync();
 		ChatViewModel chat = s.View;
 		string t = theme.ToLowerInvariant();
-		s.Chat.Preview(s.Ops, "kim@lab.tagroot.io", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
-		s.Chat.MarkRead(s.Chat.Get(s.Ops, "kim@lab.tagroot.io"));
+		s.Chat.Preview(s.Ops, "kim@lab.example.com", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
+		s.Chat.MarkRead(s.Chat.Get(s.Ops, "kim@lab.example.com"));
 		s.Vm.ShowChatCommand.Execute(null);
 		MainWindow window = Window(s, theme);
 		chat.Refresh();
@@ -435,7 +435,7 @@ public class ChatCatchUpTests
 		chat.FilterText = string.Empty;
 
 		// Details: the name you gave them, and the groups they are in.
-		Assert.True(chat.Open(s.Ops, "kim@lab.tagroot.io"));
+		Assert.True(chat.Open(s.Ops, "kim@lab.example.com"));
 		PersonViewModel kim = chat.SelectedPerson!;
 		Assert.False(chat.IsPanelOpen);
 		chat.TogglePanelCommand.Execute(null);

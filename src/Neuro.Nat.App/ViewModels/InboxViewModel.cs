@@ -215,7 +215,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 		if (r.NodeAsk is NodeRequest q && IsOn(q.Service, neurons))
 			return true;
 
-		// A room lives on a part of the Neuron: "muc.lab.tagroot.io" is on "lab.tagroot.io".
+		// A room lives on a part of the Neuron: "muc.lab.example.com" is on "lab.example.com".
 		return r.Jid is string jid && IsOn(jid[(jid.IndexOf('@') + 1)..], neurons);
 	}
 

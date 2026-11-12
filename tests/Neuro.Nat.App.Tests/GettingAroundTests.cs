@@ -28,14 +28,14 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class GettingAroundTests
 {
-	private const string Service = "pubsub.lab.tagroot.io";
-	private const string Me = "ops@lab.tagroot.io";
-	private const string Lab = "lab.tagroot.io";
-	private const string Gbg = "gbg.lab.tagroot.io";
-	private const string Sto = "sto.lab.tagroot.io";
+	private const string Service = "pubsub.lab.example.com";
+	private const string Me = "ops@lab.example.com";
+	private const string Lab = "lab.example.com";
+	private const string Gbg = "gbg.lab.example.com";
+	private const string Sto = "sto.lab.example.com";
 	private const string Prod = "prod.example.com";
 	private const string Backup = "backup.prod.example.com";
-	private const string OpsRoom = "ops-team@muc.lab.tagroot.io";
+	private const string OpsRoom = "ops-team@muc.lab.example.com";
 
 	internal sealed record Sample(MainWindowViewModel Vm, ChatService Chat, PubSubService PubSub, SoftwareService Software, MonitorService Monitors, AccountManager Manager, FleetService Fleet,
 		Guid Ops, Guid Admin, List<string> Said, List<string> Copied, List<string> Asked) : IDisposable
@@ -135,7 +135,7 @@ public class GettingAroundTests
 		Neuron(a, Backup, "Backup", 0, WatchState.Offline);
 
 		for (int i = 0; i < 9; i++)
-			Event(i * 50 + 15, SnifferDirection.Error, o, Gbg, $"SocketException: Connection reset by peer (lab.tagroot.io:5269)\n\nModule: Waher.Networking.XMPP.Server\nEventId: S2S\nRemoteEndPoint: 10.0.0.{i + 3}:5269");
+			Event(i * 50 + 15, SnifferDirection.Error, o, Gbg, $"SocketException: Connection reset by peer (lab.example.com:5269)\n\nModule: Waher.Networking.XMPP.Server\nEventId: S2S\nRemoteEndPoint: 10.0.0.{i + 3}:5269");
 		for (int i = 0; i < 6; i++)
 			Event(i * 70 + 30, SnifferDirection.Error, o, Lab, $"TimeoutException in ConcentratorServer.ReadSensorData (node Meter-{i + 11})\n\nModule: Waher.Things\nObject: Meter-{i + 11}");
 		for (int i = 0; i < 3; i++)
@@ -144,7 +144,7 @@ public class GettingAroundTests
 		monitors.Attention.Preview(new NeuronNotification
 		{
 			Id = "n1", AccountId = o, NeuronJid = Gbg, Received = now.AddMinutes(-3),
-			Markdown = "Legal identity application received: [`2f9a1c04-57e1-4c1e@legal.gbg.lab.tagroot.io`](https://gbg.lab.tagroot.io/ValidateLegalId.md?ID=2f9a1c04-57e1-4c1e%40legal.gbg.lab.tagroot.io)\n",
+			Markdown = "Legal identity application received: [`2f9a1c04-57e1-4c1e@legal.gbg.lab.example.com`](https://gbg.lab.example.com/ValidateLegalId.md?ID=2f9a1c04-57e1-4c1e%40legal.gbg.lab.example.com)\n",
 		});
 		monitors.Attention.Preview(new NeuronNotification
 		{
@@ -154,18 +154,18 @@ public class GettingAroundTests
 		monitors.Attention.Preview(new NeuronNotification
 		{
 			Id = "n3", AccountId = o, NeuronJid = Lab, Received = now.AddMinutes(-80),
-			Markdown = "Legal identity application received: [`77b0e2aa-1d3c-4f0b@legal.lab.tagroot.io`](https://lab.tagroot.io/ValidateLegalId.md?ID=77b0e2aa-1d3c-4f0b%40legal.lab.tagroot.io)\n",
+			Markdown = "Legal identity application received: [`77b0e2aa-1d3c-4f0b@legal.lab.example.com`](https://lab.example.com/ValidateLegalId.md?ID=77b0e2aa-1d3c-4f0b%40legal.lab.example.com)\n",
 		});
 
 		// People and a room.
-		chat.Preview(new Contact(o, "kim@lab.tagroot.io", "Kim Lindqvist", ["On call"], SubscriptionState.Both, true, Availability.Online, null, false));
-		chat.Preview(new Contact(o, "robin@gbg.lab.tagroot.io", "Robin Ek", ["On call"], SubscriptionState.Both, true, Availability.Away, "In a meeting", false));
+		chat.Preview(new Contact(o, "kim@lab.example.com", "Kim Lindqvist", ["On call"], SubscriptionState.Both, true, Availability.Online, null, false));
+		chat.Preview(new Contact(o, "robin@gbg.lab.example.com", "Robin Ek", ["On call"], SubscriptionState.Both, true, Availability.Away, "In a meeting", false));
 		chat.Preview(new Contact(a, "lead@prod.example.com", "Lee Park", [], SubscriptionState.Both, true, Availability.Online, null, false));
 		chat.PreviewRoom(o, OpsRoom, "ops");
 		chat.Preview(o, OpsRoom, new RoomOccupant("ops", "Moderator", "Owner", Me + "/aa"));
 		chat.Preview(o, OpsRoom, "Deploy window is 14:00 to 15:00 today.", "robin", room: true);
-		chat.Preview(o, "kim@lab.tagroot.io", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
-		chat.Preview(o, "robin@gbg.lab.tagroot.io", "gbg is slow again, can you look?", "Robin Ek");
+		chat.Preview(o, "kim@lab.example.com", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
+		chat.Preview(o, "robin@gbg.lab.example.com", "gbg is slow again, can you look?", "Robin Ek");
 		chat.Preview(a, "lead@prod.example.com", "The certificate on prod runs out soon.", "Lee Park");
 
 		// Nodes on the lab's publish/subscribe service.
@@ -173,11 +173,11 @@ public class GettingAroundTests
 		PreviewPubSub nodes = new PreviewPubSub(pubsub, Service).Account(o, Me).Account(a, "admin@prod.example.com");
 		pubsub.StandIn = nodes;
 		nodes.Add("alerts", Me, "Alerts from the lab")
-			.Add("announcements", "lead@lab.tagroot.io", "Announcements")
+			.Add("announcements", "lead@lab.example.com", "Announcements")
 			.Add("build-log", Me, "Build log");
-		nodes.Item(Service, "alerts", "a-1", "<alert xmlns='urn:example:alerts' level='warning'><text>Disk on gbg is 91 % full</text></alert>", "robin@gbg.lab.tagroot.io")
-			.Person(Service, "alerts", "robin@gbg.lab.tagroot.io", NodeRole.Publisher)
-			.Subscriber(Service, "alerts", "kim@lab.tagroot.io", SubscriberState.Subscribed);
+		nodes.Item(Service, "alerts", "a-1", "<alert xmlns='urn:example:alerts' level='warning'><text>Disk on gbg is 91 % full</text></alert>", "robin@gbg.lab.example.com")
+			.Person(Service, "alerts", "robin@gbg.lab.example.com", NodeRole.Publisher)
+			.Subscriber(Service, "alerts", "kim@lab.example.com", SubscriberState.Subscribed);
 
 		// What the Neurons answer when asked about their software: gbg and prod have an update waiting, sto does not answer.
 		List<string> asked = [];
@@ -241,10 +241,10 @@ public class GettingAroundTests
 		Step();
 		vm.ShowEventsCommand.Execute(null);
 		Step();
-		vm.ShowChat(s.Ops, "kim@lab.tagroot.io");
+		vm.ShowChat(s.Ops, "kim@lab.example.com");
 		Step();
 		Assert.True(vm.IsChat);
-		Assert.Equal("kim@lab.tagroot.io", vm.Chat.SelectedPerson?.BareJid);
+		Assert.Equal("kim@lab.example.com", vm.Chat.SelectedPerson?.BareJid);
 		Assert.True(vm.CanGoBack);
 		Assert.False(vm.CanGoForward);
 		Assert.Equal("Back to Events (Alt+Left)", vm.BackTip);
@@ -353,7 +353,7 @@ public class GettingAroundTests
 		Assert.NotEmpty(vm.Inbox.Rows);
 		Assert.True(vm.Inbox.Rows.Count < everything);
 		Assert.All(vm.Inbox.Rows, r => Assert.EndsWith(Gbg, r.Jid));
-		Assert.Contains(vm.Inbox.Rows, r => r.Jid == "robin@gbg.lab.tagroot.io");
+		Assert.Contains(vm.Inbox.Rows, r => r.Jid == "robin@gbg.lab.example.com");
 		Assert.Equal($"{everything - vm.Inbox.Rows.Count} more wait from elsewhere", vm.Inbox.ElsewhereText);
 		Assert.Equal(everything, vm.Inbox.WaitingCount);
 		Capture(window, $"around-filter-inbox-{t}-1440");
@@ -469,10 +469,10 @@ public class GettingAroundTests
 		// Someone on a node's lists: chat with them, even when nothing was said before.
 		vm.GoForwardCommand.Execute(null);
 		await Settle(vm.PubSub);
-		NodeSubscriberRow kim = vm.PubSub.Subscribers.Single(x => x.Jid == "kim@lab.tagroot.io");
+		NodeSubscriberRow kim = vm.PubSub.Subscribers.Single(x => x.Jid == "kim@lab.example.com");
 		await Action(vm.PubSub.ActionsFor([kim]), "Chat with them").RunAsync();
 		Assert.True(vm.IsChat);
-		Assert.Equal("kim@lab.tagroot.io", vm.Chat.SelectedPerson?.BareJid);
+		Assert.Equal("kim@lab.example.com", vm.Chat.SelectedPerson?.BareJid);
 
 		await Action(forAsk, "Chat with them").RunAsync();
 		Assert.True(vm.IsChat);
@@ -526,7 +526,7 @@ public class GettingAroundTests
 		Capture(window, $"around-search-person-{t}-1440");
 		search.Run();
 		Assert.True(vm.IsChat);
-		Assert.Equal("robin@gbg.lab.tagroot.io", vm.Chat.SelectedPerson?.BareJid);
+		Assert.Equal("robin@gbg.lab.example.com", vm.Chat.SelectedPerson?.BareJid);
 
 		// A room.
 		Assert.Equal("Room", First("ops-team").Kind);

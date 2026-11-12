@@ -19,7 +19,7 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class FeatureContractTests
 {
-	private const string Lab = "lab.tagroot.io";
+	private const string Lab = "lab.example.com";
 
 	private sealed record Sample(MainWindowViewModel Vm, Guid Ops);
 

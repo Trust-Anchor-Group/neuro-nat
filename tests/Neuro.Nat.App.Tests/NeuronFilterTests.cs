@@ -25,9 +25,9 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class NeuronFilterTests(ITestOutputHelper output)
 {
-	private const string Lab = "lab.tagroot.io";
-	private const string Gbg = "gbg.lab.tagroot.io";
-	private const string Sto = "sto.lab.tagroot.io";
+	private const string Lab = "lab.example.com";
+	private const string Gbg = "gbg.lab.example.com";
+	private const string Sto = "sto.lab.example.com";
 	private const string Prod = "prod.example.com";
 	private const string Backup = "backup.prod.example.com";
 
@@ -74,9 +74,9 @@ public class NeuronFilterTests(ITestOutputHelper output)
 		Assert.Equal([Gbg, Prod], vm.Fleet.Shown.Select(r => r.BareJid).Order());
 		Assert.Equal([Gbg, Prod], vm.Events.Stream.Select(e => e.Source.NeuronJid).Distinct().Order());
 		Assert.True(vm.Events.Stream.Count < events);
-		Assert.Contains(vm.Inbox.Rows, r => r.Jid == "robin@gbg.lab.tagroot.io");
+		Assert.Contains(vm.Inbox.Rows, r => r.Jid == "robin@gbg.lab.example.com");
 		Assert.Contains(vm.Inbox.Rows, r => r.Jid == "lead@prod.example.com");
-		Assert.DoesNotContain(vm.Inbox.Rows, r => r.Jid == "kim@lab.tagroot.io");
+		Assert.DoesNotContain(vm.Inbox.Rows, r => r.Jid == "kim@lab.example.com");
 		Assert.Equal(2, vm.NeuronChips.Count(c => c.IsSelected));
 
 		// All of them ticked is no filter at all, so nothing from outside the Neurons is lost either.

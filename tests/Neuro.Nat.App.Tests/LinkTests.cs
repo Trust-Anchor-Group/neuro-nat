@@ -19,10 +19,10 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class LinkTests
 {
-	private const string Lab = "lab.tagroot.io";
-	private const string Gbg = "gbg.lab.tagroot.io";
-	private const string Kim = "kim@lab.tagroot.io";
-	private const string OpsRoom = "ops-team@muc.lab.tagroot.io";
+	private const string Lab = "lab.example.com";
+	private const string Gbg = "gbg.lab.example.com";
+	private const string Kim = "kim@lab.example.com";
+	private const string OpsRoom = "ops-team@muc.lab.example.com";
 
 	private static MainWindowViewModel Another(Sample s)
 	{
@@ -69,7 +69,7 @@ public class LinkTests
 		vm.OpenNeuron(Gbg, s.Ops, WorkspaceKind.Updates);
 		Dispatcher.UIThread.RunJobs();
 		string neuron = LinkOf(vm.Page!);
-		Assert.Equal("neuro-nat://neuron/gbg.lab.tagroot.io/software", neuron);
+		Assert.Equal("neuro-nat://neuron/gbg.lab.example.com/software", neuron);
 		Assert.DoesNotContain(s.Ops.ToString("N"), neuron);
 		Assert.Equal(LinkOutcome.Opened, await other.OpenLinkAsync(neuron));
 		Assert.Equal(WorkspaceKind.Updates, other.Workspace);
@@ -77,7 +77,7 @@ public class LinkTests
 
 		// From the list, a Neuron opens on its Overview.
 		FleetRowViewModel labRow = vm.Fleet.Rows.Single(r => r.BareJid == Lab);
-		Assert.Equal("neuro-nat://neuron/lab.tagroot.io", LinkOf(labRow));
+		Assert.Equal("neuro-nat://neuron/lab.example.com", LinkOf(labRow));
 		Assert.Equal(LinkOutcome.Opened, await other.OpenLinkAsync(LinkOf(labRow)));
 		Assert.Equal(WorkspaceKind.Neuron, other.Workspace);
 		Assert.Equal(Lab, other.Page?.BareJid);
@@ -85,7 +85,7 @@ public class LinkTests
 		// A problem, with its events.
 		IssueItemViewModel issue = vm.Events.Issues.First(i => i.Issue.Neurons.Contains(Gbg));
 		string problem = LinkOf(issue);
-		Assert.Equal("neuro-nat://problem/gbg.lab.tagroot.io/" + issue.Fingerprint.ToLowerInvariant(), problem);
+		Assert.Equal("neuro-nat://problem/gbg.lab.example.com/" + issue.Fingerprint.ToLowerInvariant(), problem);
 		Assert.Equal(LinkOutcome.Opened, await other.OpenLinkAsync(problem));
 		Assert.True(other.IsEvents);
 		Assert.Equal(issue.Fingerprint, other.Events.SelectedIssue?.Fingerprint);
@@ -94,7 +94,7 @@ public class LinkTests
 		// An event, selected in the list, at its time.
 		NeuronEvent ev = vm.Events.Stream.First(e => e.Source.NeuronJid == Lab);
 		NatLink eventLink = Assert.IsType<NatLink>(Links.For(ev));
-		Assert.StartsWith("neuro-nat://event/lab.tagroot.io/", eventLink.ToString());
+		Assert.StartsWith("neuro-nat://event/lab.example.com/", eventLink.ToString());
 		Assert.Contains("?at=" + ev.Timestamp.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"), eventLink.ToString());
 		Assert.Equal(LinkOutcome.Opened, await other.OpenLinkAsync(eventLink.ToString()));
 		Assert.Equal(WorkspaceKind.NeuronEvents, other.Workspace);
@@ -110,7 +110,7 @@ public class LinkTests
 		TreeItemViewModel warehouse = vm.Sources.Roots[1].Children[0].Children[1];
 		NodeItemViewModel meter = Assert.IsType<NodeItemViewModel>(warehouse.Children[0]);
 		string node = LinkOf(meter);
-		Assert.Equal("neuro-nat://node/gbg.lab.tagroot.io/MeteringTopology/Root/Gothenburg%20warehouse/Meter%2011%2Fa", node);
+		Assert.Equal("neuro-nat://node/gbg.lab.example.com/MeteringTopology/Root/Gothenburg%20warehouse/Meter%2011%2Fa", node);
 		Assert.Equal(LinkOutcome.Opened, await other.OpenLinkAsync(node));
 		Assert.Equal(WorkspaceKind.Sources, other.Workspace);
 		Assert.Equal(Gbg, other.Page?.BareJid);
@@ -120,17 +120,17 @@ public class LinkTests
 			Assert.True(up.IsExpanded, up.Label + " is open");
 
 		// A data source is a place in the tree too.
-		Assert.Equal("neuro-nat://node/gbg.lab.tagroot.io/MeteringTopology", LinkOf(vm.Sources.Roots[1]));
+		Assert.Equal("neuro-nat://node/gbg.lab.example.com/MeteringTopology", LinkOf(vm.Sources.Roots[1]));
 
 		// A conversation, and a room.
 		PersonViewModel kim = vm.Chat.Everyone.Single(p => p.BareJid == Kim);
-		Assert.Equal("neuro-nat://chat/kim@lab.tagroot.io", LinkOf(kim));
+		Assert.Equal("neuro-nat://chat/kim@lab.example.com", LinkOf(kim));
 		Assert.Equal(LinkOutcome.Opened, await other.OpenLinkAsync(LinkOf(kim)));
 		Assert.True(other.IsChat);
 		Assert.Equal(Kim, other.Chat.SelectedPerson?.BareJid);
 
 		PersonViewModel room = vm.Chat.Everyone.Single(p => p.BareJid == OpsRoom);
-		Assert.Equal("neuro-nat://room/ops-team@muc.lab.tagroot.io", LinkOf(room));
+		Assert.Equal("neuro-nat://room/ops-team@muc.lab.example.com", LinkOf(room));
 		Assert.Equal(LinkOutcome.Opened, await other.OpenLinkAsync(LinkOf(room)));
 		Assert.True(other.IsChat);
 		Assert.True(other.Chat.SelectedPerson?.IsRoom);
@@ -163,7 +163,7 @@ public class LinkTests
 		NeuronEvent oldest = s.Monitors.Hub.Snapshot().Where(e => e.Source.NeuronJid == Gbg).MinBy(e => e.Timestamp)!;
 		DateTime at = oldest.Timestamp.ToUniversalTime().AddMinutes(-30);
 		s.Said.Clear();
-		Assert.Equal(LinkOutcome.Gone, await vm.OpenLinkAsync($"neuro-nat://event/gbg.lab.tagroot.io/0123456789abcdef?at={at:yyyy-MM-dd'T'HH:mm:ss'Z'}"));
+		Assert.Equal(LinkOutcome.Gone, await vm.OpenLinkAsync($"neuro-nat://event/gbg.lab.example.com/0123456789abcdef?at={at:yyyy-MM-dd'T'HH:mm:ss'Z'}"));
 		Assert.Equal([MainWindowViewModel.EventGone], s.Said);
 		Assert.Equal(WorkspaceKind.NeuronEvents, vm.Workspace);
 		Assert.Equal(Gbg, vm.Page?.BareJid);
@@ -171,7 +171,7 @@ public class LinkTests
 
 		// Broken, or not a NAT link: one quiet note, and nothing opens.
 		vm.ShowFleetCommand.Execute(null);
-		foreach (string broken in new[] { "neuro-nat://neuron/../../windows", "neuro-nat://reboot/gbg.lab.tagroot.io", "https://lab.tagroot.io", "neuro-nat://" })
+		foreach (string broken in new[] { "neuro-nat://neuron/../../windows", "neuro-nat://reboot/gbg.lab.example.com", "https://lab.example.com", "neuro-nat://" })
 		{
 			s.Said.Clear();
 			Assert.Equal(LinkOutcome.Broken, await vm.OpenLinkAsync(broken));
@@ -219,7 +219,7 @@ public class LinkTests
 		// The page's link is the tab you are on.
 		s.Copied.Clear();
 		await ActionMenu.ActionsOf(vm, [vm.Page!]).Single(a => a.Text == "Copy link").RunAsync();
-		Assert.Equal("neuro-nat://neuron/gbg.lab.tagroot.io/console", Assert.Single(s.Copied));
+		Assert.Equal("neuro-nat://neuron/gbg.lab.example.com/console", Assert.Single(s.Copied));
 	}
 
 	// ----- In chat and in the search box -----
@@ -231,7 +231,7 @@ public class LinkTests
 		MainWindowViewModel vm = s.Vm;
 		IssueItemViewModel issue = vm.Events.Issues.First(i => i.Issue.Neurons.Contains(Gbg));
 		string problem = Links.For(issue)!.ToString();
-		s.Chat.Preview(s.Ops, Kim, "Gbg again: " + problem + ". And neuro-nat://neuron/gbg.lab.tagroot.io/sources", "Kim Lindqvist");
+		s.Chat.Preview(s.Ops, Kim, "Gbg again: " + problem + ". And neuro-nat://neuron/gbg.lab.example.com/sources", "Kim Lindqvist");
 		vm.ShowChat(s.Ops, Kim);
 		Dispatcher.UIThread.RunJobs();
 
@@ -274,7 +274,7 @@ public class LinkTests
 
 		// Typed by hand, it opens with Enter.
 		vm.Search.Open();
-		foreach (char c in "neuro-nat://neuron/lab.tagroot.io")
+		foreach (char c in "neuro-nat://neuron/lab.example.com")
 			vm.Search.Query += c;
 		Assert.True(vm.Search.IsOpen);
 		vm.Search.Run();
@@ -302,7 +302,7 @@ public class LinkTests
 			NatLink.Problem(Gbg, "0A1B2C3D4E5F6071"),
 			NatLink.Event(e),
 			NatLink.Node(Gbg, ["MeteringTopology", "Root", "Floor 2/East", "Mätare ✓", "100%"]),
-			NatLink.Chat("Kim@Lab.Tagroot.io"),
+			NatLink.Chat("Kim@Lab.Example.com"),
 			NatLink.Room(OpsRoom),
 			NatLink.Feature(Gbg, "telemetry", "metric:Nfc.Attempts/platform"),
 			NatLink.Feature(Gbg, "telemetry"),
@@ -317,23 +317,23 @@ public class LinkTests
 			Assert.All(text, c => Assert.InRange(c, '!', '~'));
 		}
 
-		Assert.Equal("neuro-nat://neuron/lab.tagroot.io/events", links[1].ToString());
-		Assert.Equal("neuro-nat://event/gbg.lab.tagroot.io/" + NatLink.EventId(e) + "?at=2026-11-12T10:42:13Z", links[3].ToString());
-		Assert.Equal("neuro-nat://chat/kim@lab.tagroot.io", links[5].ToString());
-		Assert.Equal("neuro-nat://feature/gbg.lab.tagroot.io/telemetry/metric%3ANfc.Attempts%2Fplatform", links[7].ToString());
+		Assert.Equal("neuro-nat://neuron/lab.example.com/events", links[1].ToString());
+		Assert.Equal("neuro-nat://event/gbg.lab.example.com/" + NatLink.EventId(e) + "?at=2026-11-12T10:42:13Z", links[3].ToString());
+		Assert.Equal("neuro-nat://chat/kim@lab.example.com", links[5].ToString());
+		Assert.Equal("neuro-nat://feature/gbg.lab.example.com/telemetry/metric%3ANfc.Attempts%2Fplatform", links[7].ToString());
 		Assert.Equal("metric:Nfc.Attempts/platform", links[7].Page);
 		Assert.Equal("telemetry", links[8].View);
 		Assert.Null(links[8].Page);
-		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.tagroot.io", out _));
-		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.tagroot.io/telemetry/a/b", out _));
-		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.tagroot.io/telemetry/x?at=2026-11-12T10:42:13Z", out _));
+		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.example.com", out _));
+		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.example.com/telemetry/a/b", out _));
+		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.example.com/telemetry/x?at=2026-11-12T10:42:13Z", out _));
 
 		// The same event has the same id whichever way it came, at whatever fraction of its second.
 		Assert.Equal(NatLink.EventId(e), NatLink.EventId(e with { Timestamp = e.Timestamp.AddMilliseconds(200), FromHistory = true, Sequence = 99 }));
 		Assert.NotEqual(NatLink.EventId(e), NatLink.EventId(e with { Message = "Something else" }));
 
 		// Upper case, a slash at the end, and links inside a sentence.
-		Assert.True(NatLink.TryParse("NEURO-NAT://Neuron/GBG.lab.tagroot.io/Software/", out NatLink loud));
+		Assert.True(NatLink.TryParse("NEURO-NAT://Neuron/GBG.lab.example.com/Software/", out NatLink loud));
 		Assert.Equal(NatLink.Neuron(Gbg, "software"), loud);
 		Assert.Equal([links[0], links[6]], NatLink.FindAll($"See <{links[0]}>, and ({links[6]}). Also {links[0]}."));
 	}
@@ -344,24 +344,24 @@ public class LinkTests
 		string[] garbage =
 		[
 			null!, "", "   ", "neuro-nat", "neuro-nat:", "neuro-nat://", "neuro-nat:///", "neuro-nat://neuron", "neuro-nat://neuron/",
-			"neuro-nat:neuron/lab.tagroot.io", "http://neuron/lab.tagroot.io", "neuro-nat://bogus/lab.tagroot.io", "neuro-nat://reboot/lab.tagroot.io",
-			"neuro-nat://neuron/lab..tagroot.io", "neuro-nat://neuron/.lab", "neuro-nat://neuron/-lab.io", "neuro-nat://neuron/lab_tagroot.io",
-			"neuro-nat://neuron/lab.tagroot.io/../../etc", "neuro-nat://neuron/lab.tagroot.io/reboot", "neuro-nat://neuron/lab.tagroot.io/events/more",
-			"neuro-nat://neuron/lab%2Ftagroot.io", "neuro-nat://neuron/lab tagroot.io", "neuro-nat://neuron/lab.tagroot.io#top",
-			"neuro-nat://neuron//lab.tagroot.io", "neuro-nat://neuron/lab.tagroot.io?at=2026-11-12T10:42:13Z",
-			"neuro-nat://problem/lab.tagroot.io", "neuro-nat://problem/lab.tagroot.io/xyz", "neuro-nat://problem/lab.tagroot.io/0123456789abcdef0",
-			"neuro-nat://event/lab.tagroot.io/0123456789abcdeg", "neuro-nat://event/lab.tagroot.io/0123456789abcdef?at=yesterday",
-			"neuro-nat://event/lab.tagroot.io/0123456789abcdef?at=2026-11-12T10:42:13Z&at=2026-11-12T10:42:14Z",
-			"neuro-nat://event/lab.tagroot.io/0123456789abcdef?at", "neuro-nat://event/lab.tagroot.io/0123456789abcdef?=x",
-			"neuro-nat://node/lab.tagroot.io", "neuro-nat://node/lab.tagroot.io/..", "neuro-nat://node/lab.tagroot.io/Root/%2e%2e",
-			"neuro-nat://node/lab.tagroot.io/%ZZ", "neuro-nat://node/lab.tagroot.io/%4", "neuro-nat://node/lab.tagroot.io/%C3%28",
-			"neuro-nat://node/lab.tagroot.io/%00", "neuro-nat://node/lab.tagroot.io/a%0Ab", "neuro-nat://node/lab.tagroot.io/a//b",
-			"neuro-nat://node/lab.tagroot.io/" + string.Join('/', Enumerable.Repeat("n", NatLink.MaxDepth + 1)),
-			"neuro-nat://node/lab.tagroot.io/" + new string('x', 1025),
-			"neuro-nat://chat/lab.tagroot.io", "neuro-nat://chat/kim@lab.tagroot.io/phone", "neuro-nat://chat/a@b@lab.tagroot.io",
-			"neuro-nat://chat/kim%40lab.tagroot.io%2Fres", "neuro-nat://chat/%3Cscript%3E@lab.tagroot.io", "neuro-nat://room/@muc.lab.tagroot.io",
-			"neuro-nat://chat/kim@lab.tagroot.io?at=2026-11-12T10:42:13Z",
-			"neuro-nat://neuron/lab.tagroot.io\u0000", "neuro-nat://neuron/läb.tagroot.io", "neuro-nat://neuron/lab.tagroot.io\n/events",
+			"neuro-nat:neuron/lab.example.com", "http://neuron/lab.example.com", "neuro-nat://bogus/lab.example.com", "neuro-nat://reboot/lab.example.com",
+			"neuro-nat://neuron/lab..example.com", "neuro-nat://neuron/.lab", "neuro-nat://neuron/-lab.example.com", "neuro-nat://neuron/lab_example.com",
+			"neuro-nat://neuron/lab.example.com/../../etc", "neuro-nat://neuron/lab.example.com/reboot", "neuro-nat://neuron/lab.example.com/events/more",
+			"neuro-nat://neuron/lab%2Fexample.com", "neuro-nat://neuron/lab example.com", "neuro-nat://neuron/lab.example.com#top",
+			"neuro-nat://neuron//lab.example.com", "neuro-nat://neuron/lab.example.com?at=2026-11-12T10:42:13Z",
+			"neuro-nat://problem/lab.example.com", "neuro-nat://problem/lab.example.com/xyz", "neuro-nat://problem/lab.example.com/0123456789abcdef0",
+			"neuro-nat://event/lab.example.com/0123456789abcdeg", "neuro-nat://event/lab.example.com/0123456789abcdef?at=yesterday",
+			"neuro-nat://event/lab.example.com/0123456789abcdef?at=2026-11-12T10:42:13Z&at=2026-11-12T10:42:14Z",
+			"neuro-nat://event/lab.example.com/0123456789abcdef?at", "neuro-nat://event/lab.example.com/0123456789abcdef?=x",
+			"neuro-nat://node/lab.example.com", "neuro-nat://node/lab.example.com/..", "neuro-nat://node/lab.example.com/Root/%2e%2e",
+			"neuro-nat://node/lab.example.com/%ZZ", "neuro-nat://node/lab.example.com/%4", "neuro-nat://node/lab.example.com/%C3%28",
+			"neuro-nat://node/lab.example.com/%00", "neuro-nat://node/lab.example.com/a%0Ab", "neuro-nat://node/lab.example.com/a//b",
+			"neuro-nat://node/lab.example.com/" + string.Join('/', Enumerable.Repeat("n", NatLink.MaxDepth + 1)),
+			"neuro-nat://node/lab.example.com/" + new string('x', 1025),
+			"neuro-nat://chat/lab.example.com", "neuro-nat://chat/kim@lab.example.com/phone", "neuro-nat://chat/a@b@lab.example.com",
+			"neuro-nat://chat/kim%40lab.example.com%2Fres", "neuro-nat://chat/%3Cscript%3E@lab.example.com", "neuro-nat://room/@muc.lab.example.com",
+			"neuro-nat://chat/kim@lab.example.com?at=2026-11-12T10:42:13Z",
+			"neuro-nat://neuron/lab.example.com\u0000", "neuro-nat://neuron/läb.example.com", "neuro-nat://neuron/lab.example.com\n/events",
 			"neuro-nat://neuron/" + new string('a', NatLink.MaxLength),
 		];
 
@@ -403,7 +403,7 @@ public class LinkTests
 		Assert.Equal(new SingleInstance.Request(null), await Read([1]));
 
 		// A link: a 2, its length in two bytes, then the link.
-		const string link = "neuro-nat://neuron/gbg.lab.tagroot.io/events";
+		const string link = "neuro-nat://neuron/gbg.lab.example.com/events";
 		byte[] message = SingleInstance.Message(link);
 		Assert.Equal(SingleInstance.LinkMessage, message[0]);
 		Assert.Equal(link.Length, (message[1] << 8) | message[2]);
@@ -477,7 +477,7 @@ public class LinkTests
 		}
 
 		// A link handed over as an argument is found among the others.
-		Assert.Equal("neuro-nat://neuron/lab.tagroot.io", Program.LinkIn(["--tray", " neuro-nat://neuron/lab.tagroot.io "]));
+		Assert.Equal("neuro-nat://neuron/lab.example.com", Program.LinkIn(["--tray", " neuro-nat://neuron/lab.example.com "]));
 		Assert.Null(Program.LinkIn(["--tray", "https://example.com"]));
 	}
 }

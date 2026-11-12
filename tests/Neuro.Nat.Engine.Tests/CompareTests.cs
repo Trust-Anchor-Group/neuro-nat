@@ -16,7 +16,7 @@ namespace Neuro.Nat.Engine.Tests;
 /// </summary>
 public class CompareTests : IDisposable
 {
-	internal const string Lab = "lab.tagroot.io";
+	internal const string Lab = "lab.example.com";
 	internal const string Prod = "prod.example.com";
 	internal const string LabSecret = "Lab-mqtt-pw-8812-kiwi";
 	internal const string ProdSecret = "Prod-mqtt-pw-4471-fig";
@@ -343,7 +343,7 @@ public class CompareTests : IDisposable
 	public void TheLinkRoundTrips()
 	{
 		NatLink two = NatLink.Compare("ops@" + Lab, Prod);
-		Assert.Equal("neuro-nat://compare/lab.tagroot.io/prod.example.com", two.ToString());
+		Assert.Equal("neuro-nat://compare/lab.example.com/prod.example.com", two.ToString());
 		Assert.True(NatLink.TryParse(two.ToString(), out NatLink back));
 		Assert.Equal(two, back);
 		Assert.Equal(LinkKind.Compare, back.Kind);
@@ -353,7 +353,7 @@ public class CompareTests : IDisposable
 
 		string id = Guid.NewGuid().ToString("N");
 		NatLink kept = NatLink.CompareWithKept(Lab, id);
-		Assert.Equal("neuro-nat://compare/lab.tagroot.io/kept/" + id, kept.ToString());
+		Assert.Equal("neuro-nat://compare/lab.example.com/kept/" + id, kept.ToString());
 		Assert.True(NatLink.TryParse(kept.ToString().ToUpperInvariant().Replace("NEURO-NAT://COMPARE", "neuro-nat://compare", StringComparison.Ordinal), out NatLink k));
 		Assert.Equal(kept, k);
 		Assert.Equal(id, k.CopyId);
@@ -363,16 +363,16 @@ public class CompareTests : IDisposable
 
 		foreach (string bad in new[]
 		{
-			"neuro-nat://compare/lab.tagroot.io",
-			"neuro-nat://compare/lab.tagroot.io/",
-			"neuro-nat://compare/lab.tagroot.io/prod.example.com/more",
-			"neuro-nat://compare/lab.tagroot.io/kept/abc",
-			"neuro-nat://compare/lab.tagroot.io/kept/" + id + "/x",
-			"neuro-nat://compare/lab.tagroot.io/earlier/" + id,
-			"neuro-nat://compare/lab.tagroot.io/prod.example.com?at=2026-11-12T09:42:13Z",
-			"neuro-nat://compare/lab..tagroot.io/prod.example.com",
-			"neuro-nat://compare/lab.tagroot.io/%2E%2E",
-			"neuro-nat://compare/lab.tagroot.io/ops@prod.example.com",
+			"neuro-nat://compare/lab.example.com",
+			"neuro-nat://compare/lab.example.com/",
+			"neuro-nat://compare/lab.example.com/prod.example.com/more",
+			"neuro-nat://compare/lab.example.com/kept/abc",
+			"neuro-nat://compare/lab.example.com/kept/" + id + "/x",
+			"neuro-nat://compare/lab.example.com/earlier/" + id,
+			"neuro-nat://compare/lab.example.com/prod.example.com?at=2026-11-12T09:42:13Z",
+			"neuro-nat://compare/lab..example.com/prod.example.com",
+			"neuro-nat://compare/lab.example.com/%2E%2E",
+			"neuro-nat://compare/lab.example.com/ops@prod.example.com",
 		})
 		{
 			Assert.False(NatLink.TryParse(bad, out _), bad);

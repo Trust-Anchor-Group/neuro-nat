@@ -24,7 +24,7 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class BigScreenTests
 {
-	private const string Sto = "sto.lab.tagroot.io";
+	private const string Sto = "sto.lab.example.com";
 	private const string Prod = "prod.example.com";
 
 	/// <summary>A page a feature added, as App numbers will be: it says whether it has something to show.</summary>

@@ -23,7 +23,7 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class CompareTests
 {
-	private const string Lab = "lab.tagroot.io";
+	private const string Lab = "lab.example.com";
 	private const string Prod = "prod.example.com";
 	private const string LabSecret = "Lab-mqtt-pw-8812-kiwi";
 	private const string ProdSecret = "Prod-mqtt-pw-4471-fig";
@@ -120,7 +120,7 @@ public class CompareTests
 		IReadOnlyList<ItemAction> two = s.Vm.Fleet.ActionsFor([Row(s, Lab), Row(s, Prod)]);
 		ItemAction compare = two.Single(a => a.Text == "Compare");
 		Assert.True(compare.InBar);
-		Assert.DoesNotContain(s.Vm.Fleet.ActionsFor([Row(s, Lab), Row(s, Prod), Row(s, "gbg.lab.tagroot.io")]), a => a.Text == "Compare");
+		Assert.DoesNotContain(s.Vm.Fleet.ActionsFor([Row(s, Lab), Row(s, Prod), Row(s, "gbg.lab.example.com")]), a => a.Text == "Compare");
 
 		await compare.RunAsync();
 		await Settle(s.Vm.Compare);
@@ -206,7 +206,7 @@ public class CompareTests
 		await Settle(s.Vm.Compare);
 
 		NatLink link = Assert.IsType<NatLink>(Links.For(s.Vm.Compare));
-		Assert.Equal("neuro-nat://compare/lab.tagroot.io/prod.example.com", link.ToString());
+		Assert.Equal("neuro-nat://compare/lab.example.com/prod.example.com", link.ToString());
 
 		// "Copy link" is on the menu, as on every other, from the one shared place.
 		IReadOnlyList<ItemAction> menu = Links.WithLink(s.Vm.Compare.ActionsFor([s.Vm.Compare]), [s.Vm.Compare]);
@@ -224,7 +224,7 @@ public class CompareTests
 		Assert.Equal(("Lab", "Production"), (s.Vm.Compare.LeftName, s.Vm.Compare.RightName));
 		Assert.Equal("Lab and Production", s.Vm.DescribeLink(link).Title);
 
-		Assert.Equal(LinkOutcome.NotThere, await s.Vm.OpenLinkAsync("neuro-nat://compare/lab.tagroot.io/elsewhere.example.org"));
+		Assert.Equal(LinkOutcome.NotThere, await s.Vm.OpenLinkAsync("neuro-nat://compare/lab.example.com/elsewhere.example.org"));
 	}
 
 	// ----- Kept copies -----

@@ -90,7 +90,7 @@
             <TextBlock Text="Personal" />
           </ToggleButton>
         </StackPanel>
-        <TextBlock DockPanel.Dock="Top" Classes="meta" Text="{Binding ServiceText}" TextTrimming="CharacterEllipsis" Margin="6,0,0,8" ToolTip.Tip="{Binding ServiceText}" />
+        <TextBlock DockPanel.Dock="Top" Classes="meta" Text="{Binding ServiceText}" TextWrapping="Wrap" Margin="6,0,0,8" ToolTip.Tip="{Binding ServiceText}" />
 
         <TextBox x:Name="NodeFilterBox" Classes="find" DockPanel.Dock="Top" Text="{Binding NodeFilter}" PlaceholderText="Find a node" Margin="6,0,0,8" MinHeight="30" Padding="10,4" />
 

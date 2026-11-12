@@ -27,7 +27,7 @@ public class AddAccountRenderTests
 		await vm.StartAsync();
 		vm.Workspace = WorkspaceKind.Accounts;
 		vm.IsAddFormOpen = true;
-		vm.NewHost = "lab.tagroot.io";
+		vm.NewHost = "lab.example.com";
 		vm.NewUserName = "kim.lindqvist";
 		vm.NewPassword = "secret";
 		vm.NewCreate = true;

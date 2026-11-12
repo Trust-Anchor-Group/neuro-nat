@@ -436,7 +436,7 @@ public class ShellRenderTests
 			Engine.Attention.AttentionState.Read);
 		Add(admin, "gamma@prod.example", 300,
 			"New version of installed software has been downloaded\n==========================================================\n\n| Package ||\n|:------|:-------|\n| Filename: | `TAG.Neuron.3.11.2.package` |\n| Size: | 48.2 MB |\n\nThe new software will be automatically installed in 5 minutes, unless cancelled from the chat interface.");
-		Add(admin, "gamma@prod.example", 320, "XMPP server at [`gamma.prod.example`](http://gamma.prod.example/) updated and restarted at 2026-11-09, 16:40:12. [Release Notes](https://lab.tagroot.io/ReleaseNotes)",
+		Add(admin, "gamma@prod.example", 320, "XMPP server at [`gamma.prod.example`](http://gamma.prod.example/) updated and restarted at 2026-11-09, 16:40:12. [Release Notes](https://lab.example.com/ReleaseNotes)",
 			Engine.Attention.AttentionState.Read);
 
 		MainWindowViewModel vm = new(manager, new FleetService(monitors));

@@ -89,14 +89,14 @@ public sealed partial class TextPassTests
 	[Fact]
 	public void ANeuronGoesByItsRosterNameElseItsDomain()
 	{
-		Assert.Equal("Lab", NeuronNames.Of("Lab", "neuron-7f3a9c@lab.tagroot.io"));
-		Assert.Equal("Lab", NeuronNames.Of("  Lab ", "neuron-7f3a9c@lab.tagroot.io"));
-		Assert.Equal("lab.tagroot.io", NeuronNames.Of(null, "neuron-7f3a9c@lab.tagroot.io"));
+		Assert.Equal("Lab", NeuronNames.Of("Lab", "neuron-7f3a9c@lab.example.com"));
+		Assert.Equal("Lab", NeuronNames.Of("  Lab ", "neuron-7f3a9c@lab.example.com"));
+		Assert.Equal("lab.example.com", NeuronNames.Of(null, "neuron-7f3a9c@lab.example.com"));
 		Assert.Equal("neuronode", NeuronNames.Of(null, "neuronode@"));   // a local Neuron without a domain
-		Assert.Equal("lab.tagroot.io", NeuronNames.Of("  ", "neuron-7f3a9c@lab.tagroot.io"));
-		Assert.Equal("lab.tagroot.io", NeuronNames.Of(null, "lab.tagroot.io"));
-		Assert.Equal("lab.tagroot.io", NeuronNames.Domain("neuron@lab.tagroot.io/abc123"));
-		Assert.Equal("lab.tagroot.io", NeuronNames.Domain("lab.tagroot.io"));
+		Assert.Equal("lab.example.com", NeuronNames.Of("  ", "neuron-7f3a9c@lab.example.com"));
+		Assert.Equal("lab.example.com", NeuronNames.Of(null, "lab.example.com"));
+		Assert.Equal("lab.example.com", NeuronNames.Domain("neuron@lab.example.com/abc123"));
+		Assert.Equal("lab.example.com", NeuronNames.Domain("lab.example.com"));
 
 		WatchedNeuron named = new() { AccountId = Guid.NewGuid(), BareJid = "a1@lab.example", Name = "Lab" };
 		WatchedNeuron plain = new() { AccountId = Guid.NewGuid(), BareJid = "a1@prod.example" };

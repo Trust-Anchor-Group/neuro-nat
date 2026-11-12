@@ -11,15 +11,15 @@ namespace Neuro.Nat.Engine.Tests;
 /// </summary>
 public class PubSubServiceTests
 {
-	private const string Service = "pubsub.lab.tagroot.io";
-	private const string Me = "ops@lab.tagroot.io";
+	private const string Service = "pubsub.lab.example.com";
+	private const string Me = "ops@lab.example.com";
 
 	private static async Task<(PubSubService PubSub, PreviewPubSub Nodes, Guid Account)> SampleAsync()
 	{
 		EngineRuntime.Initialize();
 		string dir = Path.Combine(Path.GetTempPath(), "Nat.PubSub." + Guid.NewGuid().ToString("N"));
 		AccountManager manager = new(new JsonAccountStore(Path.Combine(dir, "accounts.json")), new InMemoryCredentialVault());
-		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.tagroot.io", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.example.com", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
 
 		PubSubService pubsub = new(manager);
 		PreviewPubSub nodes = new PreviewPubSub(pubsub, Service).Account(ops.Profile.Id, Me);
@@ -117,17 +117,17 @@ public class PubSubServiceTests
 		List<NodeItemEvent> seen = [];
 		pubsub.ItemEvent += (_, e) => seen.Add(e);
 
-		nodes.Arrive(Service, "alerts", "a-1", "<a xmlns='urn:x'/>", "robin@lab.tagroot.io");
+		nodes.Arrive(Service, "alerts", "a-1", "<a xmlns='urn:x'/>", "robin@lab.example.com");
 		Assert.Empty(seen);
 		Assert.Empty(await pubsub.WatchedAsync(me, personal: false));
 
 		Assert.Equal(SubscriberState.Subscribed, await pubsub.WatchAsync(me, alerts));
 		Assert.Equal(["alerts"], await pubsub.WatchedAsync(me, personal: false));
 
-		nodes.Arrive(Service, "alerts", "a-2", "<a xmlns='urn:x'/>", "robin@lab.tagroot.io");
-		nodes.Arrive(Service, "other", "o-1", "<a xmlns='urn:x'/>", "robin@lab.tagroot.io");
+		nodes.Arrive(Service, "alerts", "a-2", "<a xmlns='urn:x'/>", "robin@lab.example.com");
+		nodes.Arrive(Service, "other", "o-1", "<a xmlns='urn:x'/>", "robin@lab.example.com");
 		NodeItemEvent came = Assert.Single(seen);
-		Assert.Equal((me, Service, "alerts", "a-2", "robin@lab.tagroot.io"), (came.AccountId, came.Service, came.Node, came.Item!.ItemId, came.Item.Publisher));
+		Assert.Equal((me, Service, "alerts", "a-2", "robin@lab.example.com"), (came.AccountId, came.Service, came.Node, came.Item!.ItemId, came.Item.Publisher));
 		Assert.NotNull(came.Item.Published);
 
 		// Removing and emptying are told too.
@@ -140,7 +140,7 @@ public class PubSubServiceTests
 
 		await pubsub.UnwatchAsync(me, alerts);
 		int before = seen.Count;
-		nodes.Arrive(Service, "alerts", "a-3", "<a xmlns='urn:x'/>", "robin@lab.tagroot.io");
+		nodes.Arrive(Service, "alerts", "a-3", "<a xmlns='urn:x'/>", "robin@lab.example.com");
 		Assert.Equal(before, seen.Count);
 	}
 
@@ -170,7 +170,7 @@ public class PubSubServiceTests
 	public async Task NodesLiveInCollectionsAndAreMadeWithSettings()
 	{
 		(PubSubService pubsub, PreviewPubSub nodes, Guid me) = await SampleAsync();
-		nodes.Add("lab", Me, collection: true).Add("lab/alerts", Me, "Alerts", parent: "lab").Add("top", "lead@lab.tagroot.io");
+		nodes.Add("lab", Me, collection: true).Add("lab/alerts", Me, "Alerts", parent: "lab").Add("top", "lead@lab.example.com");
 
 		IReadOnlyList<PubSubNodeInfo> top = await pubsub.NodesAsync(me);
 		Assert.Equal(["lab", "top"], top.Select(n => n.Node));
@@ -208,7 +208,7 @@ public class PubSubServiceTests
 		pubsub.RequestsChanged += (_, _) => changes++;
 
 		NodeRequest pat = new(me, Service, "alerts", "pat@partner.example", DateTime.Now);
-		NodeRequest lee = new(me, Service, "alerts", "lee@lab.tagroot.io", DateTime.Now);
+		NodeRequest lee = new(me, Service, "alerts", "lee@lab.example.com", DateTime.Now);
 		pubsub.Preview(pat);
 		pubsub.Preview(lee);
 		Assert.Equal(2, changes);
@@ -224,10 +224,10 @@ public class PubSubServiceTests
 		Assert.Equal([new NodeSubscriber("pat@partner.example", SubscriberState.Subscribed)], subscribers);
 
 		// Roles: given, changed, taken away; the last owner stays one.
-		await pubsub.SetRoleAsync(me, alerts, "robin@lab.tagroot.io", NodeRole.Publisher);
-		await pubsub.SetRoleAsync(me, alerts, "robin@lab.tagroot.io", NodeRole.Blocked);
-		Assert.Contains(new NodePerson("robin@lab.tagroot.io", NodeRole.Blocked), (await pubsub.PeopleAsync(me, alerts)).People);
-		await pubsub.SetRoleAsync(me, alerts, "robin@lab.tagroot.io", NodeRole.None);
+		await pubsub.SetRoleAsync(me, alerts, "robin@lab.example.com", NodeRole.Publisher);
+		await pubsub.SetRoleAsync(me, alerts, "robin@lab.example.com", NodeRole.Blocked);
+		Assert.Contains(new NodePerson("robin@lab.example.com", NodeRole.Blocked), (await pubsub.PeopleAsync(me, alerts)).People);
+		await pubsub.SetRoleAsync(me, alerts, "robin@lab.example.com", NodeRole.None);
 		Assert.Single((await pubsub.PeopleAsync(me, alerts)).People);
 		await Assert.ThrowsAsync<InvalidOperationException>(() => pubsub.SetRoleAsync(me, alerts, Me, NodeRole.Member));
 	}

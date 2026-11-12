@@ -22,7 +22,7 @@ namespace Neuro.Nat.Features.Telemetry.Tests;
 /// </summary>
 public class DashboardRenderTests
 {
-	private const string Lab = "lab.tagroot.io";
+	private const string Lab = "lab.example.com";
 	private static Application? templatesFor;
 
 	private static void UseTemplates(TelemetrySample s)

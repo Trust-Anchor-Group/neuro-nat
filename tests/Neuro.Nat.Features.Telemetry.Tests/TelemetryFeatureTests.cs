@@ -14,22 +14,22 @@ namespace Neuro.Nat.Features.Telemetry.Tests;
 /// </summary>
 public class TelemetryFeatureTests
 {
-	private const string Lab = "lab.tagroot.io";
+	private const string Lab = "lab.example.com";
 	private static readonly DateTime Now = new(2026, 11, 12, 9, 30, 0, DateTimeKind.Utc);
 
 	// The /Status answers as the package gives them (Neuro.App.Telemetry, Web/ApiResource.cs GetStatus).
 	private const string SelfOnly = """
-		{"neurons":[{"neuron":"lab.tagroot.io","role":"self","metricsVersion":5,"lastComputedDay":"2026-11-11","lastCompute":"2026-11-12T02:10:00.0000000Z",
+		{"neurons":[{"neuron":"lab.example.com","role":"self","metricsVersion":5,"lastComputedDay":"2026-11-11","lastCompute":"2026-11-12T02:10:00.0000000Z",
 		"lastComputeError":null,"computing":false,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":null}]}
 		""";
 
 	private const string Collector = """
 		{"neurons":[
-		{"neuron":"root.tagroot.io","role":"self","metricsVersion":5,"lastComputedDay":"2026-11-11","lastCompute":"2026-11-12T02:10:00.0000000Z","lastComputeError":null,"computing":false,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":null},
-		{"neuron":"a.tagroot.io","role":"source","metricsVersion":5,"lastComputedDay":"2026-11-11","lastCompute":null,"lastComputeError":null,"computing":null,"lastCollect":"2026-11-12T02:00:00Z","lastCollectSuccess":"2026-11-12T02:00:00Z","lastCollectError":null,"lastCollectFacts":120},
-		{"neuron":"b.tagroot.io","role":"source","metricsVersion":5,"lastComputedDay":"2026-11-11","lastCompute":null,"lastComputeError":null,"computing":null,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":0},
-		{"neuron":"c.tagroot.io","role":"source","metricsVersion":null,"lastComputedDay":null,"lastCompute":null,"lastComputeError":null,"computing":null,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":0},
-		{"neuron":"d.tagroot.io","role":"source","metricsVersion":4,"lastComputedDay":"2026-11-10","lastCompute":null,"lastComputeError":null,"computing":null,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":3}]}
+		{"neuron":"root.example.com","role":"self","metricsVersion":5,"lastComputedDay":"2026-11-11","lastCompute":"2026-11-12T02:10:00.0000000Z","lastComputeError":null,"computing":false,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":null},
+		{"neuron":"a.example.com","role":"source","metricsVersion":5,"lastComputedDay":"2026-11-11","lastCompute":null,"lastComputeError":null,"computing":null,"lastCollect":"2026-11-12T02:00:00Z","lastCollectSuccess":"2026-11-12T02:00:00Z","lastCollectError":null,"lastCollectFacts":120},
+		{"neuron":"b.example.com","role":"source","metricsVersion":5,"lastComputedDay":"2026-11-11","lastCompute":null,"lastComputeError":null,"computing":null,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":0},
+		{"neuron":"c.example.com","role":"source","metricsVersion":null,"lastComputedDay":null,"lastCompute":null,"lastComputeError":null,"computing":null,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":0},
+		{"neuron":"d.example.com","role":"source","metricsVersion":4,"lastComputedDay":"2026-11-10","lastCompute":null,"lastComputeError":null,"computing":null,"lastCollect":null,"lastCollectSuccess":null,"lastCollectError":null,"lastCollectFacts":3}]}
 		""";
 
 	private const string NotAllowed = """{"error":"notAllowed","message":"The account needs the privilege Custom.Telemetry.External or Custom.Telemetry.Internal."}""";
@@ -109,7 +109,7 @@ public class TelemetryFeatureTests
 		Assert.Equal(["App telemetry: installed, numbers up to yesterday"], s.Lines());
 
 		(Uri uri, string? authorization) = Assert.Single(s.Web.Asked);
-		Assert.Equal("https://lab.tagroot.io/NeuroAppTelemetry/Api/v1/Status", uri.ToString());
+		Assert.Equal("https://lab.example.com/NeuroAppTelemetry/Api/v1/Status", uri.ToString());
 		Assert.Equal("Bearer token-1", authorization);
 	}
 
@@ -122,7 +122,7 @@ public class TelemetryFeatureTests
 		Assert.Equal(["App telemetry: installed, numbers up to yesterday, collects from 4 Neurons"], s.Lines());
 		TelemetryStatus status = s.Feature.StatusOf(s.Account, Lab)!;
 		Assert.True(status.IsCollector);
-		Assert.Equal("root.tagroot.io", status.Neuron);
+		Assert.Equal("root.example.com", status.Neuron);
 	}
 
 	[Fact]
@@ -302,11 +302,11 @@ public class TelemetryFeatureTests
 			NeuronJid = Lab,
 			Received = DateTime.Now,
 			// The Neuron's notifications carry links to its admin pages.
-			Markdown = "New software\n\n[Admin](https://web.tagroot.io:8443/Settings.md) [Plain](http://web.tagroot.io/x) [Local](http://localhost:8081/x)",
+			Markdown = "New software\n\n[Admin](https://web.example.com:8443/Settings.md) [Plain](http://web.example.com/x) [Local](http://localhost:8081/x)",
 		});
 
 		// Plain http only on this computer, so a token never crosses the network unencrypted.
-		Assert.Equal(["https://web.tagroot.io:8443/", "http://localhost:8081/", "https://lab.tagroot.io/"], NeuronWeb.Candidates(null, inbox, account, Lab).Select(u => u.ToString()));
+		Assert.Equal(["https://web.example.com:8443/", "http://localhost:8081/", "https://lab.example.com/"], NeuronWeb.Candidates(null, inbox, account, Lab).Select(u => u.ToString()));
 		Assert.Equal(["https://localhost/"], NeuronWeb.Candidates(null, inbox, account, "localhost").Select(u => u.ToString()));
 		Assert.Empty(NeuronWeb.Candidates(null, null, account, string.Empty));
 	}
@@ -322,20 +322,20 @@ public class TelemetryFeatureTests
 			AccountId = account,
 			NeuronJid = Lab,
 			Received = DateTime.Now,
-			Markdown = "New software\n\n[Admin](https://web.tagroot.io:8443/Settings.md)",
+			Markdown = "New software\n\n[Admin](https://web.example.com:8443/Settings.md)",
 		});
 
 		// Set on the account: first. Then the Neuron's own links, then https on its domain.
-		Assert.Equal(["http://localhost:8081/", "https://web.tagroot.io:8443/", "https://lab.tagroot.io/"],
+		Assert.Equal(["http://localhost:8081/", "https://web.example.com:8443/", "https://lab.example.com/"],
 			NeuronWeb.Candidates("http://localhost:8081", inbox, account, Lab).Select(u => u.ToString()));
-		Assert.Equal(["https://web.tagroot.io:8443/", "https://lab.tagroot.io/"], NeuronWeb.Candidates(null, inbox, account, Lab).Select(u => u.ToString()));
-		Assert.Equal(["https://lab.tagroot.io/"], NeuronWeb.Candidates(" ", null, account, Lab).Select(u => u.ToString()));
+		Assert.Equal(["https://web.example.com:8443/", "https://lab.example.com/"], NeuronWeb.Candidates(null, inbox, account, Lab).Select(u => u.ToString()));
+		Assert.Equal(["https://lab.example.com/"], NeuronWeb.Candidates(" ", null, account, Lab).Select(u => u.ToString()));
 
 		// Plain http to another computer is refused, set or not; a bare host gets https.
-		Assert.Equal(["https://lab.tagroot.io/"], NeuronWeb.Candidates("http://web.tagroot.io", null, account, Lab).Select(u => u.ToString()));
-		Assert.Null(Engine.Accounts.AccountWeb.Check("http://web.tagroot.io"));
-		Assert.Null(Engine.Accounts.AccountWeb.Check("ftp://web.tagroot.io"));
-		Assert.Equal("https://web.tagroot.io/", Engine.Accounts.AccountWeb.Check("web.tagroot.io"));
+		Assert.Equal(["https://lab.example.com/"], NeuronWeb.Candidates("http://web.example.com", null, account, Lab).Select(u => u.ToString()));
+		Assert.Null(Engine.Accounts.AccountWeb.Check("http://web.example.com"));
+		Assert.Null(Engine.Accounts.AccountWeb.Check("ftp://web.example.com"));
+		Assert.Equal("https://web.example.com/", Engine.Accounts.AccountWeb.Check("web.example.com"));
 		Assert.Equal("http://127.0.0.1:8081/", Engine.Accounts.AccountWeb.Check("http://127.0.0.1:8081/x"));
 	}
 }

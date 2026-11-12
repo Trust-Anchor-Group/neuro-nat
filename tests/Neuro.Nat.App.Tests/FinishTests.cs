@@ -18,7 +18,7 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class FinishTests
 {
-	private const string Gbg = "gbg.lab.tagroot.io";
+	private const string Gbg = "gbg.lab.example.com";
 
 	private static void Step() => Dispatcher.UIThread.RunJobs();
 
@@ -35,7 +35,7 @@ public class FinishTests
 		yield return ("chat", s =>
 		{
 			s.Vm.Workspace = WorkspaceKind.Chat;
-			s.Vm.Chat.Open(s.Ops, "kim@lab.tagroot.io");
+			s.Vm.Chat.Open(s.Ops, "kim@lab.example.com");
 		});
 		yield return ("console", s => s.Vm.Workspace = WorkspaceKind.Console);
 		yield return ("accounts", s => s.Vm.Workspace = WorkspaceKind.Accounts);
@@ -152,7 +152,7 @@ public class FinishTests
 		TextBox box = Shown<TextBox>(window, "TargetFilterBox");
 		Assert.Contains("find", box.Classes);
 
-		ConsoleTargetViewModel lab = console.Targets.First(x => x.BareJid == "lab.tagroot.io");
+		ConsoleTargetViewModel lab = console.Targets.First(x => x.BareJid == "lab.example.com");
 		lab.IsChecked = true;
 		console.TargetFilter = "prod";
 		Step();

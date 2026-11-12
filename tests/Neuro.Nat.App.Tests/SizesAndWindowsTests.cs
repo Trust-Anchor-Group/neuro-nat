@@ -20,9 +20,9 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class SizesAndWindowsTests
 {
-	private const string Lab = "lab.tagroot.io";
-	private const string Gbg = "gbg.lab.tagroot.io";
-	private const string Sto = "sto.lab.tagroot.io";
+	private const string Lab = "lab.example.com";
+	private const string Gbg = "gbg.lab.example.com";
+	private const string Sto = "sto.lab.example.com";
 	private const string Prod = "prod.example.com";
 	private const string Backup = "backup.prod.example.com";
 
@@ -307,13 +307,13 @@ public class SizesAndWindowsTests
 			GettingAroundTests.Capture(ShellWindows.Extras[1], $"windows-neuron-{t}");
 
 			vm.ShowChatCommand.Execute(null);
-			PersonViewModel kim = vm.Chat.Everyone.Single(p => p.BareJid == "kim@lab.tagroot.io");
+			PersonViewModel kim = vm.Chat.Everyone.Single(p => p.BareJid == "kim@lab.example.com");
 			vm.Chat.ActionsFor([kim]).Single(a => a.Text == "Open in a new window").RunAsync().Wait();
 			Dispatcher.UIThread.RunJobs();
 			Assert.Equal(3, ShellWindows.Extras.Count);
 			MainWindowViewModel chatVm = Assert.IsType<MainWindowViewModel>(ShellWindows.Extras[2].DataContext);
 			Assert.True(chatVm.IsChat);
-			Assert.Equal("kim@lab.tagroot.io", chatVm.Chat.SelectedPerson?.BareJid);
+			Assert.Equal("kim@lab.example.com", chatVm.Chat.SelectedPerson?.BareJid);
 			ShellWindows.Extras[2].Width = 900;
 			ShellWindows.Extras[2].Height = 640;
 			Dispatcher.UIThread.RunJobs();
@@ -364,7 +364,7 @@ public class SizesAndWindowsTests
 			Assert.Equal(Gbg, eventsVm.LensJid);
 			MainWindowViewModel chatVm = Assert.IsType<MainWindowViewModel>(ShellWindows.Extras[1].DataContext);
 			Assert.True(chatVm.IsChat);
-			Assert.Equal("kim@lab.tagroot.io", chatVm.Chat.SelectedPerson?.BareJid);
+			Assert.Equal("kim@lab.example.com", chatVm.Chat.SelectedPerson?.BareJid);
 			Assert.Equal(900, ShellWindows.Extras[1].Width);
 			Assert.Equal(640, ShellWindows.Extras[1].Height);
 
@@ -384,7 +384,7 @@ public class SizesAndWindowsTests
 		Dispatcher.UIThread.RunJobs();
 
 		// At start nothing has connected: the Neuron the window showed is not among the Neurons yet.
-		const string late = "late.lab.tagroot.io";
+		const string late = "late.lab.example.com";
 		string address = string.Join('|', WorkspaceKind.NeuronEvents, s.Ops.ToString("N"), late, string.Empty);
 		Assert.False(other.GoTo(address));
 		Assert.False(other.IsNeuronPage);
@@ -399,9 +399,9 @@ public class SizesAndWindowsTests
 		// Going somewhere by hand while it waits: the window stays where you went.
 		MainWindowViewModel third = Another(s);
 		third.Join();
-		Assert.False(third.GoTo(string.Join('|', WorkspaceKind.Neuron, s.Ops.ToString("N"), "never.lab.tagroot.io", string.Empty)));
+		Assert.False(third.GoTo(string.Join('|', WorkspaceKind.Neuron, s.Ops.ToString("N"), "never.lab.example.com", string.Empty)));
 		third.ShowEventsCommand.Execute(null);
-		s.Monitors.For(s.Ops)!.Preview(new WatchedNeuron { AccountId = s.Ops, BareJid = "never.lab.tagroot.io", Name = "Never", State = WatchState.Live, HistoryState = HistoryState.Loaded });
+		s.Monitors.For(s.Ops)!.Preview(new WatchedNeuron { AccountId = s.Ops, BareJid = "never.lab.example.com", Name = "Never", State = WatchState.Live, HistoryState = HistoryState.Loaded });
 		third.Fleet.Refresh();
 		Dispatcher.UIThread.RunJobs();
 		Assert.True(third.IsEvents);
@@ -525,7 +525,7 @@ public class SizesAndWindowsTests
 		Assert.True(PaneOf(large, "inbox").Bounds.Width > listAtMedium);
 
 		// And in Chat a third column opens: who you are talking to, beside the conversation.
-		vm.ShowChat(s.Ops, "kim@lab.tagroot.io");
+		vm.ShowChat(s.Ops, "kim@lab.example.com");
 		Dispatcher.UIThread.RunJobs();
 		Dispatcher.UIThread.RunJobs();
 		Assert.True(vm.Chat.IsPersonPanel);
@@ -535,14 +535,14 @@ public class SizesAndWindowsTests
 		vm.Chat.TogglePanelCommand.Execute(null);
 		Dispatcher.UIThread.RunJobs();
 		Assert.False(vm.Chat.IsPersonPanel);
-		vm.ShowChat(s.Ops, "robin@gbg.lab.tagroot.io");
+		vm.ShowChat(s.Ops, "robin@gbg.lab.example.com");
 		Dispatcher.UIThread.RunJobs();
 		Assert.False(vm.Chat.IsPersonPanel);
 		large.Close();
 
 		// At the usual size it opens only when asked for, as before.
 		using Sample again = await GettingAroundTests.SampleAsync();
-		again.Vm.ShowChat(again.Ops, "kim@lab.tagroot.io");
+		again.Vm.ShowChat(again.Ops, "kim@lab.example.com");
 		MainWindow usual = GettingAroundTests.Window(again, "Light");
 		Dispatcher.UIThread.RunJobs();
 		Assert.False(again.Vm.Chat.IsPersonPanel);

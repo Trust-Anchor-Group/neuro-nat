@@ -32,14 +32,14 @@ public class SoftwareTests
 	{
 		string md = "| File Name | Size | Published | Supersedes | Created | Installed | Signature | Remote Endpoint |\n" +
 			"|:----------|:----:|:---------:|:----------:|:-------:|:---------:|:----------|:----------------|\n" +
-			"| [TAG.Neuron.package](https://x/Packages/TAG.Neuron.package) | 48.2 MB | 2026-11-01 10:00 | | 2026-11-02 08:00 | 2026-11-02 08:05 | <a href='javascript:Popup.Alert(\"abc\")'>abcdefghij...</a> | lab.tagroot.io |\n" +
-			"| TAG.Payments.package | 1.1 MB | 2026-10-01 10:00 | | 2026-10-02 08:00 | | x | lab.tagroot.io |\n";
+			"| [TAG.Neuron.package](https://x/Packages/TAG.Neuron.package) | 48.2 MB | 2026-11-01 10:00 | | 2026-11-02 08:00 | 2026-11-02 08:05 | <a href='javascript:Popup.Alert(\"abc\")'>abcdefghij...</a> | lab.example.com |\n" +
+			"| TAG.Payments.package | 1.1 MB | 2026-10-01 10:00 | | 2026-10-02 08:00 | | x | lab.example.com |\n";
 		IReadOnlyList<SoftwarePackage> p = SoftwareService.ParsePackages(md);
 		Assert.Equal(2, p.Count);
 		Assert.Equal("TAG.Neuron.package", p[0].FileName);
 		Assert.True(p[0].IsInstalled);
 		Assert.False(p[1].IsInstalled);
-		Assert.Equal("lab.tagroot.io", p[1].From);
+		Assert.Equal("lab.example.com", p[1].From);
 	}
 }
 

@@ -36,16 +36,16 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class ScreenSweepTests
 {
-	private const string Service = "pubsub.lab.tagroot.io";
-	private const string Me = "ops@lab.tagroot.io";
-	private const string Lab = "lab.tagroot.io";
-	private const string Gbg = "gbg.lab.tagroot.io";
-	private const string Sto = "sto.lab.tagroot.io";
+	private const string Service = "pubsub.lab.example.com";
+	private const string Me = "ops@lab.example.com";
+	private const string Lab = "lab.example.com";
+	private const string Gbg = "gbg.lab.example.com";
+	private const string Sto = "sto.lab.example.com";
 	private const string EdgeGbg = "edge-gbg.example.com";
-	private const string Telemetry = "telemetry.lab.tagroot.io";
+	private const string Telemetry = "telemetry.lab.example.com";
 	private const string Prod = "prod.example.com";
 	private const string Backup = "backup.prod.example.com";
-	private const string OpsRoom = "ops-team@muc.lab.tagroot.io";
+	private const string OpsRoom = "ops-team@muc.lab.example.com";
 
 	private sealed record Sweep(MainWindowViewModel Vm, EventHub Hub, Guid Ops, Guid Admin, bool Several, List<string> Said) : IDisposable
 	{
@@ -131,7 +131,7 @@ public class ScreenSweepTests
 		Neuron(a, Backup, null, 0, WatchState.Offline, 0);
 
 		for (int i = 0; i < 9; i++)
-			Event(i * 50 + 15, SnifferDirection.Error, o, Gbg, $"SocketException: Connection reset by peer (lab.tagroot.io:5269)\n\nModule: Waher.Networking.XMPP.Server\nEventId: S2S\nRemoteEndPoint: 10.0.0.{i + 3}:5269");
+			Event(i * 50 + 15, SnifferDirection.Error, o, Gbg, $"SocketException: Connection reset by peer (lab.example.com:5269)\n\nModule: Waher.Networking.XMPP.Server\nEventId: S2S\nRemoteEndPoint: 10.0.0.{i + 3}:5269");
 		for (int i = 0; i < 6; i++)
 			Event(i * 70 + 30, SnifferDirection.Error, o, Lab, $"TimeoutException in ConcentratorServer.ReadSensorData (node Meter-{i + 11})\n\nModule: Waher.Things\nObject: Meter-{i + 11}");
 		for (int i = 0; i < 4; i++)
@@ -144,7 +144,7 @@ public class ScreenSweepTests
 		monitors.Attention.Preview(new NeuronNotification
 		{
 			Id = "n1", AccountId = o, NeuronJid = Gbg, Received = now.AddMinutes(-3),
-			Markdown = "Legal identity application received: [`2f9a1c04-57e1-4c1e@legal.gbg.lab.tagroot.io`](https://gbg.lab.tagroot.io/ValidateLegalId.md?ID=2f9a1c04-57e1-4c1e%40legal.gbg.lab.tagroot.io)\n",
+			Markdown = "Legal identity application received: [`2f9a1c04-57e1-4c1e@legal.gbg.lab.example.com`](https://gbg.lab.example.com/ValidateLegalId.md?ID=2f9a1c04-57e1-4c1e%40legal.gbg.lab.example.com)\n",
 		});
 		monitors.Attention.Preview(new NeuronNotification
 		{
@@ -158,17 +158,17 @@ public class ScreenSweepTests
 		});
 
 		// People and a room.
-		chat.Preview(new Contact(o, "kim@lab.tagroot.io", "Kim Lindqvist", ["On call"], SubscriptionState.Both, true, Availability.Online, null, false));
-		chat.Preview(new Contact(o, "robin@gbg.lab.tagroot.io", "Robin Ek", ["On call"], SubscriptionState.Both, true, Availability.Away, "In a meeting until three", false));
+		chat.Preview(new Contact(o, "kim@lab.example.com", "Kim Lindqvist", ["On call"], SubscriptionState.Both, true, Availability.Online, null, false));
+		chat.Preview(new Contact(o, "robin@gbg.lab.example.com", "Robin Ek", ["On call"], SubscriptionState.Both, true, Availability.Away, "In a meeting until three", false));
 		chat.Preview(new Contact(a, "lead@prod.example.com", "Lee Park", [], SubscriptionState.Both, true, Availability.Online, null, false));
 		chat.PreviewRoom(o, OpsRoom, "oncall");
 		chat.Preview(o, OpsRoom, new RoomOccupant("oncall", "Moderator", "Owner", Me + "/aa"));
-		chat.Preview(o, OpsRoom, new RoomOccupant("robin", "Participant", "Member", "robin@gbg.lab.tagroot.io/x"));
+		chat.Preview(o, OpsRoom, new RoomOccupant("robin", "Participant", "Member", "robin@gbg.lab.example.com/x"));
 		chat.Preview(o, OpsRoom, "Deploy window is 14:00 to 15:00 today.", "robin", room: true);
 		chat.Preview(o, OpsRoom, "Gothenburg edge restarts first, then Stockholm.", "oncall", room: true);
-		chat.Preview(o, "kim@lab.tagroot.io", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
-		chat.Preview(o, "kim@lab.tagroot.io", "It did, 42 GB in 18 minutes. The certificate on prod is next.", "ops");
-		chat.Preview(o, "robin@gbg.lab.tagroot.io", "gbg is slow again, can you look?", "Robin Ek");
+		chat.Preview(o, "kim@lab.example.com", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
+		chat.Preview(o, "kim@lab.example.com", "It did, 42 GB in 18 minutes. The certificate on prod is next.", "ops");
+		chat.Preview(o, "robin@gbg.lab.example.com", "gbg is slow again, can you look?", "Robin Ek");
 		chat.Preview(a, "lead@prod.example.com", "The certificate on prod runs out soon.", "Lee Park");
 
 		// Nodes on the lab's publish/subscribe service.
@@ -178,11 +178,11 @@ public class ScreenSweepTests
 			nodes.Account(a, "admin@prod.example.com");
 		pubsub.StandIn = nodes;
 		nodes.Add("alerts", Me, "Alerts from the lab")
-			.Add("announcements", "lead@lab.tagroot.io", "Announcements")
+			.Add("announcements", "lead@lab.example.com", "Announcements")
 			.Add("build-log", Me, "Build log");
-		nodes.Item(Service, "alerts", "a-1", "<alert xmlns='urn:example:alerts' level='warning'><text>Disk on gbg is 91 % full</text></alert>", "robin@gbg.lab.tagroot.io")
-			.Person(Service, "alerts", "robin@gbg.lab.tagroot.io", NodeRole.Publisher)
-			.Subscriber(Service, "alerts", "kim@lab.tagroot.io", SubscriberState.Subscribed);
+		nodes.Item(Service, "alerts", "a-1", "<alert xmlns='urn:example:alerts' level='warning'><text>Disk on gbg is 91 % full</text></alert>", "robin@gbg.lab.example.com")
+			.Person(Service, "alerts", "robin@gbg.lab.example.com", NodeRole.Publisher)
+			.Subscriber(Service, "alerts", "kim@lab.example.com", SubscriberState.Subscribed);
 
 		SoftwareService software = new(monitors, chat)
 		{
@@ -348,7 +348,7 @@ public class ScreenSweepTests
 		yield return ("chat-person", async s =>
 		{
 			s.Vm.Events.SelectedIssue = null;
-			s.Vm.ShowChat(s.Ops, "kim@lab.tagroot.io");
+			s.Vm.ShowChat(s.Ops, "kim@lab.example.com");
 			await Settle();
 			if (!s.Vm.Chat.IsPanelOpen)
 				s.Vm.Chat.TogglePanelCommand.Execute(null);
@@ -422,7 +422,7 @@ public class ScreenSweepTests
 			answers.Add(new(n, jid, DotGraph.Edges(p), DotGraph.Edges(f), [], null));
 		}
 
-		Answer(s.Ops, Lab, "Lab", "tagroot.io", "tagroot.io", Prod);
+		Answer(s.Ops, Lab, "Lab", "example.com", "example.com", Prod);
 		Answer(s.Ops, Gbg, "Gothenburg edge", Lab, Lab);
 		Answer(s.Ops, Sto, "Stockholm edge", Lab, Lab, Gbg);
 		Answer(s.Ops, EdgeGbg, null, Gbg, Gbg);

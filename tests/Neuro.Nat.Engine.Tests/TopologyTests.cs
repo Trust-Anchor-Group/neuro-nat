@@ -9,7 +9,7 @@ public class TopologyTests
 	private const string Parent = "```dot\ndigraph G {\nrankdir=LR\n\"lab.example.com\" -> \"edge1.example.com\" [dir=back];\n}\n```\n";
 
 	private const string S2s = "```dot\ndigraph G {\nrankdir=LR\n\"edge1.example.com\" [label=<<b>edge1.example.com</b>>];\n" +
-		"\"edge1.example.com\" -> \"lab.example.com\";\n\"edge1.example.com\" -> \"partner.org\" [label=\"HTTP\"];\n}\n```\n";
+		"\"edge1.example.com\" -> \"lab.example.com\";\n\"edge1.example.com\" -> \"partner.example.org\" [label=\"HTTP\"];\n}\n```\n";
 
 	[Fact]
 	public void ReadsEdgesAndAttributes()
@@ -48,13 +48,13 @@ public class TopologyTests
 		Assert.Equal("Edge 1", e1.Label);
 		Assert.Equal(TopologyNodeKind.Neuron, e1.Kind);
 		Assert.Equal(TopologyNodeKind.Neuron, snap.Nodes.Single(n => n.Id == "lab.example.com").Kind);
-		Assert.Equal(TopologyNodeKind.Broker, snap.Nodes.Single(n => n.Id == "partner.org").Kind);
+		Assert.Equal(TopologyNodeKind.Broker, snap.Nodes.Single(n => n.Id == "partner.example.org").Kind);
 
 		Assert.Contains(snap.Edges, x => x is { From: "edge1.example.com", To: "lab.example.com", Kind: TopologyLink.Parent });
 
 		// Seen from both ends, the federation link between edge1 and lab is one link.
 		Assert.Single(snap.Edges, x => x.Kind == TopologyLink.Federation && (x.From, x.To) is ("edge1.example.com", "lab.example.com") or ("lab.example.com", "edge1.example.com"));
-		Assert.Contains(snap.Edges, x => x is { To: "partner.org", Label: "HTTP" });
+		Assert.Contains(snap.Edges, x => x is { To: "partner.example.org", Label: "HTTP" });
 
 		TopologyProblem problem = Assert.Single(snap.Problems);
 		Assert.Equal("quiet.example.com", problem.NeuronJid);

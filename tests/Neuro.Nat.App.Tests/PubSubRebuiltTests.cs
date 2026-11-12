@@ -22,8 +22,8 @@ namespace Neuro.Nat.App.Tests;
 /// </summary>
 public class PubSubRebuiltTests
 {
-	private const string Service = "pubsub.lab.tagroot.io";
-	private const string Me = "ops@lab.tagroot.io";
+	private const string Service = "pubsub.lab.example.com";
+	private const string Me = "ops@lab.example.com";
 	private const string Picture = "iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAIAAABvFaqvAAAAPklEQVR42mPQyDtBFcQwahBFBn39+gsTkWwQVlPwmMVAqim4zBo1aPgYRLV0RM2UPWgyLcFgxuXNUYPoaBAAXoZC5+m6Vd4AAAAASUVORK5CYII=";
 
 	private sealed record Sample(MainWindowViewModel Vm, PubSubService PubSub, PreviewPubSub Nodes, Guid Ops, Guid Admin, List<string> Said, List<string> Copied) : IDisposable
@@ -96,7 +96,7 @@ public class PubSubRebuiltTests
 		PubSubViewModel.FadeTime = TimeSpan.Zero;
 		string dir = Path.Combine(Path.GetTempPath(), "Nat.PubSub." + Guid.NewGuid().ToString("N"));
 		AccountManager manager = new(new JsonAccountStore(Path.Combine(dir, "accounts.json")), new InMemoryCredentialVault());
-		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.tagroot.io", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.example.com", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
 		AccountSession admin = await manager.AddAsync(new AccountProfile { Host = "prod.example.com", UserName = "admin", ConnectOnStartup = false, ColorIndex = 3 }, AccountSecret.FromPassword("x"), connect: false);
 
 		MonitorService monitors = new(manager, new EventHub());
@@ -106,8 +106,8 @@ public class PubSubRebuiltTests
 		Guid o = ops.Profile.Id;
 		Guid a = admin.Profile.Id;
 
-		monitors.For(o)!.Preview(new WatchedNeuron { AccountId = o, BareJid = "lab.tagroot.io", Name = "Lab", State = WatchState.Live, HistoryState = HistoryState.Loaded, HistoryCount = 12 });
-		fleet.Preview(new NeuronHealth { AccountId = o, NeuronJid = "lab.tagroot.io", Software = "Waher.IoTGateway 3.11.1.0", ReadAt = DateTime.Now.AddSeconds(-20) });
+		monitors.For(o)!.Preview(new WatchedNeuron { AccountId = o, BareJid = "lab.example.com", Name = "Lab", State = WatchState.Live, HistoryState = HistoryState.Loaded, HistoryCount = 12 });
+		fleet.Preview(new NeuronHealth { AccountId = o, NeuronJid = "lab.example.com", Software = "Waher.IoTGateway 3.11.1.0", ReadAt = DateTime.Now.AddSeconds(-20) });
 
 		PubSubService pubsub = new(manager);
 		PreviewPubSub nodes = new PreviewPubSub(pubsub, Service).Account(o, Me).Account(a, "admin@prod.example.com");
@@ -116,26 +116,26 @@ public class PubSubRebuiltTests
 		nodes.Add("lab", Me, "Everything from the lab", collection: true)
 			.Add("lab/alerts", Me, "Alerts from the lab", parent: "lab")
 			.Add("lab/meter-11", Me, "Meter 11 in the plant room", parent: "lab")
-			.Add("announcements", "lead@lab.tagroot.io", "Announcements")
-			.Add("approvals", "lead@lab.tagroot.io", "Change approvals", settings: new NodeSettings { Access = NodeAccess.Authorize })
+			.Add("announcements", "lead@lab.example.com", "Announcements")
+			.Add("approvals", "lead@lab.example.com", "Change approvals", settings: new NodeSettings { Access = NodeAccess.Authorize })
 			.Add("build-log", Me, "Build log")
-			.Add("closed-club", "lead@lab.tagroot.io", settings: new NodeSettings { Access = NodeAccess.Whitelist });
+			.Add("closed-club", "lead@lab.example.com", settings: new NodeSettings { Access = NodeAccess.Whitelist });
 
-		nodes.Item(Service, "lab/alerts", "a-1", Alert("info", "Backup of the database completed"), "robin@lab.tagroot.io")
-			.Item(Service, "lab/alerts", "a-2", Alert("warning", "Disk on gbg is 91 % full"), "robin@lab.tagroot.io")
+		nodes.Item(Service, "lab/alerts", "a-1", Alert("info", "Backup of the database completed"), "robin@lab.example.com")
+			.Item(Service, "lab/alerts", "a-2", Alert("warning", "Disk on gbg is 91 % full"), "robin@lab.example.com")
 			.Item(Service, "lab/alerts", "a-3", Alert("error", "sto lost its connection to lab"), Me)
-			.Person(Service, "lab/alerts", "robin@lab.tagroot.io", NodeRole.Publisher)
-			.Subscriber(Service, "lab/alerts", "kim@lab.tagroot.io", SubscriberState.Subscribed)
+			.Person(Service, "lab/alerts", "robin@lab.example.com", NodeRole.Publisher)
+			.Subscriber(Service, "lab/alerts", "kim@lab.example.com", SubscriberState.Subscribed)
 			.Subscriber(Service, "lab/alerts", "sam@partner.example", SubscriberState.Pending);
 
-		nodes.Item(Service, "lab/meter-11", "r-1", Reading(21.5, 12), "meter-11@lab.tagroot.io")
-			.Item(Service, "lab/meter-11", "r-2", Reading(21.9, 13), "meter-11@lab.tagroot.io");
+		nodes.Item(Service, "lab/meter-11", "r-1", Reading(21.5, 12), "meter-11@lab.example.com")
+			.Item(Service, "lab/meter-11", "r-2", Reading(21.9, 13), "meter-11@lab.example.com");
 
-		nodes.Item(Service, "announcements", "n-1", "<note xmlns='urn:example:notes'>Deploy window is 14:00 to 15:00 today.</note>", "lead@lab.tagroot.io");
-		nodes.Item(Service, "closed-club", "c-1", "<secret xmlns='urn:example:notes'/>", "lead@lab.tagroot.io");
+		nodes.Item(Service, "announcements", "n-1", "<note xmlns='urn:example:notes'>Deploy window is 14:00 to 15:00 today.</note>", "lead@lab.example.com");
+		nodes.Item(Service, "closed-club", "c-1", "<secret xmlns='urn:example:notes'/>", "lead@lab.example.com");
 
 		for (int i = 1; i <= 120; i++)
-			nodes.Item(Service, "build-log", "build-" + i, $"<build xmlns='urn:example:builds' number='{i}' result='{(i % 17 == 0 ? "failed" : "ok")}'/>", "ci@lab.tagroot.io");
+			nodes.Item(Service, "build-log", "build-" + i, $"<build xmlns='urn:example:builds' number='{i}' result='{(i % 17 == 0 ? "failed" : "ok")}'/>", "ci@lab.example.com");
 
 		nodes.AddPersonal(o, "urn:xmpp:avatar:data").Item(Me, "urn:xmpp:avatar:data", "1f3a", $"<data xmlns='urn:xmpp:avatar:data'>{Picture}</data>", Me);
 		nodes.AddPersonal(o, "urn:xmpp:avatar:metadata").Item(Me, "urn:xmpp:avatar:metadata", "1f3a", "<metadata xmlns='urn:xmpp:avatar:metadata'><info bytes='119' id='1f3a' type='image/png' width='24' height='24'/></metadata>", Me);
@@ -143,7 +143,7 @@ public class PubSubRebuiltTests
 		nodes.AddPersonal(o, "http://jabber.org/protocol/mood").Item(Me, "http://jabber.org/protocol/mood", "current", "<mood xmlns='http://jabber.org/protocol/mood'><relieved/><text>The deploy went through</text></mood>", Me);
 		nodes.AddPersonal(o, "http://jabber.org/protocol/tune").Item(Me, "http://jabber.org/protocol/tune", "current", "<tune xmlns='http://jabber.org/protocol/tune'><artist>Yes</artist><title>Heart of the Sunrise</title><source>Fragile</source><length>686</length></tune>", Me);
 		nodes.AddPersonal(o, "http://jabber.org/protocol/geoloc").Item(Me, "http://jabber.org/protocol/geoloc", "current", "<geoloc xmlns='http://jabber.org/protocol/geoloc'><lat>59.3293</lat><lon>18.0686</lon><locality>Stockholm</locality><country>Sweden</country><accuracy>20</accuracy></geoloc>", Me);
-		nodes.AddPersonal(o, "urn:xmpp:bookmarks:1").Item(Me, "urn:xmpp:bookmarks:1", "ops-team@muc.lab.tagroot.io", "<conference xmlns='urn:xmpp:bookmarks:1' name='Ops team' autojoin='true'><nick>ops</nick></conference>", Me);
+		nodes.AddPersonal(o, "urn:xmpp:bookmarks:1").Item(Me, "urn:xmpp:bookmarks:1", "ops-team@muc.lab.example.com", "<conference xmlns='urn:xmpp:bookmarks:1' name='Ops team' autojoin='true'><nick>ops</nick></conference>", Me);
 
 		List<string> said = [];
 		Ui.Said += said.Add;
@@ -162,7 +162,7 @@ public class PubSubRebuiltTests
 	/// <summary>Opens the Nodes tab of the lab Neuron's page.</summary>
 	private static async Task ShowNodesAsync(Sample s)
 	{
-		s.Vm.OpenNeuron("lab.tagroot.io", s.Ops, WorkspaceKind.PubSub);
+		s.Vm.OpenNeuron("lab.example.com", s.Ops, WorkspaceKind.PubSub);
 		await Settle(s.View);
 		Assert.True(s.Vm.IsPubSub);
 		Assert.True(s.View.IsPinned);
@@ -265,7 +265,7 @@ public class PubSubRebuiltTests
 		Assert.False(p.HasWatched);
 
 		// Not watched: what is published elsewhere does not show until asked for.
-		s.Nodes.Arrive(Service, "lab/alerts", "a-4", Alert("info", "Nobody saw this arrive"), "robin@lab.tagroot.io");
+		s.Nodes.Arrive(Service, "lab/alerts", "a-4", Alert("info", "Nobody saw this arrive"), "robin@lab.example.com");
 		Assert.Equal(3, p.Items.Count);
 
 		await p.ToggleWatchCommand.ExecuteAsync(null);
@@ -275,16 +275,16 @@ public class PubSubRebuiltTests
 		Assert.Contains("Watching lab/alerts", s.Said);
 
 		// Watched: it shows at the top, marked new.
-		s.Nodes.Arrive(Service, "lab/alerts", "a-5", Alert("warning", "CPU on gbg is at 97 %"), "robin@lab.tagroot.io");
+		s.Nodes.Arrive(Service, "lab/alerts", "a-5", Alert("warning", "CPU on gbg is at 97 %"), "robin@lab.example.com");
 		Dispatcher.UIThread.RunJobs();
 		Assert.Equal("a-5", p.Items[0].Title);
 		Assert.True(p.Items[0].IsNew);
-		Assert.StartsWith("by robin@lab.tagroot.io at ", p.Items[0].Meta);
+		Assert.StartsWith("by robin@lab.example.com at ", p.Items[0].Meta);
 		Capture(window, "pubsub-watching-light-1440");
 
 		// An item published again under its id takes the place of the old one.
 		int before = p.Items.Count;
-		s.Nodes.Arrive(Service, "lab/alerts", "a-5", Alert("info", "CPU on gbg is back to normal"), "robin@lab.tagroot.io");
+		s.Nodes.Arrive(Service, "lab/alerts", "a-5", Alert("info", "CPU on gbg is back to normal"), "robin@lab.example.com");
 		Assert.Equal(before, p.Items.Count);
 		Assert.Contains("back to normal", p.Items[0].PrettyXml);
 
@@ -294,8 +294,8 @@ public class PubSubRebuiltTests
 
 		// With another node open, the watched one counts what came.
 		await s.OpenAsync("build-log");
-		s.Nodes.Arrive(Service, "lab/alerts", "a-6", Alert("info", "One more"), "robin@lab.tagroot.io");
-		s.Nodes.Arrive(Service, "lab/alerts", "a-7", Alert("info", "And another"), "robin@lab.tagroot.io");
+		s.Nodes.Arrive(Service, "lab/alerts", "a-6", Alert("info", "One more"), "robin@lab.example.com");
+		s.Nodes.Arrive(Service, "lab/alerts", "a-7", Alert("info", "And another"), "robin@lab.example.com");
 		Assert.Equal(2, s.Node("lab/alerts").NewCount);
 		Assert.Equal("2", s.Node("lab/alerts").NewText);
 		Capture(window, "pubsub-watching-count-light-1440");
@@ -598,11 +598,11 @@ public class PubSubRebuiltTests
 		p.SetTabCommand.Execute(PubSubTab.People);
 		await Settle(p);
 		Assert.True(p.CanSeePeople);
-		Assert.Equal([Me + " (you)", "robin@lab.tagroot.io"], p.People.Select(x => x.Label));
+		Assert.Equal([Me + " (you)", "robin@lab.example.com"], p.People.Select(x => x.Label));
 		Assert.Equal(["Owner", "May publish and read"], p.People.Select(x => x.RoleText));
 
 		// Whoever asked comes first.
-		Assert.Equal(["sam@partner.example", "kim@lab.tagroot.io"], p.Subscribers.Select(x => x.Jid));
+		Assert.Equal(["sam@partner.example", "kim@lab.example.com"], p.Subscribers.Select(x => x.Jid));
 		Assert.True(p.Subscribers[0].IsPending);
 		Assert.Equal("Asked to subscribe", p.Subscribers[0].StateText);
 		Capture(window, $"pubsub-people-{theme.ToLowerInvariant()}-1440");
@@ -612,28 +612,28 @@ public class PubSubRebuiltTests
 		Assert.Equal("Subscribes", p.Subscribers.Single(x => x.Jid == "sam@partner.example").StateText);
 		Assert.Equal("Let sam@partner.example subscribe", s.Said[^1]);
 
-		await p.EndSubscriberCommand.ExecuteAsync(p.Subscribers.Single(x => x.Jid == "kim@lab.tagroot.io"));
+		await p.EndSubscriberCommand.ExecuteAsync(p.Subscribers.Single(x => x.Jid == "kim@lab.example.com"));
 		Assert.Equal(["sam@partner.example"], p.Subscribers.Select(x => x.Jid));
 
 		// Giving somebody a role: an address is asked for.
 		p.NewPersonJid = "lee";
 		await p.AddPersonCommand.ExecuteAsync(null);
 		Assert.StartsWith("That does not look like an address.", p.PeopleError);
-		p.NewPersonJid = "lee@lab.tagroot.io";
+		p.NewPersonJid = "lee@lab.example.com";
 		p.NewPersonRole = p.Roles.Single(r => r.Value == NodeRole.Member);
 		await p.AddPersonCommand.ExecuteAsync(null);
 		Assert.Null(p.PeopleError);
 		Assert.Equal(string.Empty, p.NewPersonJid);
-		Assert.Equal("May read and subscribe", p.People.Single(x => x.Jid == "lee@lab.tagroot.io").RoleText);
+		Assert.Equal("May read and subscribe", p.People.Single(x => x.Jid == "lee@lab.example.com").RoleText);
 
 		// Changing and taking away, from the row.
-		NodePersonRow robin = p.People.Single(x => x.Jid == "robin@lab.tagroot.io");
+		NodePersonRow robin = p.People.Single(x => x.Jid == "robin@lab.example.com");
 		IReadOnlyList<ItemAction> change = p.ActionsFor([robin]);
 		Assert.Equal(["Copy address", "Chat with them", "May publish, but not read", "May read and subscribe", "Owner: may do everything", "Blocked: kept out", "Take off the list"], Texts(change));
 		await Action(change, "Blocked: kept out").RunAsync();
-		Assert.True(p.People.Single(x => x.Jid == "robin@lab.tagroot.io").IsBlocked);
-		await Action(p.ActionsFor([p.People.Single(x => x.Jid == "lee@lab.tagroot.io")]), "Take off the list").RunAsync();
-		Assert.DoesNotContain(p.People, x => x.Jid == "lee@lab.tagroot.io");
+		Assert.True(p.People.Single(x => x.Jid == "robin@lab.example.com").IsBlocked);
+		await Action(p.ActionsFor([p.People.Single(x => x.Jid == "lee@lab.example.com")]), "Take off the list").RunAsync();
+		Assert.DoesNotContain(p.People, x => x.Jid == "lee@lab.example.com");
 
 		// The last owner cannot stop being one.
 		await Action(p.ActionsFor([p.People.Single(x => x.IsMe)]), "May read and subscribe").RunAsync();
@@ -839,7 +839,7 @@ public class PubSubRebuiltTests
 		InboxViewModel inbox = s.Vm.Inbox;
 
 		s.PubSub.Preview(new NodeRequest(s.Ops, Service, "lab/alerts", "pat@partner.example", DateTime.Now.AddMinutes(-2)));
-		s.PubSub.Preview(new NodeRequest(s.Ops, Service, "build-log", "lee@lab.tagroot.io", DateTime.Now.AddMinutes(-1)));
+		s.PubSub.Preview(new NodeRequest(s.Ops, Service, "build-log", "lee@lab.example.com", DateTime.Now.AddMinutes(-1)));
 		inbox.Refresh();
 
 		List<InboxRowViewModel> rows = [.. inbox.Rows.Where(r => r.Kind == InboxRowKind.NodeRequest)];
@@ -865,17 +865,17 @@ public class PubSubRebuiltTests
 		Assert.Single(s.PubSub.Requests);
 
 		// Deny, taken back: nothing is sent and the request is still there.
-		InboxRowViewModel lee = inbox.Rows.Single(r => r.Jid == "lee@lab.tagroot.io");
+		InboxRowViewModel lee = inbox.Rows.Single(r => r.Jid == "lee@lab.example.com");
 		await inbox.SecondaryCommand.ExecuteAsync(lee);
-		Assert.Equal("Denied lee@lab.tagroot.io.", inbox.UndoText);
+		Assert.Equal("Denied lee@lab.example.com.", inbox.UndoText);
 		inbox.UndoCommand.Execute(null);
 		inbox.Refresh();
-		Assert.Contains(inbox.Rows, r => r.Jid == "lee@lab.tagroot.io");
-		Assert.DoesNotContain(s.Nodes.Calls, c => c.Contains("lee@lab.tagroot.io", StringComparison.Ordinal));
+		Assert.Contains(inbox.Rows, r => r.Jid == "lee@lab.example.com");
+		Assert.DoesNotContain(s.Nodes.Calls, c => c.Contains("lee@lab.example.com", StringComparison.Ordinal));
 
-		await inbox.SecondaryCommand.ExecuteAsync(inbox.Rows.Single(r => r.Jid == "lee@lab.tagroot.io"));
+		await inbox.SecondaryCommand.ExecuteAsync(inbox.Rows.Single(r => r.Jid == "lee@lab.example.com"));
 		await inbox.CommitAsync();
-		Assert.Contains("subscriber build-log lee@lab.tagroot.io None", s.Nodes.Calls);
+		Assert.Contains("subscriber build-log lee@lab.example.com None", s.Nodes.Calls);
 		Assert.Empty(s.PubSub.Requests);
 	}
 

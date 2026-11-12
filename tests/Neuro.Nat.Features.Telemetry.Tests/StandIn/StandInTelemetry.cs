@@ -26,7 +26,7 @@ public sealed class StandInTelemetry
 	public StandInTelemetry(DateTime utcNow, string[]? neurons = null)
 	{
 		this.Today = utcNow.Date;
-		this.Neurons = neurons ?? ["lab.tagroot.io", "gbg.lab.tagroot.io", "sto.lab.tagroot.io"];
+		this.Neurons = neurons ?? ["lab.example.com", "gbg.lab.example.com", "sto.lab.example.com"];
 		string file = Path.Combine(AppContext.BaseDirectory, "StandIn", "Catalog.json");
 		this.catalog = JsonNode.Parse(File.ReadAllText(file))!.AsObject();
 		foreach (JsonNode? m in this.catalog["metrics"]!.AsArray())

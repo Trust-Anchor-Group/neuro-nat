@@ -64,7 +64,7 @@ public class NeuronPageTests
 		EngineRuntime.Initialize();
 		string dir = Path.Combine(Path.GetTempPath(), "Nat.Pages." + Guid.NewGuid().ToString("N"));
 		AccountManager manager = new(new JsonAccountStore(Path.Combine(dir, "accounts.json")), new InMemoryCredentialVault());
-		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.tagroot.io", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
+		AccountSession ops = await manager.AddAsync(new AccountProfile { Host = "lab.example.com", UserName = "ops", ConnectOnStartup = false }, AccountSecret.FromPassword("x"), connect: false);
 		AccountSession admin = await manager.AddAsync(new AccountProfile { Host = "prod.example.com", UserName = "admin", ConnectOnStartup = false, ColorIndex = 3 }, AccountSecret.FromPassword("x"), connect: false);
 
 		EventHub hub = new();
@@ -110,43 +110,43 @@ public class NeuronPageTests
 				hub.Add(e);
 		}
 
-		WatchedNeuron lab = Neuron(ops, "lab.tagroot.io", "Lab", 14);
-		WatchedNeuron gbg = Neuron(ops, "gbg.lab.tagroot.io", "Gothenburg edge", 91);
-		WatchedNeuron sto = Neuron(ops, "sto.lab.tagroot.io", "Stockholm edge", 22);
+		WatchedNeuron lab = Neuron(ops, "lab.example.com", "Lab", 14);
+		WatchedNeuron gbg = Neuron(ops, "gbg.lab.example.com", "Gothenburg edge", 91);
+		WatchedNeuron sto = Neuron(ops, "sto.lab.example.com", "Stockholm edge", 22);
 		WatchedNeuron prod = Neuron(admin, "prod.example.com", "Production", 37);
 		Neuron(admin, "backup.prod.example.com", "Backup", 0, state: WatchState.Offline);
 
-		Answer(lab, "tagroot.io", "tagroot.io", "prod.example.com");
-		Answer(gbg, "lab.tagroot.io", "lab.tagroot.io");
-		Answer(sto, "lab.tagroot.io", "lab.tagroot.io", "gbg.lab.tagroot.io");
-		Answer(prod, null, "lab.tagroot.io");
+		Answer(lab, "example.com", "example.com", "prod.example.com");
+		Answer(gbg, "lab.example.com", "lab.example.com");
+		Answer(sto, "lab.example.com", "lab.example.com", "gbg.lab.example.com");
+		Answer(prod, null, "lab.example.com");
 
 		for (int i = 0; i < 9; i++)
-			Event(i * 50 + 15, SnifferDirection.Error, ops, "gbg.lab.tagroot.io",
-				$"SocketException: Connection reset by peer (lab.tagroot.io:5269)\n\nModule: Waher.Networking.XMPP.Server\nEventId: S2S\nStackTrace:    at Waher.Networking.BinaryTcpClient.ReadAsync()\nRemoteEndPoint: 10.0.0.{i + 3}:5269");
+			Event(i * 50 + 15, SnifferDirection.Error, ops, "gbg.lab.example.com",
+				$"SocketException: Connection reset by peer (lab.example.com:5269)\n\nModule: Waher.Networking.XMPP.Server\nEventId: S2S\nStackTrace:    at Waher.Networking.BinaryTcpClient.ReadAsync()\nRemoteEndPoint: 10.0.0.{i + 3}:5269");
 		for (int i = 0; i < 4; i++)
-			Event(i * 130 + 40, SnifferDirection.Warning, ops, "gbg.lab.tagroot.io", $"Endpoint 203.0.113.{40 + i} blocked after 5 failed logins\n\nModule: Waher.Security.LoginMonitor\nEventId: Blocked");
+			Event(i * 130 + 40, SnifferDirection.Warning, ops, "gbg.lab.example.com", $"Endpoint 203.0.113.{40 + i} blocked after 5 failed logins\n\nModule: Waher.Security.LoginMonitor\nEventId: Blocked");
 		for (int i = 0; i < 3; i++)
-			Event(i * 200 + 90, SnifferDirection.Information, ops, "gbg.lab.tagroot.io", $"Backup of database completed in {41 + i} s\n\nModule: Waher.IoTGateway\nEventId: Backup");
+			Event(i * 200 + 90, SnifferDirection.Information, ops, "gbg.lab.example.com", $"Backup of database completed in {41 + i} s\n\nModule: Waher.IoTGateway\nEventId: Backup");
 		for (int i = 0; i < 6; i++)
-			Event(i * 70 + 30, SnifferDirection.Error, ops, "lab.tagroot.io", $"TimeoutException in ConcentratorServer.ReadSensorData (node Meter-{i + 11})\n\nModule: Waher.Things\nObject: Meter-{i + 11}");
+			Event(i * 70 + 30, SnifferDirection.Error, ops, "lab.example.com", $"TimeoutException in ConcentratorServer.ReadSensorData (node Meter-{i + 11})\n\nModule: Waher.Things\nObject: Meter-{i + 11}");
 		for (int i = 0; i < 3; i++)
 			Event(i * 300 + 60, SnifferDirection.Warning, admin, "prod.example.com", "Certificate for prod.example.com expires in 12 days\n\nModule: Waher.IoTGateway\nEventId: Certificate");
 
 		monitors.Attention.Preview(new NeuronNotification
 		{
-			Id = "n1", AccountId = ops.Profile.Id, NeuronJid = "gbg.lab.tagroot.io", Received = now.AddMinutes(-3),
-			Markdown = "Legal identity application received: [`2f9a1c04-57e1-4c1e@legal.gbg.lab.tagroot.io`](https://gbg.lab.tagroot.io/ValidateLegalId.md?ID=2f9a1c04-57e1-4c1e%40legal.gbg.lab.tagroot.io)\n",
+			Id = "n1", AccountId = ops.Profile.Id, NeuronJid = "gbg.lab.example.com", Received = now.AddMinutes(-3),
+			Markdown = "Legal identity application received: [`2f9a1c04-57e1-4c1e@legal.gbg.lab.example.com`](https://gbg.lab.example.com/ValidateLegalId.md?ID=2f9a1c04-57e1-4c1e%40legal.gbg.lab.example.com)\n",
 		});
 		monitors.Attention.Preview(new NeuronNotification
 		{
-			Id = "n2", AccountId = ops.Profile.Id, NeuronJid = "gbg.lab.tagroot.io", Received = now.AddMinutes(-34),
+			Id = "n2", AccountId = ops.Profile.Id, NeuronJid = "gbg.lab.example.com", Received = now.AddMinutes(-34),
 			Markdown = "Account requested.\n\n| Account request ||\n|:------|:-------|\n| Name: | Kim Lindqvist |\n| Company: | Example Logistics AB |\n",
 		});
 		monitors.Attention.Preview(new NeuronNotification
 		{
-			Id = "n3", AccountId = ops.Profile.Id, NeuronJid = "lab.tagroot.io", Received = now.AddMinutes(-80),
-			Markdown = "Legal identity application received: [`77b0e2aa-1d3c-4f0b@legal.lab.tagroot.io`](https://lab.tagroot.io/ValidateLegalId.md?ID=77b0e2aa-1d3c-4f0b%40legal.lab.tagroot.io)\n",
+			Id = "n3", AccountId = ops.Profile.Id, NeuronJid = "lab.example.com", Received = now.AddMinutes(-80),
+			Markdown = "Legal identity application received: [`77b0e2aa-1d3c-4f0b@legal.lab.example.com`](https://lab.example.com/ValidateLegalId.md?ID=77b0e2aa-1d3c-4f0b%40legal.lab.example.com)\n",
 		});
 
 		MainWindowViewModel vm = new(manager, fleet, chat, null, devices);
@@ -175,14 +175,14 @@ public class NeuronPageTests
 		Assert.False(vm.IsNeuronPage);
 
 		// Opening a Neuron from the list leads to its page, on the Overview.
-		FleetRowViewModel row = vm.Fleet.Rows.First(r => r.BareJid == "gbg.lab.tagroot.io");
+		FleetRowViewModel row = vm.Fleet.Rows.First(r => r.BareJid == "gbg.lab.example.com");
 		vm.Fleet.OpenCommand.Execute(row);
 		Dispatcher.UIThread.RunJobs();
 		Assert.Equal(WorkspaceKind.Neuron, vm.Workspace);
 		Assert.Equal(PlaceKind.Neurons, vm.Place);
 		Assert.True(vm.IsNeuronPage);
 		NeuronPageViewModel page = vm.Page!;
-		Assert.Equal("gbg.lab.tagroot.io", page.BareJid);
+		Assert.Equal("gbg.lab.example.com", page.BareJid);
 		Assert.Equal(page.Label, vm.WorkspaceTitle);
 		Assert.True(page.IsLive);
 		Assert.True(page.HighCpu);
@@ -192,10 +192,10 @@ public class NeuronPageTests
 
 		// The Overview's lists are this Neuron's only: its issues, its events, what waits for you, its links.
 		Assert.NotEmpty(vm.NeuronEvents.Issues);
-		Assert.All(vm.NeuronEvents.Stream, e => Assert.Equal("gbg.lab.tagroot.io", e.Source.NeuronJid));
+		Assert.All(vm.NeuronEvents.Stream, e => Assert.Equal("gbg.lab.example.com", e.Source.NeuronJid));
 		Assert.Equal(2, page.Waiting.Count);
-		Assert.Contains(page.Links, l => l.Id == "lab.tagroot.io" && l.Relation.StartsWith("Its parent", StringComparison.Ordinal));
-		Assert.Contains(page.Links, l => l.Id == "sto.lab.tagroot.io");
+		Assert.Contains(page.Links, l => l.Id == "lab.example.com" && l.Relation.StartsWith("Its parent", StringComparison.Ordinal));
+		Assert.Contains(page.Links, l => l.Id == "sto.lab.example.com");
 		Assert.True(Shows<NeuronOverviewView>(window));
 		Capture(window, $"neuron-overview-{t}-1440");
 
@@ -222,7 +222,7 @@ public class NeuronPageTests
 		Dispatcher.UIThread.RunJobs();
 		ConsoleViewModel console = vm.PageConsole!;
 		Assert.True(console.IsPinned);
-		Assert.Equal("gbg.lab.tagroot.io", Assert.Single(console.Targets, x => x.IsChecked).BareJid);
+		Assert.Equal("gbg.lab.example.com", Assert.Single(console.Targets, x => x.IsChecked).BareJid);
 		Assert.NotSame(vm.Console, console);
 		Capture(window, $"neuron-console-{t}-1440");
 
@@ -231,7 +231,7 @@ public class NeuronPageTests
 		vm.ShowPageTabCommand.Execute(WorkspaceKind.Updates);
 		Dispatcher.UIThread.RunJobs();
 		Assert.True(vm.Updates.IsPinned);
-		Assert.Equal("gbg.lab.tagroot.io", vm.Updates.Selected?.NeuronJid);
+		Assert.Equal("gbg.lab.example.com", vm.Updates.Selected?.NeuronJid);
 		Capture(window, $"neuron-software-{t}-1440");
 		vm.ShowPageTabCommand.Execute(WorkspaceKind.NeuronConsole);
 		Assert.Same(console, vm.PageConsole);
@@ -241,7 +241,7 @@ public class NeuronPageTests
 		vm.ShowPageTabCommand.Execute(WorkspaceKind.Sources);
 		Dispatcher.UIThread.RunJobs();
 		Assert.True(vm.Sources.IsPinned);
-		Assert.Equal("gbg.lab.tagroot.io", vm.Sources.SelectedNeuron?.BareJid);
+		Assert.Equal("gbg.lab.example.com", vm.Sources.SelectedNeuron?.BareJid);
 		Assert.False(vm.Sources.HasPinnedNote);
 		Capture(window, $"neuron-sources-{t}-1440");
 
@@ -254,9 +254,9 @@ public class NeuronPageTests
 
 		// Publish/subscribe is a tab only on the Neuron that hosts the account.
 		Assert.False(page.HostsAccount);
-		vm.OpenNeuron("lab.tagroot.io");
+		vm.OpenNeuron("lab.example.com");
 		Assert.True(vm.Page!.HostsAccount);
-		Assert.Equal(["lab.tagroot.io"], vm.NeuronEvents.NeuronFilter);
+		Assert.Equal(["lab.example.com"], vm.NeuronEvents.NeuronFilter);
 		Assert.Single(vm.Page.Waiting);
 
 		// Another Neuron has a console of its own.
@@ -266,8 +266,8 @@ public class NeuronPageTests
 
 		// A link on the Overview leads to the neighbour's page.
 		vm.ShowPageTabCommand.Execute(WorkspaceKind.Neuron);
-		vm.OpenLinkCommand.Execute(vm.Page.Links.First(l => l.Id == "gbg.lab.tagroot.io"));
-		Assert.Equal("gbg.lab.tagroot.io", vm.Page!.BareJid);
+		vm.OpenLinkCommand.Execute(vm.Page.Links.First(l => l.Id == "gbg.lab.example.com"));
+		Assert.Equal("gbg.lab.example.com", vm.Page!.BareJid);
 		Assert.Equal(WorkspaceKind.Neuron, vm.Workspace);
 
 		// What waits for you opens in the Inbox, on that row.
@@ -280,20 +280,20 @@ public class NeuronPageTests
 		Assert.Equal(WorkspaceKind.Neuron, vm.Workspace);
 		vm.BackToNeuronsCommand.Execute(null);
 		Assert.Equal(WorkspaceKind.Fleet, vm.Workspace);
-		Assert.Equal("gbg.lab.tagroot.io", vm.Fleet.SelectedRow?.BareJid);
+		Assert.Equal("gbg.lab.example.com", vm.Fleet.SelectedRow?.BareJid);
 
 		// List and map keep the same Neuron picked.
 		vm.ShowTopologyCommand.Execute(null);
-		Assert.Equal("gbg.lab.tagroot.io", vm.Topology.NeuronAt(vm.Topology.SelectedId!));
-		vm.Topology.SelectNeuron("sto.lab.tagroot.io");
+		Assert.Equal("gbg.lab.example.com", vm.Topology.NeuronAt(vm.Topology.SelectedId!));
+		vm.Topology.SelectNeuron("sto.lab.example.com");
 		vm.ShowFleetCommand.Execute(null);
-		Assert.Equal("sto.lab.tagroot.io", vm.Fleet.SelectedRow?.BareJid);
+		Assert.Equal("sto.lab.example.com", vm.Fleet.SelectedRow?.BareJid);
 
 		// From the map: Open leads to the page.
 		vm.ShowTopologyCommand.Execute(null);
 		vm.Topology.OpenPageCommand.Execute(null);
 		Assert.Equal(WorkspaceKind.Neuron, vm.Workspace);
-		Assert.Equal("sto.lab.tagroot.io", vm.Page!.BareJid);
+		Assert.Equal("sto.lab.example.com", vm.Page!.BareJid);
 		vm.BackToNeuronsCommand.Execute(null);
 		Assert.Equal(WorkspaceKind.Topology, vm.Workspace);
 		window.Close();
@@ -306,7 +306,7 @@ public class NeuronPageTests
 	public async Task TheNeuronPageFitsSmallWindows(int width, int height)
 	{
 		Sample s = await SampleAsync();
-		s.Vm.OpenNeuron("gbg.lab.tagroot.io");
+		s.Vm.OpenNeuron("gbg.lab.example.com");
 		MainWindow window = Window(s, "Light", width, height);
 		Capture(window, $"neuron-overview-light-{width}");
 
@@ -359,7 +359,7 @@ public class NeuronPageTests
 		string t = theme.ToLowerInvariant();
 		s.Devices.Preview(new DeviceQuestion
 		{
-			Id = "q1", AccountId = s.Ops, Kind = DeviceQuestionKind.Readout, DeviceJid = "thermo-12@lab.tagroot.io", RemoteJid = "dashboard@partner.example",
+			Id = "q1", AccountId = s.Ops, Kind = DeviceQuestionKind.Readout, DeviceJid = "thermo-12@lab.example.com", RemoteJid = "dashboard@partner.example",
 			Names = ["Temperature", "Humidity"], Received = DateTime.Now.AddMinutes(-15),
 		});
 
@@ -432,18 +432,18 @@ public class NeuronPageTests
 		ChatViewModel chat = vm.Chat;
 		string t = theme.ToLowerInvariant();
 
-		s.Chat.Preview(new Contact(s.Ops, "kim@lab.tagroot.io", "Kim Lindqvist", [], SubscriptionState.Both, true, Availability.Online, null, false));
-		s.Chat.Preview(new Contact(s.Ops, "robin@lab.tagroot.io", "Robin Ek", [], SubscriptionState.Both, true, Availability.Away, "In a meeting", false));
+		s.Chat.Preview(new Contact(s.Ops, "kim@lab.example.com", "Kim Lindqvist", [], SubscriptionState.Both, true, Availability.Online, null, false));
+		s.Chat.Preview(new Contact(s.Ops, "robin@lab.example.com", "Robin Ek", [], SubscriptionState.Both, true, Availability.Away, "In a meeting", false));
 		s.Chat.Preview(new Contact(s.Ops, "sam@partner.example", "Sam Öberg", [], SubscriptionState.Both, false, Availability.Offline, null, false));
-		s.Chat.Preview(new Contact(s.Ops, "lab.tagroot.io", string.Empty, [], SubscriptionState.Both, true, Availability.Online, null, true));
-		s.Chat.Preview(new Contact(s.Ops, "gbg.lab.tagroot.io", string.Empty, [], SubscriptionState.Both, true, Availability.Online, null, true));
-		s.Chat.PreviewRoom(s.Ops, "ops-team@muc.lab.tagroot.io", "ops", "kim", "robin", "sam");
+		s.Chat.Preview(new Contact(s.Ops, "lab.example.com", string.Empty, [], SubscriptionState.Both, true, Availability.Online, null, true));
+		s.Chat.Preview(new Contact(s.Ops, "gbg.lab.example.com", string.Empty, [], SubscriptionState.Both, true, Availability.Online, null, true));
+		s.Chat.PreviewRoom(s.Ops, "ops-team@muc.lab.example.com", "ops", "kim", "robin", "sam");
 		s.Chat.PreviewRoom(s.Admin, "incident-4471@muc.prod.example.com", "admin", "robin");
-		s.Chat.Preview(s.Ops, "kim@lab.tagroot.io", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
-		s.Chat.Preview(s.Ops, "kim@lab.tagroot.io", "I see the 02:00 one failed and nothing after it.", "Kim Lindqvist");
-		s.Chat.Preview(s.Ops, "ops-team@muc.lab.tagroot.io", "Deploy window is 14:00 to 15:00 today.", "robin", room: true);
-		s.Chat.Preview(s.Ops, "ops-team@muc.lab.tagroot.io", "@ops can you watch gbg while it restarts?", "kim", room: true, mention: true);
-		s.Chat.Preview(s.Ops, "ops-team@muc.lab.tagroot.io", "I will take sto.", "sam", room: true);
+		s.Chat.Preview(s.Ops, "kim@lab.example.com", "Morning! Did the backup on gbg finish?", "Kim Lindqvist");
+		s.Chat.Preview(s.Ops, "kim@lab.example.com", "I see the 02:00 one failed and nothing after it.", "Kim Lindqvist");
+		s.Chat.Preview(s.Ops, "ops-team@muc.lab.example.com", "Deploy window is 14:00 to 15:00 today.", "robin", room: true);
+		s.Chat.Preview(s.Ops, "ops-team@muc.lab.example.com", "@ops can you watch gbg while it restarts?", "kim", room: true, mention: true);
+		s.Chat.Preview(s.Ops, "ops-team@muc.lab.example.com", "I will take sto.", "sam", room: true);
 
 		vm.ShowChatCommand.Execute(null);
 		chat.Refresh();
@@ -479,15 +479,15 @@ public class NeuronPageTests
 		Assert.Equal("Kim Lindqvist", chat.SelectedPerson?.Label);
 
 		// A Neuron that writes shows up among people while its message is unread.
-		s.Chat.Preview(s.Ops, "gbg.lab.tagroot.io", "Backup of database failed: disk full.");
+		s.Chat.Preview(s.Ops, "gbg.lab.example.com", "Backup of database failed: disk full.");
 		chat.Refresh();
-		Assert.Contains(chat.People, p => p.BareJid == "gbg.lab.tagroot.io" && p.IsNeuron && p.Unread == 1);
-		Assert.DoesNotContain(chat.People, p => p.BareJid == "lab.tagroot.io");
+		Assert.Contains(chat.People, p => p.BareJid == "gbg.lab.example.com" && p.IsNeuron && p.Unread == 1);
+		Assert.DoesNotContain(chat.People, p => p.BareJid == "lab.example.com");
 
 		// Typing a Neuron's name finds it, quiet or not.
-		chat.FilterText = "lab.tagroot";
+		chat.FilterText = "lab.example";
 		chat.Refresh();
-		Assert.Contains(chat.People, p => p.BareJid == "lab.tagroot.io");
+		Assert.Contains(chat.People, p => p.BareJid == "lab.example.com");
 		chat.FilterText = "zzz";
 		chat.Refresh();
 		Assert.Equal("Nothing matches", chat.EmptyTitle);
@@ -498,13 +498,13 @@ public class NeuronPageTests
 		Assert.True(chat.Open(s.Admin, "incident-4471@muc.prod.example.com"));
 		Assert.True(chat.ShowRooms);
 		Assert.StartsWith("incident-4471", chat.SelectedPerson?.BareJid);
-		Assert.True(chat.Open(s.Ops, "robin@lab.tagroot.io"));
+		Assert.True(chat.Open(s.Ops, "robin@lab.example.com"));
 		Assert.True(chat.ShowPeople);
 		Assert.Equal("Robin Ek", chat.SelectedPerson?.Label);
 
 		// A quiet Neuron can still be opened on purpose, and then it is in the list.
-		Assert.True(chat.Open(s.Ops, "lab.tagroot.io"));
-		Assert.Contains(chat.People, p => p.BareJid == "lab.tagroot.io");
+		Assert.True(chat.Open(s.Ops, "lab.example.com"));
+		Assert.Contains(chat.People, p => p.BareJid == "lab.example.com");
 		window.Close();
 	}
 

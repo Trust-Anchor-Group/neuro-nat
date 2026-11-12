@@ -69,7 +69,7 @@ public sealed partial class TelemetryPlaceViewModel : ObservableObject, IFeature
 		c.Dashboard.Shown();
 	}
 
-	/// <summary>"lab.tagroot.io/nfc" picks that collector and shows the page; "nfc" shows it on the one shown.</summary>
+	/// <summary>"lab.example.com/nfc" picks that collector and shows the page; "nfc" shows it on the one shown.</summary>
 	public void ShowPart(string part)
 	{
 		this.Sync();
