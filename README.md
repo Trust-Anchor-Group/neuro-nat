@@ -43,3 +43,9 @@ NAT updates itself after that.
 | [Product](PRODUCT.md) | Who NAT is for and what was decided |
 | [Where your data is kept](docs/DATA.md) | The encrypted store, what stays outside it, and moving from older versions |
 | [History](docs/history/PLAN-2026-11.md) | The plan of the first version |
+
+## Licence
+
+NAT is under the [Neuro-Foundation License](LICENSE.md).
+
+NAT is built on the Neuro-Foundation's IoTGateway libraries (the `Waher.*` packages): [github.com/Neuro-Foundation](https://github.com/Neuro-Foundation).
