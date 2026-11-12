@@ -9,7 +9,7 @@ A separate Neuron instance for developing and testing NAT. It never touches the 
 | Web / admin | http://localhost:8081 (admin pages log in automatically from this machine) |
 | XMPP | host `localhost`, port `5222`, no domain (bare JIDs look like `neuroaa@`) |
 | Test account | `neuroaa`, set as the Neuron's notification address, so it has admin rights |
-| Credentials | `.local/test-neuron.env` (git-ignored, generated) |
+| Credentials | `.local/test-neuron.env` (git-ignored, generated). Also holds `NAT_TEST_NEURON=neuronode@`, the Neuron's own address |
 
 ## Start it
 
@@ -25,7 +25,8 @@ It runs the IoTGateway console from `C:\My Projects\IoTGateway\Waher.IoTGateway.
 $env:NAT_TEST_HOST = "localhost"
 $env:NAT_TEST_USER = "neuroaa"
 $env:NAT_TEST_PASSWORD = "<from .local/test-neuron.env>"
-dotnet test tests\Neuro.Nat.Engine.Tests
+$env:NAT_TEST_NEURON = "neuronode@"   # the Neuron's own address: no domain, so it ends with @
+dotnet test Neuro.Nat.slnx
 ```
 
 ## Local, uncommitted change in IoTGateway

@@ -55,7 +55,7 @@ public sealed partial class MainWindowViewModel
 				WorkspaceKind.Sources => ", Sources",
 				WorkspaceKind.NeuronConsole => ", Console",
 				WorkspaceKind.Updates => ", Software",
-				WorkspaceKind.PubSub => ", Publish/subscribe",
+				WorkspaceKind.PubSub => ", Storage",
 				WorkspaceKind.Identities => ", Identity",
 				WorkspaceKind.NeuronFeature => ", " + this.FeatureTabTitle,
 				_ => string.Empty,

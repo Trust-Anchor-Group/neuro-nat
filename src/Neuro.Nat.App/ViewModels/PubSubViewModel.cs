@@ -126,7 +126,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 	public bool IsService => !this.IsPersonal;
 
 	/// <summary>What the list of nodes is called where it is shown.</summary>
-	public string Title => !this.IsPinned ? "Publish/subscribe" : this.IsPersonal ? "Storage" : "Nodes";
+	public string Title => !this.IsPinned ? "Storage" : this.IsPersonal ? "Storage" : "Nodes";
 
 	/// <summary>True on an account's or a Neuron's page, where the account and the kind of nodes are already chosen.</summary>
 	[ObservableProperty]

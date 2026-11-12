@@ -37,6 +37,10 @@ public sealed partial class FleetRowViewModel : ObservableObject
 	[ObservableProperty] private bool showAccount;
 	[ObservableProperty] private WatchState state;
 	[ObservableProperty] private string stateText = string.Empty;
+
+	/// <summary>The stream in two lines: what it does ("Listening"), and what it read before ("180 earlier events loaded").</summary>
+	[ObservableProperty] private string stateLine = string.Empty;
+	[ObservableProperty] private string historyLine = string.Empty;
 	[ObservableProperty] private string software = "–";
 	[ObservableProperty] private string cpuText = "–";
 	[ObservableProperty] private int[] cpuSeries = [];
@@ -67,6 +71,8 @@ public sealed partial class FleetRowViewModel : ObservableObject
 		this.AccountColorIndex = account?.ColorIndex ?? 0;
 		this.State = n.State;
 		this.StateText = n.StatusText;
+		this.StateLine = n.StateLine;
+		this.HistoryLine = n.HistoryLine;
 		this.Note = n.Error;
 	}
 

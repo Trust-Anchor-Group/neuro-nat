@@ -304,6 +304,8 @@ public class LinkTests
 			NatLink.Node(Gbg, ["MeteringTopology", "Root", "Floor 2/East", "Mätare ✓", "100%"]),
 			NatLink.Chat("Kim@Lab.Tagroot.io"),
 			NatLink.Room(OpsRoom),
+			NatLink.Feature(Gbg, "telemetry", "metric:Nfc.Attempts/platform"),
+			NatLink.Feature(Gbg, "telemetry"),
 		];
 
 		foreach (NatLink link in links)
@@ -318,6 +320,13 @@ public class LinkTests
 		Assert.Equal("neuro-nat://neuron/lab.tagroot.io/events", links[1].ToString());
 		Assert.Equal("neuro-nat://event/gbg.lab.tagroot.io/" + NatLink.EventId(e) + "?at=2026-11-12T10:42:13Z", links[3].ToString());
 		Assert.Equal("neuro-nat://chat/kim@lab.tagroot.io", links[5].ToString());
+		Assert.Equal("neuro-nat://feature/gbg.lab.tagroot.io/telemetry/metric%3ANfc.Attempts%2Fplatform", links[7].ToString());
+		Assert.Equal("metric:Nfc.Attempts/platform", links[7].Page);
+		Assert.Equal("telemetry", links[8].View);
+		Assert.Null(links[8].Page);
+		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.tagroot.io", out _));
+		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.tagroot.io/telemetry/a/b", out _));
+		Assert.False(NatLink.TryParse("neuro-nat://feature/gbg.lab.tagroot.io/telemetry/x?at=2026-11-12T10:42:13Z", out _));
 
 		// The same event has the same id whichever way it came, at whatever fraction of its second.
 		Assert.Equal(NatLink.EventId(e), NatLink.EventId(e with { Timestamp = e.Timestamp.AddMilliseconds(200), FromHistory = true, Sequence = 99 }));

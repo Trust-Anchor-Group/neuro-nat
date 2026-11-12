@@ -87,7 +87,7 @@
         </Button>
       </Grid>
 
-      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+      <StackPanel x:Name="Actions" Grid.Column="2" Orientation="Horizontal" Spacing="2">
         <ToggleButton Classes="ghost" IsChecked="{Binding IsPaused}" ToolTip.Tip="Pause">
           <StackPanel Classes="btn">
             <c:LineIcon Classes="btn" Data="{StaticResource Icon.Pause}" />

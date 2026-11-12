@@ -166,7 +166,10 @@
       <Setter Property="MaxWidth" Value="260" />
     </Style>
     <Style Selector=".maxw780 TextBlock.pageTitle">
-      <Setter Property="MaxWidth" Value="200" />
+      <Setter Property="MaxWidth" Value="300" />
+    </Style>
+    <Style Selector=".maxw780 Panel.crumbBox">
+      <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector=".maxw780 Button.tab.pageTab">
       <Setter Property="Padding" Value="8,2,8,0" />
@@ -200,10 +203,7 @@
     <Style Selector=".maxw780 TextBlock.btnLabel">
       <Setter Property="IsVisible" Value="False" />
     </Style>
-    <Style Selector=".maxw780 Border.accountList">
-      <Setter Property="Width" Value="220" />
-    </Style>
-    <Style Selector=".maxw780 TextBlock.trafficHint, .maxw780 TextBlock.endpoint">
+    <Style Selector=".maxw780 TextBlock.endpoint">
       <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector=".maxw780 TextBlock.ts">
@@ -341,11 +341,14 @@
         </StackPanel>
 
         <!-- On a Neuron's page: the way up to all Neurons, and how the Neuron is doing -->
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding HasCrumb}" Classes="crumb">
+        <!-- In a small window the name of the Neuron gets the room; the rail and Back lead up as well. -->
+        <Panel DockPanel.Dock="Left" Classes="crumbBox">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding HasCrumb}" Classes="crumb">
           <Button Classes="link" Command="{Binding BackToNeuronsCommand}" Content="Neurons" VerticalAlignment="Center"
                   ToolTip.Tip="Up to all Neurons" AutomationProperties.Name="Up to all Neurons" />
           <c:LineIcon Data="{StaticResource Icon.ChevronRight}" Width="12" Height="12" Margin="6,1,8,0" Foreground="{DynamicResource Ink.Tertiary}" VerticalAlignment="Center" />
         </StackPanel>
+        </Panel>
         <Ellipse DockPanel.Dock="Left" Classes="dot" VerticalAlignment="Center" Margin="0,0,9,0" IsVisible="{Binding IsNeuronPage}"
                  Classes.ok="{Binding Page.IsOk}" Classes.busy="{Binding Page.IsBusy}" Classes.bad="{Binding Page.IsBad}" ToolTip.Tip="{Binding Page.StateText}" />
         <TextBlock DockPanel.Dock="Left" Classes="title" Classes.pageTitle="{Binding IsNeuronPage}" Text="{Binding WorkspaceTitle}" VerticalAlignment="Center" Margin="0,0,16,0"
@@ -443,7 +446,7 @@
           </Button>
           <Button Classes="tab pageTab" Classes.current="{Binding IsPubSub}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.PubSub}"
                   ToolTip.Tip="Storage" IsVisible="{Binding Page.HostsAccount}">
-            <TextBlock Text="Publish/subscribe" VerticalAlignment="Center" />
+            <TextBlock Text="Storage" VerticalAlignment="Center" />
           </Button>
           <Button Classes="tab pageTab" Classes.current="{Binding IsIdentities}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Identities}"
                   ToolTip.Tip="Identities">
@@ -828,7 +831,6 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                   <TextBlock Classes="section" Text="Traffic" />
-                  <TextBlock Classes="meta trafficHint" Text="Everything this account sends and receives" VerticalAlignment="Center" />
                 </StackPanel>
               </DockPanel>
 

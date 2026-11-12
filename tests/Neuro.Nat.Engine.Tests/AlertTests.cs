@@ -115,6 +115,28 @@ public class AlertTests
 	}
 
 	[Fact]
+	public async Task WhatAFeaturePutsInTheInboxPopsUpWhenNotificationsAreOn()
+	{
+		var (m, account) = await SetupAsync();
+		DateTime now = DateTime.Now;
+		Alert item = new() { Id = "f:x", Kind = AlertKind.Notification, Title = "Lab stopped delivering numbers", At = now, AccountId = account, Target = "x" };
+
+		using AlertService on = new(m, new AlertSettings(), () => now, startTimer: false);
+		List<Alert> got = [];
+		on.Raised += (_, a) => got.Add(a);
+		on.RaiseFeature(item);
+		Alert raised = Assert.Single(got);
+		Assert.True(raised.NeedsYou);
+		Assert.Equal(AlertService.FeatureGroup, raised.Group);
+
+		using AlertService off = new(m, new AlertSettings { Notifications = false }, () => now, startTimer: false);
+		List<Alert> none = [];
+		off.Raised += (_, a) => none.Add(a);
+		off.RaiseFeature(item);
+		Assert.Empty(none);
+	}
+
+	[Fact]
 	public async Task SnoozeHoldsAlertsBack()
 	{
 		var (m, _) = await SetupAsync();

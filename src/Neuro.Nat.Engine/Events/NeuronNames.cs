@@ -20,7 +20,14 @@ public static class NeuronNames
 
 	/// <summary>The roster name if there is one, else the domain.</summary>
 	public static string Of(string? rosterName, string bareJid)
-		=> string.IsNullOrWhiteSpace(rosterName) ? Domain(bareJid) : rosterName.Trim();
+	{
+		if (!string.IsNullOrWhiteSpace(rosterName))
+			return rosterName.Trim();
+
+		// A Neuron without a domain (a local one, "neuronode@") goes by its account name instead.
+		string domain = Domain(bareJid);
+		return domain.Length > 0 ? domain : bareJid.Split('/')[0].TrimEnd('@');
+	}
 
 	/// <summary>The name of one Neuron among the ones known: its full address when another known Neuron would get the same name.</summary>
 	public static string For(IEnumerable<WatchedNeuron> known, string bareJid)

@@ -91,7 +91,7 @@
     </StackPanel>
 
     <!-- The comparison. Four columns: what it is, the left Neuron, the mark, the right Neuron. -->
-    <DockPanel IsVisible="{Binding HasResult}" Margin="20,14,20,0">
+    <DockPanel IsVisible="{Binding HasResult}" Margin="20,14,20,0" MaxWidth="1600">
 
       <!-- What to see, and what to do with it -->
       <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">

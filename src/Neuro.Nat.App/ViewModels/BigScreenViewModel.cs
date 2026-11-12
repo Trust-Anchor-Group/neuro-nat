@@ -154,7 +154,7 @@ public sealed partial class BigScreenProblemViewModel(string fingerprint) : Obse
 	/// <summary>"Since 10:42", or "Since 9 Nov" when it started on another day.</summary>
 	[ObservableProperty] private string since = string.Empty;
 
-	/// <summary>"Last seen 2 min ago"</summary>
+	/// <summary>"latest 2 min ago", after <see cref="Since"/> as everywhere else in the app.</summary>
 	[ObservableProperty] private string last = string.Empty;
 
 	[ObservableProperty] private string count = string.Empty;
@@ -185,7 +185,7 @@ public sealed partial class BigScreenProblemViewModel(string fingerprint) : Obse
 		this.Since = "Since " + (issue.FirstSeen.Date == now.Date
 			? issue.FirstSeen.ToString("HH:mm", CultureInfo.CurrentCulture)
 			: issue.FirstSeen.ToString("d MMM", CultureInfo.CurrentCulture));
-		this.Last = "Last seen " + RelativeTime.Format(issue.LastSeen, now);
+		this.Last = "latest " + RelativeTime.Format(issue.LastSeen, now);
 		this.Count = issue.Count.ToString("N0", CultureInfo.CurrentCulture);
 		this.CountUnit = issue.Count == 1 ? "time" : "times";
 		this.Tone = issue.Severity >= EventSeverity.Error ? "bad" : "busy";

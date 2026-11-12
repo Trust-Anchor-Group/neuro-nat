@@ -272,6 +272,19 @@ public sealed class AlertService : IDisposable
 			this.Raised?.Invoke(this, a);
 	}
 
+	/// <summary>The <see cref="Alert.Group"/> of alerts about what a feature (such as app telemetry) put in the Inbox.</summary>
+	public const string FeatureGroup = "feature";
+
+	/// <summary>
+	/// Raises an alert about something a feature put in the Inbox, when the settings want
+	/// notifications that need someone. Do not disturb and snoozing hold it back as any other.
+	/// </summary>
+	public void RaiseFeature(Alert a)
+	{
+		if (this.Settings.Notifications)
+			this.Raise(a with { Kind = AlertKind.Notification, Group = FeatureGroup, NeedsYou = true });
+	}
+
 	/// <summary>Raises a made-up alert, to try the pop-up and the sound. Ignores do not disturb.</summary>
 	public void Test(AlertKind kind)
 	{

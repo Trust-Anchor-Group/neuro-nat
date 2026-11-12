@@ -48,10 +48,14 @@ public partial class TrafficView : UserControl
 		bool tight = width < 780;
 		bool stacked = width < 640;
 
+		// Narrower still, the buttons go down beside the find box, so that none of them is cut off.
+		bool narrowest = width < 480;
+
 		this.Toolbar.Classes.Set("tight", tight);
 		Grid.SetRow(this.FindRow, stacked ? 1 : 0);
 		Grid.SetColumn(this.FindRow, stacked ? 0 : 1);
-		Grid.SetColumnSpan(this.FindRow, stacked ? 3 : 1);
+		Grid.SetColumnSpan(this.FindRow, stacked ? (narrowest ? 2 : 3) : 1);
+		Grid.SetRow(this.Actions, narrowest ? 1 : 0);
 		this.FindRow.MaxWidth = stacked ? double.PositiveInfinity : 420;
 		this.FindRow.HorizontalAlignment = stacked ? Avalonia.Layout.HorizontalAlignment.Stretch : Avalonia.Layout.HorizontalAlignment.Left;
 	}

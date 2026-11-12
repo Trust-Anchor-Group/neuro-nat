@@ -182,6 +182,15 @@ public class FeatureContractTests
 		Dispatcher.UIThread.RunJobs();
 		Assert.Equal("nfc", Assert.IsType<PartsContent>(s.Vm.FeatureContent).Shown);
 
+		// The same place as a link: the shell makes it, and following it lands there again.
+		string? link = FeatureLinks.Make(new FeatureTarget("standin.parts", s.Ops, Lab) { Part = "applications" });
+		Assert.StartsWith("neuro-nat://feature/", link);
+		s.Vm.Workspace = WorkspaceKind.Fleet;
+		s.Vm.OpenLink(link);
+		await Task.Delay(200);
+		Dispatcher.UIThread.RunJobs();
+		Assert.Equal("applications", Assert.IsType<PartsContent>(s.Vm.FeatureContent).Shown);
+
 		feature.Present = false;
 		feature.Raise();
 		Dispatcher.UIThread.RunJobs();

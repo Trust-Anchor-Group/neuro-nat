@@ -25,8 +25,7 @@ public static class LocalDatabase
 
 	/// <summary>What the user can do about it, in plain words.</summary>
 	public const string CannotOpenDetail =
-		"Your accounts, chats and settings are kept encrypted, and NAT could not read them. " +
-		"Try again, for example after restarting the computer. Or start fresh: what was saved is moved aside, nothing is deleted, and NAT starts empty.";
+		"Try again after restarting the computer, or start fresh: what was saved is moved aside, and nothing is deleted.";
 
 	/// <summary>A file in the database folder that tells whether a key is the right one. It holds a keyed hash and nothing else.</summary>
 	public const string KeyCheckFile = "key.check";

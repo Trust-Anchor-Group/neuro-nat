@@ -50,6 +50,7 @@
     </Style>
     <Style Selector="TextBox.mapFind">
       <Setter Property="Width" Value="240" />
+      <Setter Property="PlaceholderText" Value="Find a Neuron or broker…" />
     </Style>
     <Style Selector=".maxw960 TextBox.mapFind">
       <Setter Property="Width" Value="170" />
@@ -60,6 +61,7 @@
     </Style>
     <Style Selector=".maxw860 TextBox.mapFind">
       <Setter Property="Width" Value="128" />
+      <Setter Property="PlaceholderText" Value="Find…" />
     </Style>
     <Style Selector=".maxw860 ToggleButton.layer Line.legend">
       <Setter Property="IsVisible" Value="False" />
@@ -93,7 +95,7 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBox Classes="find mapFind" Text="{Binding SearchText}" PlaceholderText="Find a Neuron or broker…" MinHeight="28" Padding="10,4" />
+          <TextBox Classes="find mapFind" Text="{Binding SearchText}" MinHeight="28" Padding="10,4" />
           <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowParents}" ToolTip.Tip="Parents">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Line Classes="legend" Stroke="{DynamicResource Line.Strong}" />

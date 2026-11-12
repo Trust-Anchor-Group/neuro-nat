@@ -99,6 +99,32 @@ public partial class App : Application
 				alerts.Watch(services.Chat);
 				alerts.Watch(services.Devices);
 				alerts.Watch(services.Identities);
+
+				// What features put in the Inbox (app telemetry's problems) pops up too, from the first
+				// new one on. What is there in the first two minutes was known before this start.
+				HashSet<string> knownFeatureItems = [.. services.Features.InboxItems().Select(i => i.Key)];
+				DateTime featuresSettled = DateTime.UtcNow.AddMinutes(2);
+				services.Features.Changed += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+				{
+					foreach (Features.FeatureInboxItem item in services.Features.InboxItems())
+					{
+						if (knownFeatureItems.Add(item.Key) && DateTime.UtcNow >= featuresSettled)
+						{
+							alerts.RaiseFeature(new Engine.Alerts.Alert
+							{
+								Id = "f:" + item.Key,
+								Kind = Engine.Alerts.AlertKind.Notification,
+								Title = item.Title,
+								Detail = item.Detail,
+								Severity = Engine.Events.EventSeverity.Warning,
+								At = DateTime.Now,
+								AccountId = item.AccountId,
+								NeuronJid = item.NeuronJid,
+								Target = item.Key,
+							});
+						}
+					}
+				});
 				vm.Settings.Attach(alerts, alertStore, services.UiSettings, services.Autostart);
 				vm.Settings.StorageNote = services.KeepsData ? null : SettingsViewModel.NothingKept;
 

@@ -89,8 +89,8 @@ public class LiveChatTests
 		// Chat with the Neuron's own client.
 		vm.ShowChatCommand.Execute(null);
 		ChatViewModel chatVm = vm.Chat;
-		await Until(() => chatVm.People.Any(p => string.Equals(p.BareJid, neuron, StringComparison.OrdinalIgnoreCase)));
-		chatVm.SelectedPerson = chatVm.People.First(p => string.Equals(p.BareJid, neuron, StringComparison.OrdinalIgnoreCase));
+		// A Neuron is not among the people until its conversation is opened, as from its page.
+		await Until(() => chatVm.Start(s.Profile.Id, neuron));
 		chatVm.Draft = "Hello. What is **6*7**?";
 		await chatVm.SendCommand.ExecuteAsync(null);
 		chatVm.Draft = "6*7";

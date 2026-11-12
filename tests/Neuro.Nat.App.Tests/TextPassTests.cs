@@ -92,6 +92,7 @@ public sealed partial class TextPassTests
 		Assert.Equal("Lab", NeuronNames.Of("Lab", "neuron-7f3a9c@lab.tagroot.io"));
 		Assert.Equal("Lab", NeuronNames.Of("  Lab ", "neuron-7f3a9c@lab.tagroot.io"));
 		Assert.Equal("lab.tagroot.io", NeuronNames.Of(null, "neuron-7f3a9c@lab.tagroot.io"));
+		Assert.Equal("neuronode", NeuronNames.Of(null, "neuronode@"));   // a local Neuron without a domain
 		Assert.Equal("lab.tagroot.io", NeuronNames.Of("  ", "neuron-7f3a9c@lab.tagroot.io"));
 		Assert.Equal("lab.tagroot.io", NeuronNames.Of(null, "lab.tagroot.io"));
 		Assert.Equal("lab.tagroot.io", NeuronNames.Domain("neuron@lab.tagroot.io/abc123"));

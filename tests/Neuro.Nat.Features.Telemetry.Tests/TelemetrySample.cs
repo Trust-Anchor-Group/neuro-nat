@@ -12,6 +12,9 @@ using Neuro.Nat.Engine.Storage;
 using Neuro.Nat.Features.Telemetry.Tests.StandIn;
 
 [assembly: Avalonia.Headless.AvaloniaTestApplication(typeof(Neuro.Nat.Features.Telemetry.Tests.TestAppBuilder))]
+// One test at a time: the dashboard's view models touch Avalonia from plain tests too, and the
+// link hook (FeatureLinks.Make) is shared. The whole set takes seconds.
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Neuro.Nat.Features.Telemetry.Tests;
 

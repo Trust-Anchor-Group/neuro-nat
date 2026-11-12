@@ -97,6 +97,18 @@ public sealed record WatchedNeuron
 		}
 	}
 
+	/// <summary>What NAT does with the Neuron's events, on a line of its own, for example "Listening".</summary>
+	public string StateLine => this.StatusText.Split(", ", 2)[0];
+
+	/// <summary>What was read before, on a line of its own under <see cref="StateLine"/>, for example "239 earlier events". Empty when there is nothing to say.</summary>
+	public string HistoryLine => this.State != WatchState.Live ? string.Empty : this.HistoryState switch
+	{
+		HistoryState.Loading => "Reading earlier events",
+		HistoryState.Loaded => this.HistoryCount == 1 ? "1 earlier event" : $"{this.HistoryCount} earlier events",
+		HistoryState.Failed => "Earlier events incomplete",
+		_ => string.Empty,
+	};
+
 	/// <summary>Details for the tooltip: errors, or what the history covers.</summary>
 	public string? Details => this.Error ?? this.HistoryError ?? (this.HistoryFrom is DateTime f ? $"History read from {f:yyyy-MM-dd HH:mm}. Warnings and worse only." : null);
 

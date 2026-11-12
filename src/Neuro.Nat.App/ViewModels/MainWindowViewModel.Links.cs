@@ -53,6 +53,10 @@ public sealed partial class MainWindowViewModel
 		this.Search.FollowLink = text => _ = this.OpenLinkAsync(text);
 		this.Chat.DescribeLink = this.DescribeLink;
 		this.Chat.FollowLink = link => _ = this.FollowAsync(link, patient: false);
+
+		// What features show can be copied as a link too: the same scheme, opened here.
+		global::Neuro.Nat.App.Features.FeatureLinks.Make = target => target.NeuronJid is string jid && NatLink.DomainOf(jid).Length > 0
+			&& NatLink.TryParse(NatLink.Feature(jid, target.ViewKey, target.Part).ToString(), out NatLink made) ? made.ToString() : null;
 	}
 
 	/// <summary>Opens what a link points at. From outside NAT, <paramref name="patient"/>: what is not there yet opens once it is.</summary>
@@ -260,6 +264,10 @@ public sealed partial class MainWindowViewModel
 			case LinkKind.Compare:
 				return await this.GoCompareAsync(link, row);
 
+			case LinkKind.Feature:
+				this.OpenFeature(new global::Neuro.Nat.App.Features.FeatureTarget(link.View!, row.AccountId, row.BareJid) { Part = link.Page });
+				return LinkOutcome.Opened;
+
 			case LinkKind.Node:
 				this.OpenNeuron(row.BareJid, row.AccountId, WorkspaceKind.Sources);
 				if (await this.Sources.RevealAsync(link.Parts))
@@ -342,6 +350,10 @@ public sealed partial class MainWindowViewModel
 
 			case LinkKind.Compare:
 				return this.DescribeCompare(link, name);
+
+			case LinkKind.Feature:
+				string what = this.Features.NeuronTabs(row.AccountId, row.BareJid).FirstOrDefault(f => string.Equals(f.Key, link.View, StringComparison.OrdinalIgnoreCase))?.Title ?? link.View!;
+				return new LinkInfo(name + ", " + what, row.StateText, neuronTone);
 
 			default:
 				return new LinkInfo(link.Id, "In the sources of " + name, neuronTone);

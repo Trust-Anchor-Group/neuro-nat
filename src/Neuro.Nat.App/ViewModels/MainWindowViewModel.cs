@@ -668,11 +668,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 				// One that is only information is not in the list until done items show.
 				this.Inbox.Tab = InboxTab.Everything;
 				this.Attention.Refresh();
-				if (!this.Inbox.Select("n:" + alert.Target))
+				string row = (alert.Group == Engine.Alerts.AlertService.FeatureGroup ? "f:" : "n:") + alert.Target;
+				if (!this.Inbox.Select(row))
 				{
 					this.Inbox.ShowDone = true;
 					this.Attention.Refresh();
-					this.Inbox.Select("n:" + alert.Target);
+					this.Inbox.Select(row);
 				}
 
 				this.Workspace = WorkspaceKind.Attention;

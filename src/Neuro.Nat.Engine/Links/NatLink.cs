@@ -28,6 +28,9 @@ public enum LinkKind
 
 	/// <summary>Two Neurons side by side, or a Neuron beside a kept copy of it.</summary>
 	Compare,
+
+	/// <summary>Something a feature shows, such as a page of the app telemetry dashboard on a Neuron.</summary>
+	Feature,
 }
 
 /// <summary>
@@ -74,6 +77,7 @@ public sealed record NatLink(LinkKind Kind, string Domain, IReadOnlyList<string>
 		["chat"] = LinkKind.Chat,
 		["room"] = LinkKind.Room,
 		["compare"] = LinkKind.Compare,
+		["feature"] = LinkKind.Feature,
 	};
 
 	/// <summary>The word in a comparison link before the id of a kept copy.</summary>
@@ -112,6 +116,19 @@ public sealed record NatLink(LinkKind Kind, string Domain, IReadOnlyList<string>
 	/// <summary>A Neuron now beside a kept copy of it: <c>neuro-nat://compare/lab.example.com/kept/&lt;copy id&gt;</c>.</summary>
 	public static NatLink CompareWithKept(string neuronJid, string copyId)
 		=> new(LinkKind.Compare, DomainOf(neuronJid), [Kept, copyId.ToLowerInvariant()]);
+
+	/// <summary>
+	/// What a feature shows on a Neuron: <c>neuro-nat://feature/lab.example.com/telemetry/nfc</c>.
+	/// <paramref name="view"/> is the feature's tab or place, <paramref name="part"/> a page in it.
+	/// </summary>
+	public static NatLink Feature(string neuronJid, string view, string? part = null)
+		=> new(LinkKind.Feature, DomainOf(neuronJid), part is null ? [view] : [view, part]);
+
+	/// <summary>For a feature: its tab or place.</summary>
+	public string? View => this.Kind == LinkKind.Feature && this.Parts.Count > 0 ? this.Parts[0] : null;
+
+	/// <summary>For a feature: the page inside it, or null.</summary>
+	public string? Page => this.Kind == LinkKind.Feature && this.Parts.Count > 1 ? this.Parts[1] : null;
 
 	/// <summary>For a comparison: the other Neuron's domain, or null when the other side is a kept copy.</summary>
 	public string? OtherDomain => this.Kind == LinkKind.Compare && this.Parts.Count == 1 ? this.Parts[0] : null;
@@ -255,6 +272,12 @@ public sealed record NatLink(LinkKind Kind, string Domain, IReadOnlyList<string>
 					if (!IsId(parts[i]))
 						return false;
 				}
+				link = new NatLink(kind, parts[0].ToLowerInvariant(), [.. parts.Skip(1)]);
+				return true;
+
+			case LinkKind.Feature:
+				if (at is not null || !IsDomain(parts[0]) || parts.Count is < 2 or > 3 || !IsId(parts[1]) || (parts.Count == 3 && !IsId(parts[2])))
+					return false;
 				link = new NatLink(kind, parts[0].ToLowerInvariant(), [.. parts.Skip(1)]);
 				return true;
 

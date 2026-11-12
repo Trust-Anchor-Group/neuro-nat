@@ -67,10 +67,13 @@ public class LiveIdentitiesUiTests
 
 		MainWindow window = new() { DataContext = vm, Width = 1440, Height = 900 };
 		window.Show();
+		// Identities show one account at a time: the one picked under Accounts.
+		vm.SelectedAccount = vm.Accounts.First(a => a.Session == kim);
 		vm.ShowIdentitiesCommand.Execute(null);
 		IdentitiesViewModel v = vm.Identities;
 
 		// Apply through the form.
+		await Until(() => v.Rows.Any(r => r.Kind == IdentityRowKind.Account && r.AccountId == kim.Profile.Id), 10000);
 		v.Selected = v.Rows.First(r => r.Kind == IdentityRowKind.Account && r.AccountId == kim.Profile.Id);
 		Assert.True(v.CanApply, v.DetailNote);
 		void Set(string name, string value) => v.ApplyFields.First(f => f.Name == name).Value = value;

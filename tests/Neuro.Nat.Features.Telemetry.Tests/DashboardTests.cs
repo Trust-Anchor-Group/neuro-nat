@@ -365,12 +365,16 @@ public class DashboardTests
 		s.StartFeatures();
 		await s.FindAsync();
 		DashboardViewModel d = s.Feature.DashboardOf(s.Feature.Collectors().Single());
-		Assert.False(d.CanCopyLink);
 
+		// The shell sets the hook when it starts; any earlier test may have started one.
 		Func<FeatureTarget, string?> was = FeatureLinks.Make;
 		FeatureTarget? asked = null;
 		try
 		{
+			FeatureLinks.Make = _ => null;
+			d.ShowPart(Pages.Overview);
+			Assert.False(d.CanCopyLink);
+
 			FeatureLinks.Make = t =>
 			{
 				asked = t;

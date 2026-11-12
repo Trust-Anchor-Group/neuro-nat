@@ -62,7 +62,8 @@ public class LiveSourcesTests
 		await s.ConnectAsync();
 
 		await Until(() => monitors.For(s.Profile.Id)?.Concentrator(neuron) is not null);
-		vm.ShowSourcesCommand.Execute(null);
+		// Sources is a tab of the Neuron's page.
+		vm.OpenNeuron(neuron, s.Profile.Id, WorkspaceKind.Sources);
 		SourcesViewModel src = vm.Sources;
 		await Until(() => src.Roots.Count > 0);
 
@@ -156,7 +157,8 @@ public class LiveSourcesTests
 		await s.ConnectAsync();
 
 		await Until(() => monitors.For(s.Profile.Id)?.Concentrator(neuron) is not null);
-		vm.ShowSourcesCommand.Execute(null);
+		// Sources is a tab of the Neuron's page.
+		vm.OpenNeuron(neuron, s.Profile.Id, WorkspaceKind.Sources);
 		SourcesViewModel src = vm.Sources;
 		await Until(() => src.Roots.Count > 0);
 
@@ -191,7 +193,7 @@ public class LiveSourcesTests
 		List<Waher.Networking.XMPP.Concentrator.Queries.QueryObject> objects = [.. Objects(run.Items)];
 		Assert.NotEmpty(objects);
 		Assert.Contains(objects, o => o.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase));
-		IEnumerable<string> texts = window.GetVisualDescendants().OfType<Avalonia.Controls.TextBlock>().Select(t => t.Text ?? string.Empty);
+		IEnumerable<string> texts = window.GetVisualDescendants().OfType<Controls.ReportView>().SelectMany(r => r.GetVisualDescendants()).OfType<Avalonia.Controls.TextBlock>().Select(t => t.Text ?? string.Empty);
 		Assert.DoesNotContain(texts, t => t.StartsWith("Waher.", StringComparison.Ordinal));
 		Assert.NotEmpty(window.GetVisualDescendants().OfType<Avalonia.Controls.Image>());
 

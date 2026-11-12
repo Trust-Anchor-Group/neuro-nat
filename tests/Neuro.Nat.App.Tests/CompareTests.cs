@@ -29,7 +29,7 @@ public class CompareTests
 	private const string ProdSecret = "Prod-mqtt-pw-4471-fig";
 
 	/// <summary>Hands out made-up readings in place of the Neurons.</summary>
-	private sealed class StandIn : INeuronReader
+	internal sealed class StandIn : INeuronReader
 	{
 		public HashSet<string> NoAccess { get; } = new(StringComparer.OrdinalIgnoreCase);
 
