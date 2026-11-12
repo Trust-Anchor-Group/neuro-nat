@@ -28,6 +28,23 @@
     <Style Selector="TextBlock.stamp">
       <Setter Property="HorizontalAlignment" Value="Left" />
     </Style>
+    <!-- A NAT link in a message: a small card with what it points at -->
+    <Style Selector="Button.linkCard">
+      <Setter Property="Background" Value="{DynamicResource Surface.Header}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="MinWidth" Value="200" />
+      <Setter Property="MaxWidth" Value="420" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.linkCard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Surface.Hover}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Line.Strong}" />
+    </Style>
     <Style Selector="TextBlock.stamp.mine">
       <Setter Property="HorizontalAlignment" Value="Right" />
     </Style>
@@ -450,7 +467,31 @@
                 <Border Classes="bubble" Classes.mine="{Binding IsMine}" Classes.mention="{Binding IsMention}" Classes.target="{Binding IsTarget}" Classes.gone="{Binding IsDeleted}"
                         c:ActionMenu.Source="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext)}">
                   <Panel>
-                    <c:MarkdownView Markdown="{Binding Markdown}" IsVisible="{Binding !IsDeleted}" />
+                    <StackPanel Spacing="6" IsVisible="{Binding !IsDeleted}">
+                      <c:MarkdownView Markdown="{Binding Markdown}" />
+                      <!-- A NAT link: what it points at and how that is now. A click opens it. -->
+                      <ItemsControl ItemsSource="{Binding Cards}" IsVisible="{Binding HasCards}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <StackPanel Spacing="4" />
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:LinkCardViewModel">
+                            <Button Classes="linkCard" ToolTip.Tip="{Binding Text}"
+                                    Command="{Binding $parent[UserControl].((vm:ChatViewModel)DataContext).OpenLinkCardCommand}" CommandParameter="{Binding}">
+                              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Ellipse Classes="dot" Classes.ok="{Binding IsOk}" Classes.busy="{Binding IsBusy}" Classes.bad="{Binding IsBad}" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Spacing="1">
+                                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Classes="meta" Text="{Binding State}" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
                     <TextBlock Classes="meta" FontStyle="Italic" Text="{Binding DeletedText}" IsVisible="{Binding IsDeleted}" />
                   </Panel>
                 </Border>

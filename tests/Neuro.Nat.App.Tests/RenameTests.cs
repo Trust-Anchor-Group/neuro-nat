@@ -201,7 +201,8 @@ public class RenameTests : IDisposable
 		}
 		finally
 		{
-			Registry.CurrentUser.DeleteSubKeyTree(@"Software\Neuro.Nat.Tests", throwOnMissingSubKey: false);
+			// Only its own key: other tests use Neuro.Nat.Tests at the same time.
+			Registry.CurrentUser.DeleteSubKeyTree(path, throwOnMissingSubKey: false);
 		}
 	}
 

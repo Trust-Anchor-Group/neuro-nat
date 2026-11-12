@@ -17,6 +17,9 @@ public sealed partial class NeuronPageViewModel(Guid accountId, string bareJid) 
 	public Guid AccountId { get; } = accountId;
 	public string BareJid { get; } = bareJid;
 
+	/// <summary>The tab of the page that shows, so a link to the page opens on it.</summary>
+	public WorkspaceKind Tab { get; set; } = WorkspaceKind.Neuron;
+
 	[ObservableProperty] private string label = bareJid;
 	[ObservableProperty] private string accountLabel = string.Empty;
 

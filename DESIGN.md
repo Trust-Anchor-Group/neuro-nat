@@ -403,6 +403,9 @@ Every list implements `IActionSource.ActionsFor(items)` and returns an `ActionLi
 
 Copy is always there: Ctrl+C copies what is selected as text, Ctrl+Shift+C the other way (with times, or as Markdown), Ctrl+S saves it to a file. In traffic, dragging over lines selects them.
 
+### Links
+Anything you can point at has a link that reads plainly: `neuro-nat://neuron/<domain>/<tab>`, `problem/<domain>/<fingerprint>`, `event/<domain>/<id>?at=<UTC time>`, `node/<domain>/<source>/<node>/…`, `chat/<address>`, `room/<address>` (`Engine/Links/NatLink.cs`). A Neuron is named by its domain; the account is never in a link. "Copy link" is added once, in `Links.WithLink` (`ViewModels/Links.cs`), so every menu and selection bar has it. In a chat message a link shows as a small card with the name of the thing and its state now; pasted into the search box it opens. A link only opens a screen. What cannot be followed gets one note.
+
 ### The note, and Undo
 `Ui.Say("Copied 3 events")` shows a short note in the status bar for 2.4 seconds (class `flash`), in the window in front. `Ui.Say(note, undo)` adds an Undo button and keeps the note for 7 seconds; Ctrl+Z does the same while it shows. Use the second form for anything that takes one click and is easy to do to the wrong row: acknowledge, mute, mark fixed, reopen. What cannot be taken back asks first instead.
 

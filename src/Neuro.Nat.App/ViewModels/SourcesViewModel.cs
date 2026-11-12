@@ -38,6 +38,7 @@ public abstract partial class TreeItemViewModel : ObservableObject
 	[ObservableProperty] private bool isPlaceholder;
 
 	private bool loaded;
+	private Task? loading;
 
 	/// <summary>Shows an expander before the children are read.</summary>
 	protected void ExpectChildren(bool hasChildren)
@@ -53,8 +54,22 @@ public abstract partial class TreeItemViewModel : ObservableObject
 		if (value && !this.loaded)
 		{
 			this.loaded = true;
-			_ = this.LoadAsync();
+			this.loading = this.LoadAsync();
 		}
+	}
+
+	/// <summary>Opens the item and waits until its children are there.</summary>
+	public async Task OpenAsync()
+	{
+		if (!this.loaded)
+		{
+			this.loaded = true;
+			this.loading = this.LoadAsync();
+		}
+
+		this.IsExpanded = true;
+		if (this.loading is Task t)
+			await t;
 	}
 
 	/// <summary>Reads the children again.</summary>
@@ -805,6 +820,13 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 		if (n is null)
 			return;
 
+		if (this.RootsStandIn is Func<NeuronChoice, IReadOnlyList<TreeItemViewModel>> standIn)
+		{
+			foreach (TreeItemViewModel r in standIn(n))
+				this.Roots.Add(r);
+			return;
+		}
+
 		if (this.Concentrator is null)
 		{
 			this.TreeError = "This Neuron is not online through its account right now.";
@@ -971,6 +993,71 @@ public sealed partial class SourcesViewModel : ObservableObject, IActionSource
 	private string? pinnedNote;
 
 	public bool HasPinnedNote => this.PinnedNote is not null;
+
+	/// <summary>For previews and UI tests: the tree of a Neuron, without asking it.</summary>
+	public Func<NeuronChoice, IReadOnlyList<TreeItemViewModel>>? RootsStandIn { get; set; }
+
+	/// <summary>The id of a data source or a node in the tree; null for a line that only says something is loading.</summary>
+	public static string? IdOf(TreeItemViewModel item) => item switch
+	{
+		SourceItemViewModel s => s.Source.SourceID,
+		NodeItemViewModel n => n.Node.NodeId,
+		_ => null,
+	};
+
+	/// <summary>
+	/// Opens the tree down to a data source or node, by the ids from the data source down to it,
+	/// and selects it. Only reads: nothing on the Neuron changes. When the path is not there any
+	/// more, the node is looked for by its id. Returns false when it cannot be found.
+	/// </summary>
+	public async Task<bool> RevealAsync(IReadOnlyList<string> path)
+	{
+		if (path.Count == 0)
+			return false;
+
+		for (int i = 0; i < 300 && this.IsLoadingTree; i++)
+			await Task.Delay(50);
+
+		IList<TreeItemViewModel> level = this.Roots;
+		TreeItemViewModel? item = null;
+		for (int i = 0; i < path.Count; i++)
+		{
+			item = level.FirstOrDefault(t => string.Equals(IdOf(t), path[i], StringComparison.Ordinal));
+			if (item is null)
+				return await this.FindNodeAsync(path);
+
+			if (i < path.Count - 1)
+			{
+				await item.OpenAsync();
+				level = item.Children;
+			}
+		}
+
+		if (item is null)
+			return false;
+
+		this.ClearSearch();
+		this.TreeSelection = item;
+		this.SelectedItem = item;
+		return true;
+	}
+
+	private async Task<bool> FindNodeAsync(IReadOnlyList<string> path)
+	{
+		if (path.Count < 2 || this.Concentrator is null)
+			return false;
+
+		string id = path[^1];
+		this.SearchText = id;
+		await this.SearchCommand.ExecuteAsync(null);
+		NodeItemViewModel? found = this.SearchResults.FirstOrDefault(n => n.Node.NodeId == id && n.Node.SourceId == path[^2])
+			?? this.SearchResults.FirstOrDefault(n => n.Node.NodeId == id);
+		if (found is null)
+			return false;
+
+		this.SearchSelection = found;
+		return true;
+	}
 
 	/// <summary>Shows one Neuron's sources. Used by the Neuron's page.</summary>
 	public void Focus(Guid accountId, string neuronJid)

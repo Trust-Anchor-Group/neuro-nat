@@ -80,6 +80,21 @@ public sealed class EventHub(int capacity = 50_000)
 			return [.. this.events];
 	}
 
+	/// <summary>The newest kept event that matches, or null.</summary>
+	public NeuronEvent? FindLast(Func<NeuronEvent, bool> match)
+	{
+		lock (this.sync)
+		{
+			for (LinkedListNode<NeuronEvent>? n = this.events.Last; n is not null; n = n.Previous)
+			{
+				if (match(n.Value))
+					return n.Value;
+			}
+
+			return null;
+		}
+	}
+
 	/// <summary>All issues, most recent first.</summary>
 	public IReadOnlyList<Issue> Issues()
 	{

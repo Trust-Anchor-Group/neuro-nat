@@ -30,16 +30,20 @@ internal static class Program
 		// Started with Windows: watch from the tray without opening the window.
 		bool startHidden = args.Contains(TrayArgument, StringComparer.OrdinalIgnoreCase);
 
-		// One NAT per user: starting it again brings the running one (perhaps in the tray) forward.
+		// Started by a click on a NAT link in another program: the link is the argument.
+		string? startLink = LinkIn(args);
+
+		// One NAT per user: starting it again brings the running one (perhaps in the tray) forward,
+		// with the link to open when there is one.
 		using SingleInstance? single = SingleInstance.TryClaim();
 		if (single is null)
 		{
-			if (!startHidden)
-				SingleInstance.AskRunningToShow();
+			if (!startHidden || startLink is not null)
+				SingleInstance.AskRunningToShow(startLink);
 			return 0;
 		}
 
-		single.Listen(App.App.ShowMainWindow);
+		single.Listen(App.App.ShowMainWindow, App.App.OpenLink);
 
 		// Before the log file is opened: the data folder of Neuro.AA, as the app was called before,
 		// moves to its new name once. Not when NAT_DATA_FOLDER names a folder to use instead.
@@ -112,7 +116,8 @@ internal static class Program
 
 			App.App.Services = new AppServices(accounts, monitors, new FleetService(monitors), chat, identities, devices, pubsub, dataFolder)
 			{
-				StartHidden = startHidden,
+				StartHidden = startHidden && startLink is null,
+				StartLink = startLink,
 				Autostart = OperatingSystem.IsWindows() ? new WindowsAutostart() : null,
 				Updates = VelopackUpdates.TryStart(dataFolder),
 				AlertSettings = stores.AlertSettings,
@@ -136,6 +141,10 @@ internal static class Program
 			throw;
 		}
 	}
+
+	/// <summary>The NAT link among the arguments NAT was started with, or null. It is checked again before anything in it is used.</summary>
+	internal static string? LinkIn(IEnumerable<string> args)
+		=> args.FirstOrDefault(a => Engine.Links.NatLink.LooksLike(a) && a.Length <= Engine.Links.NatLink.MaxLength)?.Trim();
 
 	/// <summary>Restarts NAT and sets what it had saved aside first: the choice "Start fresh".</summary>
 	private const string StartFreshArgument = "--start-fresh";

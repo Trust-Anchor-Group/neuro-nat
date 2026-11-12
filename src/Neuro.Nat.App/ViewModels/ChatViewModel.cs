@@ -141,6 +141,30 @@ public sealed partial class MessageViewModel(string id) : ObservableObject
 
 	public bool IsFailed => !string.IsNullOrEmpty(this.Error);
 
+	/// <summary>The NAT links in the message, each as a card with what it points at and how that is now.</summary>
+	public ObservableCollection<LinkCardViewModel> Cards { get; } = [];
+
+	public bool HasCards => this.Cards.Count > 0;
+
+	/// <summary>Finds the links in the text and brings their cards up to date.</summary>
+	internal void SyncCards(Func<Neuro.Nat.Engine.Links.NatLink, LinkInfo>? describe)
+	{
+		IReadOnlyList<Neuro.Nat.Engine.Links.NatLink> links = this.IsDeleted || describe is null ? [] : Neuro.Nat.Engine.Links.NatLink.FindAll(this.Markdown);
+		if (!links.SequenceEqual(this.Cards.Select(c => c.Link)))
+		{
+			this.Cards.Clear();
+			foreach (Neuro.Nat.Engine.Links.NatLink l in links)
+				this.Cards.Add(new LinkCardViewModel(l));
+			this.OnPropertyChanged(nameof(this.HasCards));
+		}
+
+		if (describe is null)
+			return;
+
+		foreach (LinkCardViewModel card in this.Cards)
+			card.Apply(describe(card.Link));
+	}
+
 	partial void OnErrorChanged(string? value) => this.OnPropertyChanged(nameof(this.IsFailed));
 	partial void OnIsMineChanged(bool value) => this.OnPropertyChanged(nameof(this.DeletedText));
 }
@@ -722,6 +746,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 			vm.IsFirstNew = m.Id == this.newLineId;
 			vm.StartsGroup = vm.IsFirstNew || previous is null || previous.Direction != m.Direction || previous.Sender != m.Sender || (m.Timestamp - previous.Timestamp) > TimeSpan.FromMinutes(5);
 			vm.ShowSender = p.IsRoom && !vm.IsMine && vm.StartsGroup && !string.IsNullOrEmpty(m.Sender);
+			vm.SyncCards(this.DescribeLink);
 
 			previous = m;
 			index++;
@@ -839,6 +864,20 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 
 	/// <summary>Set by the shell: the moves to other screens.</summary>
 	public IShell? Shell { get; set; }
+
+	/// <summary>Set by the shell: what a NAT link in a message points at, as it is now.</summary>
+	public Func<Neuro.Nat.Engine.Links.NatLink, LinkInfo>? DescribeLink { get; set; }
+
+	/// <summary>Set by the shell: opens what a link points at.</summary>
+	public Action<Neuro.Nat.Engine.Links.NatLink>? FollowLink { get; set; }
+
+	/// <summary>A click on a link's card under a message.</summary>
+	[RelayCommand]
+	private void OpenLinkCard(LinkCardViewModel? card)
+	{
+		if (card is not null)
+			this.FollowLink?.Invoke(card.Link);
+	}
 
 	/// <summary>A conversation as Markdown, oldest message first.</summary>
 	public static string ToMarkdown(Conversation c, string title)

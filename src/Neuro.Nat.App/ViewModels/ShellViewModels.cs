@@ -141,8 +141,24 @@ public sealed partial class SearchViewModel(Func<IEnumerable<SearchItem>> source
 	/// <summary>Set by the shell: brings what the search looks through up to date, once, as the box opens.</summary>
 	public Action? Opening { get; set; }
 
+	/// <summary>Set by the shell: opens what a NAT link points at. A link pasted into the box opens this way.</summary>
+	public Action<string>? FollowLink { get; set; }
+
+	private int lastLength;
+
 	partial void OnQueryChanged(string value)
 	{
+		int before = this.lastLength;
+		this.lastLength = value.Length;
+
+		// Pasted, not typed: a link opens at once.
+		if (this.IsOpen && this.FollowLink is not null && value.Length - before > 1 && Neuro.Nat.Engine.Links.NatLink.LooksLike(value))
+		{
+			this.Close();
+			this.FollowLink(value.Trim());
+			return;
+		}
+
 		if (this.IsOpen)
 			this.Rebuild();
 	}
@@ -173,6 +189,14 @@ public sealed partial class SearchViewModel(Func<IEnumerable<SearchItem>> source
 	/// <summary>Goes to the highlighted result.</summary>
 	public void Run()
 	{
+		if (this.FollowLink is Action<string> follow && Neuro.Nat.Engine.Links.NatLink.LooksLike(this.Query))
+		{
+			string link = this.Query.Trim();
+			this.Close();
+			follow(link);
+			return;
+		}
+
 		SearchItem? item = this.Selected ?? this.Results.FirstOrDefault();
 		this.Close();
 		item?.Run();

@@ -79,6 +79,8 @@ public sealed partial class MainWindowViewModel
 	/// <summary>Tries again to show what <see cref="GoTo"/> could not yet. Called as Neurons and accounts appear.</summary>
 	private void TryWanted()
 	{
+		this.TryPendingLink();
+
 		if (this.wantedAddress is not string wanted)
 			return;
 

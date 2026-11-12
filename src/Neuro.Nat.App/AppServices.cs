@@ -11,6 +11,9 @@ public sealed record AppServices(AccountManager Accounts, MonitorService Monitor
 	/// <summary>Start in the tray without showing the window (as when started with Windows).</summary>
 	public bool StartHidden { get; init; }
 
+	/// <summary>A NAT link NAT was started with, opened once the app is up.</summary>
+	public string? StartLink { get; init; }
+
 	/// <summary>"Start with Windows", where the host supports it.</summary>
 	public Watch.IAutostart? Autostart { get; init; }
 

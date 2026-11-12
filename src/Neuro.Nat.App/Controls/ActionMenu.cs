@@ -72,7 +72,7 @@ public static class ActionMenu
 		if (sender is not Button b || GetSource(b) is not IActionSource source)
 			return;
 
-		IReadOnlyList<ItemAction> actions = source.ActionsFor(Items(b));
+		IReadOnlyList<ItemAction> actions = ActionsOf(source, Items(b));
 		if (actions.Count == 0)
 			return;
 
@@ -82,6 +82,13 @@ public static class ActionMenu
 		Last = menu;
 		menu.Open(b);
 	}
+
+	/// <summary>
+	/// What can be done to some items: what their source offers, and "Copy link" for anything
+	/// that has a link. The menu, the bar and the keys all ask here, so they offer the same.
+	/// </summary>
+	public static IReadOnlyList<ItemAction> ActionsOf(IActionSource source, IReadOnlyList<object> items)
+		=> Links.WithLink(source.ActionsFor(items), items);
 
 	public static IActionSource? GetSource(Control c) => c.GetValue(SourceProperty);
 	public static void SetSource(Control c, IActionSource? value) => c.SetValue(SourceProperty, value);
@@ -149,7 +156,7 @@ public static class ActionMenu
 				return;
 		}
 
-		IReadOnlyList<ItemAction> actions = source.ActionsFor(only ?? Items(c));
+		IReadOnlyList<ItemAction> actions = ActionsOf(source, only ?? Items(c));
 		if (actions.Count == 0)
 			return;
 
@@ -183,7 +190,7 @@ public static class ActionMenu
 		if (items.Count == 0)
 			return;
 
-		foreach (ItemAction a in Flatten(source.ActionsFor(items)))
+		foreach (ItemAction a in Flatten(ActionsOf(source, items)))
 		{
 			if (a.Key is null || !a.IsEnabled)
 				continue;
@@ -218,7 +225,7 @@ public static class ActionMenu
 			return;
 
 		if (c is ListBox list && GetSource(c) is IActionSource source && (list.SelectedItems?.Count ?? 0) > 1)
-			bar.Show(list.SelectedItems!.Count, source.ActionsFor(Items(c)), list.UnselectAll);
+			bar.Show(list.SelectedItems!.Count, ActionsOf(source, Items(c)), list.UnselectAll);
 		else
 			bar.Hide();
 	}

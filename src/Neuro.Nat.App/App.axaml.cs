@@ -28,6 +28,31 @@ public partial class App : Application
 
 	private static volatile Action? showMainWindow;
 
+	/// <summary>
+	/// Opens what a NAT link points at, brought by a click outside NAT or by a second start. Any
+	/// thread. Before the window is ready the link waits, and opens once the app is up.
+	/// </summary>
+	public static void OpenLink(string link)
+	{
+		if (!Engine.Links.NatLink.LooksLike(link) || link.Length > Engine.Links.NatLink.MaxLength)
+			return;
+
+		lock (linkLock)
+		{
+			if (openLink is null)
+			{
+				waitingLink = link;
+				return;
+			}
+		}
+
+		Avalonia.Threading.Dispatcher.UIThread.Post(() => openLink?.Invoke(link));
+	}
+
+	private static readonly object linkLock = new();
+	private static Action<string>? openLink;
+	private static string? waitingLink;
+
 	public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
 	public override void OnFrameworkInitializationCompleted()
@@ -111,7 +136,7 @@ public partial class App : Application
 				};
 				AppLog.Info("Main window created.");
 
-				_ = StartAsync(vm);
+				_ = StartAsync(vm, watch, services.StartLink);
 			}
 			catch (Exception ex)
 			{
@@ -123,7 +148,7 @@ public partial class App : Application
 		base.OnFrameworkInitializationCompleted();
 	}
 
-	private static async Task StartAsync(MainWindowViewModel vm)
+	private static async Task StartAsync(MainWindowViewModel vm, Watch.WatchAgent watch, string? startLink)
 	{
 		try
 		{
@@ -134,5 +159,21 @@ public partial class App : Application
 		{
 			AppLog.Error("Starting the accounts failed.", ex);
 		}
+
+		// The app is up: links open from now on, the one NAT was started with first.
+		string? waiting;
+		lock (linkLock)
+		{
+			openLink = link =>
+			{
+				watch.ShowWindow();
+				vm.OpenLink(link, patient: true);
+			};
+			waiting = waitingLink;
+			waitingLink = null;
+		}
+
+		if ((waiting ?? startLink) is string first)
+			openLink(first);
 	}
 }

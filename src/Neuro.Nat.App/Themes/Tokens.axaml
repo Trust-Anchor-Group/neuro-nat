@@ -191,6 +191,7 @@
   <StreamGeometry x:Key="Icon.Check">M5 12.5l4.5 4.5L19 7.5</StreamGeometry>
   <StreamGeometry x:Key="Icon.More">M5 12h.01 M12 12h.01 M19 12h.01</StreamGeometry>
   <StreamGeometry x:Key="Icon.Copy">M9 9h10v11H9z M5 15V4h10</StreamGeometry>
+  <StreamGeometry x:Key="Icon.Link">M10 14a4.2 4.2 0 0 0 6 0l3-3a4.2 4.2 0 0 0-6-6l-1.2 1.2 M14 10a4.2 4.2 0 0 0-6 0l-3 3a4.2 4.2 0 0 0 6 6l1.2-1.2</StreamGeometry>
   <StreamGeometry x:Key="Icon.Save">M5 4h11l3 3v13H5z M8 4v5h7V4 M8 20v-6h8v6</StreamGeometry>
   <StreamGeometry x:Key="Icon.Reply">M10 7l-5 5 5 5 M5 12h9a5 5 0 0 1 5 5v1</StreamGeometry>
   <StreamGeometry x:Key="Icon.Edit">M4 20h4L19 9l-4-4L4 16z M13 7l4 4</StreamGeometry>

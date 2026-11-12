@@ -131,6 +131,7 @@ public sealed partial class MainWindowViewModel
 				break;
 		}
 
+		p.Tab = tab;
 		this.Workspace = tab;
 	}
 

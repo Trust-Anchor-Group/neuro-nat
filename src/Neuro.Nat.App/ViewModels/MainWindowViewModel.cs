@@ -166,6 +166,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.StartActions();
 		this.StartPages();
 		this.StartHistory();
+		this.StartLinks();
 	}
 
 	// ----- Places: the rail has five, plus Accounts. Each holds one or more screens. -----
@@ -204,9 +205,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.ApplyLens();
 		this.NoteStop();
 
-		// Going somewhere by hand: what the window was waiting to show is no longer wanted.
+		// Going somewhere by hand: what the window was waiting to show is no longer wanted, nor a link waiting for its Neuron.
 		if (!this.goingTo)
+		{
 			this.wantedAddress = null;
+			this.pendingLink = null;
+		}
 
 		if (this.IsExtra)
 			this.OnPropertyChanged(nameof(this.WindowTitle));

@@ -46,12 +46,28 @@ internal sealed class WindowsAutostart : IAutostart
 
 	private static string CommandFor(string exe) => $"\"{exe}\" {Program.TrayArgument}";
 
-	/// <summary>Installing turns "Start with Windows" on, updating keeps it pointing right, uninstalling removes it.</summary>
+	/// <summary>
+	/// Installing turns "Start with Windows" on, updating keeps it pointing right, uninstalling
+	/// removes it. The same goes for NAT's links (<see cref="WindowsLinkScheme"/>), so a click on
+	/// one in another program opens NAT. One failing does not keep the other from being done.
+	/// </summary>
 	public static VelopackApp AddInstallerHooks(VelopackApp app)
 		=> app
-			.OnAfterInstallFastCallback(_ => Enable())
-			.OnAfterUpdateFastCallback(_ => Refresh())
-			.OnBeforeUninstallFastCallback(_ => Disable());
+			.OnAfterInstallFastCallback(_ => Both(Enable, WindowsLinkScheme.Register))
+			.OnAfterUpdateFastCallback(_ => Both(Refresh, WindowsLinkScheme.Register))
+			.OnBeforeUninstallFastCallback(_ => Both(Disable, WindowsLinkScheme.Unregister));
+
+	private static void Both(Action first, Action second)
+	{
+		try
+		{
+			first();
+		}
+		finally
+		{
+			second();
+		}
+	}
 
 	public bool IsEnabled
 	{
