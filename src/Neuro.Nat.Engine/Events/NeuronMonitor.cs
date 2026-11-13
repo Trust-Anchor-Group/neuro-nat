@@ -41,6 +41,8 @@ public sealed class NeuronMonitor : IAsyncDisposable
 	/// <summary>What contacts answered when asked whether they are Neurons. Kept in <see cref="knownStore"/>.</summary>
 	private readonly ConcurrentDictionary<string, bool> known = new(StringComparer.OrdinalIgnoreCase);
 	private readonly IKnownNeuronStore knownStore;
+	/// <summary>What Neurons said they call themselves, by bare JID. Kept in <see cref="knownStore"/>.</summary>
+	private readonly ConcurrentDictionary<string, string> ownNames = new(StringComparer.OrdinalIgnoreCase);
 	private readonly Func<string, bool>? isOwnAddress;
 	private readonly Timer renewTimer;
 	private XmppClient? client;
@@ -58,8 +60,13 @@ public sealed class NeuronMonitor : IAsyncDisposable
 		this.isOwnAddress = isOwnAddress;
 		this.Discover = this.DiscoverAsync;
 
-		// Neurons known from before show at once, as offline until they are seen online.
-		foreach ((string jid, bool neuron) in this.knownStore.Load(session.Profile.Id))
+		// Neurons known from before show at once, as offline until they are seen online, and
+		// under the name they gave themselves.
+		IReadOnlyDictionary<string, bool> answers = this.knownStore.Load(session.Profile.Id);
+		foreach ((string jid, string name) in this.knownStore.LoadNames(session.Profile.Id))
+			this.ownNames[jid] = name;
+
+		foreach ((string jid, bool neuron) in answers)
 		{
 			if (this.IsOwn(jid))
 				continue;
@@ -129,8 +136,29 @@ public sealed class NeuronMonitor : IAsyncDisposable
 
 	private void Forget(string bareJid)
 	{
-		if (this.known.TryRemove(bareJid, out _))
+		bool named = this.ownNames.TryRemove(bareJid, out _);
+		if (this.known.TryRemove(bareJid, out _) || named)
 			_ = this.StoreAsync(() => this.knownStore.ForgetAsync(this.session.Profile.Id, bareJid));
+	}
+
+	/// <summary>
+	/// Keeps what a Neuron said it calls itself: its own domain. It is listed under that name
+	/// unless the roster gives it one. The domain of its address will not do, because a Neuron's
+	/// client is often an account on its parent broker.
+	/// </summary>
+	public void SetOwnName(string bareJid, string ownName)
+	{
+		ownName = ownName.Trim();
+		if (ownName.Length == 0 || this.IsOwn(bareJid) || !this.watches.TryGetValue(bareJid, out Watch? w))
+			return;
+
+		if (this.ownNames.TryGetValue(bareJid, out string? was) && string.Equals(was, ownName, StringComparison.Ordinal))
+			return;
+
+		this.ownNames[bareJid] = ownName;
+		w.Update(i => i with { OwnName = ownName });
+		_ = this.StoreAsync(() => this.knownStore.SetNameAsync(this.session.Profile.Id, bareJid, ownName));
+		this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	private async Task StoreAsync(Func<Task> work)
@@ -543,7 +571,13 @@ public sealed class NeuronMonitor : IAsyncDisposable
 	}
 
 	private Watch GetWatch(string bareJid)
-		=> this.watches.GetOrAdd(bareJid, j => new Watch(new WatchedNeuron { AccountId = this.session.Profile.Id, BareJid = j, State = WatchState.Waiting }));
+		=> this.watches.GetOrAdd(bareJid, j => new Watch(new WatchedNeuron
+		{
+			AccountId = this.session.Profile.Id,
+			BareJid = j,
+			State = WatchState.Waiting,
+			OwnName = this.ownNames.TryGetValue(j, out string? own) ? own : null,
+		}));
 
 	private async Task CheckAsync(string bareJid, string fullJid)
 	{
@@ -553,14 +587,9 @@ public sealed class NeuronMonitor : IAsyncDisposable
 
 		try
 		{
-			// Someone who has answered that they are not a Neuron is not asked again.
-			if (this.known.TryGetValue(bareJid, out bool was) && !was)
-			{
-				w.Update(i => i with { FullJid = fullJid, State = WatchState.NotANeuron });
-				this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
-				return;
-			}
-
+			// Someone who answered before that they are not a Neuron is asked again, once each time
+			// they come online: a Neuron asked while it was starting may have answered too early.
+			// They stay unlisted while the question is out.
 			w.Update(i => i with { FullJid = fullJid, State = WatchState.Discovering, Error = null });
 			this.NeuronsChanged?.Invoke(this, EventArgs.Empty);
 
@@ -796,7 +825,10 @@ public sealed class NeuronMonitor : IAsyncDisposable
 			}
 		}
 
-		/// <summary>Starts a check unless one is running or the stream is already live on this resource.</summary>
+		/// <summary>
+		/// Starts a check unless one is running, the stream is already live on this resource, or
+		/// this resource has answered since it came online that it is not a Neuron.
+		/// </summary>
 		public bool TryBegin(string fullJid)
 		{
 			lock (this.sync)

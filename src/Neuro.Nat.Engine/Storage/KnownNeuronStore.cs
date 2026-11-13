@@ -7,6 +7,8 @@ namespace Neuro.Nat.Engine.Storage;
 /// <summary>
 /// Remembers, per account and bare JID, whether a contact answered that it is a Neuron. So a
 /// Neuron that is down when NAT starts still shows, and a person is never shown as a Neuron.
+/// A "no" is not final: the contact is asked again when it comes online, and a new answer
+/// replaces the old one.
 /// </summary>
 public interface IKnownNeuronStore
 {
@@ -16,8 +18,14 @@ public interface IKnownNeuronStore
 	/// <summary>Keeps an answer, replacing an earlier one.</summary>
 	Task SetAsync(Guid accountId, string bareJid, bool isNeuron);
 
-	/// <summary>Forgets the answer for a contact.</summary>
+	/// <summary>Forgets the answer for a contact, and what it calls itself.</summary>
 	Task ForgetAsync(Guid accountId, string bareJid);
+
+	/// <summary>What the Neurons of an account call themselves, by bare JID. Only those that have said.</summary>
+	IReadOnlyDictionary<string, string> LoadNames(Guid accountId);
+
+	/// <summary>Keeps what a Neuron calls itself, replacing an earlier name.</summary>
+	Task SetNameAsync(Guid accountId, string bareJid, string ownName);
 }
 
 /// <summary>Answers kept only while NAT runs: for tests and for systems without a database.</summary>
@@ -39,6 +47,18 @@ public sealed class InMemoryKnownNeuronStore : IKnownNeuronStore
 	public Task ForgetAsync(Guid accountId, string bareJid)
 	{
 		this.answers.TryRemove(Key(accountId, bareJid), out _);
+		this.names.TryRemove(Key(accountId, bareJid), out _);
+		return Task.CompletedTask;
+	}
+
+	private readonly ConcurrentDictionary<(Guid, string), string> names = new();
+
+	public IReadOnlyDictionary<string, string> LoadNames(Guid accountId)
+		=> this.names.Where(p => p.Key.Item1 == accountId).ToDictionary(p => p.Key.Item2, p => p.Value, StringComparer.OrdinalIgnoreCase);
+
+	public Task SetNameAsync(Guid accountId, string bareJid, string ownName)
+	{
+		this.names[Key(accountId, bareJid)] = ownName;
 		return Task.CompletedTask;
 	}
 }
@@ -55,8 +75,15 @@ public sealed class DatabaseKnownNeuronStore(IDatabaseProvider db) : IKnownNeuro
 			try
 			{
 				Dictionary<string, bool> result = new(StringComparer.OrdinalIgnoreCase);
+				Dictionary<string, string> named = new(StringComparer.OrdinalIgnoreCase);
 				foreach (StoredKnownNeuron row in await Stored.All<StoredKnownNeuron>(db, new FilterFieldEqualTo("AccountId", Stored.Id(accountId))))
+				{
 					result[row.Jid] = row.IsNeuron;
+					if (!string.IsNullOrWhiteSpace(row.OwnName))
+						named[row.Jid] = row.OwnName;
+				}
+
+				this.names[accountId] = named;
 				return (IReadOnlyDictionary<string, bool>)result;
 			}
 			finally
@@ -100,6 +127,58 @@ public sealed class DatabaseKnownNeuronStore(IDatabaseProvider db) : IKnownNeuro
 		{
 			foreach (StoredKnownNeuron row in await this.RowsAsync(accountId, bareJid))
 				await db.Delete(row);
+
+			lock (this.names)
+			{
+				if (this.names.TryGetValue(accountId, out Dictionary<string, string>? named))
+					named.Remove(bareJid);
+			}
+		}
+		finally
+		{
+			this.gate.Release();
+		}
+	}
+
+	/// <summary>The names read with the answers, by account: one read of the database gives both.</summary>
+	private readonly ConcurrentDictionary<Guid, Dictionary<string, string>> names = new();
+
+	public IReadOnlyDictionary<string, string> LoadNames(Guid accountId)
+	{
+		if (!this.names.ContainsKey(accountId))
+			this.Load(accountId);
+
+		lock (this.names)
+		{
+			return this.names.TryGetValue(accountId, out Dictionary<string, string>? named)
+				? new Dictionary<string, string>(named, StringComparer.OrdinalIgnoreCase)
+				: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		}
+	}
+
+	public async Task SetNameAsync(Guid accountId, string bareJid, string ownName)
+	{
+		await this.gate.WaitAsync();
+		try
+		{
+			string jid = bareJid.ToLowerInvariant();
+			List<StoredKnownNeuron> rows = await this.RowsAsync(accountId, bareJid);
+			if (rows.Count == 0)
+			{
+				// Only a Neuron is asked for its name.
+				await db.Insert(new StoredKnownNeuron { AccountId = Stored.Id(accountId), Jid = jid, IsNeuron = true, OwnName = ownName, Answered = DateTime.UtcNow });
+			}
+			else if (!string.Equals(rows[0].OwnName, ownName, StringComparison.Ordinal))
+			{
+				rows[0].OwnName = ownName;
+				await db.Update(rows[0]);
+			}
+
+			lock (this.names)
+			{
+				if (this.names.TryGetValue(accountId, out Dictionary<string, string>? named))
+					named[jid] = ownName;
+			}
 		}
 		finally
 		{

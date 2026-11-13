@@ -138,6 +138,10 @@ public sealed class StoredKnownNeuron : IStoredObject
 
 	public bool IsNeuron { get; set; }
 
+	/// <summary>What the Neuron calls itself (its own domain). Empty until it has said.</summary>
+	[DefaultValueStringEmpty]
+	public string OwnName { get; set; } = string.Empty;
+
 	/// <summary>When it answered (UTC).</summary>
 	public DateTime Answered { get; set; }
 }

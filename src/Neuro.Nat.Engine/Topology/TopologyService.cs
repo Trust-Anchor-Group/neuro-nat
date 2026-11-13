@@ -91,9 +91,7 @@ public sealed class TopologyService(MonitorService monitors, ChatService chat)
 				return new NeuronAnswer(n, null, [], [], [], "The Neuron does not support topology graphs: " + Attention.NotificationClassifier.Plain(parent));
 
 			IReadOnlyList<DotEdge> parentEdges = DotGraph.Edges(parent);
-
-			// ParentGraph names the Neuron as it calls itself: its domain, or its account when it has none.
-			string? title = parentEdges.FirstOrDefault()?.To;
+			string? title = OwnName(parent);
 
 			string? s2s = await console.AskAsync("S2SGraph", timeout).WaitAsync(cancel);
 			IReadOnlyList<DotEdge> federation = s2s is null ? [] : DotGraph.Edges(s2s);
@@ -113,6 +111,21 @@ public sealed class TopologyService(MonitorService monitors, ChatService chat)
 		{
 			return new NeuronAnswer(n, null, [], [], [], ex.Message);
 		}
+	}
+
+	/// <summary>
+	/// What a Neuron calls itself, read from its answer to ParentGraph: its domain, or its account
+	/// when it has none. Null when the answer is no graph, names nothing, or names something that
+	/// cannot be a domain or an account (it is shown as a name, so it is not taken on trust).
+	/// </summary>
+	public static string? OwnName(string? parentGraph)
+	{
+		if (string.IsNullOrWhiteSpace(parentGraph) || !DotGraph.IsGraph(parentGraph))
+			return null;
+
+		// "parent" -> "self" [dir=back]: the first edge ends at the Neuron that answered.
+		string? name = DotGraph.Edges(parentGraph).FirstOrDefault()?.To.Trim();
+		return string.IsNullOrEmpty(name) || name.Length > 255 || name.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)) ? null : name;
 	}
 
 	/// <summary>Merges the Neurons' answers into one network.</summary>

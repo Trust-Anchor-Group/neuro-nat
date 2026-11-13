@@ -22,8 +22,11 @@ public sealed record Contact(
 	string? Status,
 	bool IsNeuron)
 {
-	/// <summary>The name on screen. A Neuron goes by its domain when it has no roster name.</summary>
-	public string Label => this.IsNeuron ? NeuronNames.Of(this.Name, this.BareJid) : string.IsNullOrWhiteSpace(this.Name) ? this.BareJid : this.Name;
+	/// <summary>What a Neuron calls itself, once it has said. See <see cref="WatchedNeuron.OwnName"/>.</summary>
+	public string? OwnName { get; init; }
+
+	/// <summary>The name on screen. A Neuron without a roster name goes by what it calls itself, else by the domain of its address.</summary>
+	public string Label => this.IsNeuron ? NeuronNames.Of(this.Name, this.OwnName, this.BareJid) : string.IsNullOrWhiteSpace(this.Name) ? this.BareJid : this.Name;
 }
 
 /// <summary>
@@ -53,8 +56,10 @@ public sealed partial class ChatService : IAsyncDisposable
 		this.saveTimer = new Timer(_ => this.SaveIfDirty(), null, Timeout.Infinite, Timeout.Infinite);
 
 		monitors.SubscriptionRequested += this.Monitors_SubscriptionRequested;
+		monitors.NeuronsChanged += this.Monitors_NeuronsChanged;
 		accounts.SessionsChanged += (_, _) => this.SyncSessions();
 		this.SyncSessions();
+		this.Monitors_NeuronsChanged(monitors, EventArgs.Empty);
 	}
 
 	/// <summary>Raised when a conversation gets a message or changes. Any thread.</summary>
@@ -322,14 +327,17 @@ public sealed partial class ChatService : IAsyncDisposable
 		}
 
 		NeuronMonitor? m = this.monitors.For(accountId);
-		HashSet<string> neurons = new(m?.Neurons.Select(n => n.BareJid) ?? [], StringComparer.OrdinalIgnoreCase);
+		Dictionary<string, string?> neurons = new(StringComparer.OrdinalIgnoreCase);
+		foreach (WatchedNeuron n in m?.Neurons ?? [])
+			neurons[n.BareJid] = n.OwnName;
 
 		return [.. c.Roster.Select(r =>
 		{
 			PresenceEventArgs? p = r.HasLastPresence ? r.LastPresence : null;
 			bool online = p?.IsOnline == true;
+			bool neuron = neurons.TryGetValue(r.BareJid, out string? ownName);
 			return new Contact(accountId, r.BareJid, r.Name ?? string.Empty, r.Groups ?? [], r.State, online,
-				online ? p!.Availability : Availability.Offline, p?.Status, neurons.Contains(r.BareJid));
+				online ? p!.Availability : Availability.Offline, p?.Status, neuron) { OwnName = ownName };
 		})];
 	}
 
@@ -756,6 +764,7 @@ public sealed partial class ChatService : IAsyncDisposable
 	public ValueTask DisposeAsync()
 	{
 		this.monitors.SubscriptionRequested -= this.Monitors_SubscriptionRequested;
+		this.monitors.NeuronsChanged -= this.Monitors_NeuronsChanged;
 		foreach (AccountChat a in this.attached.Values)
 			this.Detach(a);
 

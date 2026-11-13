@@ -51,6 +51,12 @@ public sealed record WatchedNeuron
 	/// <summary>Roster name, when the operator gave one.</summary>
 	public string? Name { get; init; }
 
+	/// <summary>
+	/// What the Neuron calls itself (its own domain), once it has said. Its client is often an
+	/// account on its parent broker, so the domain of <see cref="BareJid"/> can be another Neuron's.
+	/// </summary>
+	public string? OwnName { get; init; }
+
 	public WatchState State { get; init; }
 
 	public string? Error { get; init; }
@@ -112,6 +118,6 @@ public sealed record WatchedNeuron
 	/// <summary>Details for the tooltip: errors, or what the history covers.</summary>
 	public string? Details => this.Error ?? this.HistoryError ?? (this.HistoryFrom is DateTime f ? $"History read from {f:yyyy-MM-dd HH:mm}. Warnings and worse only." : null);
 
-	/// <summary>The name on screen: the roster name, else the domain. See <see cref="NeuronNames"/>.</summary>
-	public string Label => NeuronNames.Of(this.Name, this.BareJid);
+	/// <summary>The name on screen: the roster name, else what it calls itself, else the domain of its address. See <see cref="NeuronNames"/>.</summary>
+	public string Label => NeuronNames.Of(this.Name, this.OwnName, this.BareJid);
 }

@@ -1,9 +1,14 @@
 namespace Neuro.Nat.Engine.Events;
 
 /// <summary>
-/// The name a Neuron goes by on screen: the roster name when the user gave one, else its domain.
-/// Two Neurons that would get the same name show their full addresses instead.
+/// The name a Neuron goes by on screen: the roster name when the user gave one, else what the
+/// Neuron calls itself, else the domain of its address. Two Neurons that would get the same name
+/// show their full addresses instead.
 /// </summary>
+/// <remarks>
+/// The domain of the address is only a stand-in until the Neuron has said its name: a Neuron's
+/// own client is often an account on its parent broker, and then that domain is the parent's.
+/// </remarks>
 public static class NeuronNames
 {
 	/// <summary>The domain of a JID: the part after "@", without a resource. A JID without "@" is a domain already.</summary>
@@ -29,13 +34,21 @@ public static class NeuronNames
 		return domain.Length > 0 ? domain : bareJid.Split('/')[0].TrimEnd('@');
 	}
 
+	/// <summary>The roster name if there is one, else what the Neuron calls itself, else the domain of its address.</summary>
+	public static string Of(string? rosterName, string? ownName, string bareJid)
+		=> Of(Given(rosterName, ownName), bareJid);
+
+	/// <summary>The name a Neuron was given: by the user in the roster, else by itself. Null when neither.</summary>
+	private static string? Given(string? rosterName, string? ownName)
+		=> !string.IsNullOrWhiteSpace(rosterName) ? rosterName : string.IsNullOrWhiteSpace(ownName) ? null : ownName;
+
 	/// <summary>The name of one Neuron among the ones known: its full address when another known Neuron would get the same name.</summary>
 	public static string For(IEnumerable<WatchedNeuron> known, string bareJid)
 	{
 		List<WatchedNeuron> all = [.. known];
 		WatchedNeuron? self = all.FirstOrDefault(n => string.Equals(n.BareJid, bareJid, StringComparison.OrdinalIgnoreCase));
-		string name = Of(self?.Name, bareJid);
-		return all.Any(n => !string.Equals(n.BareJid, bareJid, StringComparison.OrdinalIgnoreCase) && string.Equals(Of(n.Name, n.BareJid), name, StringComparison.OrdinalIgnoreCase))
+		string name = Of(self?.Name, self?.OwnName, bareJid);
+		return all.Any(n => !string.Equals(n.BareJid, bareJid, StringComparison.OrdinalIgnoreCase) && string.Equals(n.Label, name, StringComparison.OrdinalIgnoreCase))
 			? bareJid
 			: name;
 	}
@@ -61,7 +74,7 @@ public static class NeuronNames
 		return result;
 	}
 
-	/// <summary>Names for the known Neurons, by bare JID.</summary>
+	/// <summary>Names for the known Neurons, by bare JID. Seen through two accounts, a roster name beats what the Neuron calls itself.</summary>
 	public static IReadOnlyDictionary<string, string> Distinct(IEnumerable<WatchedNeuron> neurons)
-		=> Distinct(neurons.Select(n => (n.Name, n.BareJid)));
+		=> Distinct(neurons.OrderBy(n => string.IsNullOrWhiteSpace(n.Name)).Select(n => (Given(n.Name, n.OwnName), n.BareJid)));
 }

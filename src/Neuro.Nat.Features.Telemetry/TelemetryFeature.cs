@@ -425,15 +425,26 @@ public sealed class TelemetryFeature : INatFeature
 		return !string.IsNullOrEmpty(connected) ? connected : s.Profile.EffectiveDomain;
 	}
 
-	/// <summary>True when the Neuron is the account's own (its domain is the account's).</summary>
+	/// <summary>
+	/// True when the Neuron is the account's own: it calls itself by the account's domain. Until it
+	/// has said what it calls itself, the domain of its address stands in, though that can be its
+	/// parent broker's (see <see cref="WatchedNeuron.OwnName"/>).
+	/// </summary>
 	private bool Hosts(Guid accountId, string neuronJid)
 	{
 		if (this.DomainOf(accountId) is not string domain)
 			return false;
 
+		string? profileDomain = this.host?.Accounts.Get(accountId)?.Profile.EffectiveDomain;
+		bool IsAccounts(string name) => string.Equals(name, domain, StringComparison.OrdinalIgnoreCase) || string.Equals(name, profileDomain, StringComparison.OrdinalIgnoreCase);
+
+		string? own = this.host?.Monitors.For(accountId)?.Neurons
+			.FirstOrDefault(n => string.Equals(n.BareJid, neuronJid, StringComparison.OrdinalIgnoreCase))?.OwnName;
+		if (!string.IsNullOrWhiteSpace(own))
+			return IsAccounts(own);
+
 		string d = NeuronNames.Domain(neuronJid);
-		return d.Length == 0 || string.Equals(d, domain, StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(d, this.host?.Accounts.Get(accountId)?.Profile.EffectiveDomain, StringComparison.OrdinalIgnoreCase);
+		return d.Length == 0 || IsAccounts(d);
 	}
 
 	private static string KeyOf(Guid accountId, string domain) => accountId.ToString("N") + "|" + domain.ToLowerInvariant();

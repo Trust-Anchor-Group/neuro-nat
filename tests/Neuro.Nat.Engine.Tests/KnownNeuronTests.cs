@@ -10,8 +10,9 @@ namespace Neuro.Nat.Engine.Tests;
 
 /// <summary>
 /// Only contacts that answered that they are Neurons are listed as Neurons, the answer is kept
-/// across restarts, and the user's own addresses never are. No live Neuron: the answer to the
-/// service discovery question is given by the test.
+/// across restarts, and the user's own addresses never are. A "no" is asked again each time the
+/// contact comes online. No live Neuron: the answer to the service discovery question is given
+/// by the test.
 /// </summary>
 public class KnownNeuronTests : IDisposable
 {
@@ -135,19 +136,85 @@ public class KnownNeuronTests : IDisposable
 
 			await WaitForAnswerAsync(store, account, Kim, false);
 
-			// A restart: the answer is remembered, and Kim is not asked again.
+			// A restart: the answer is remembered, so Kim is not listed before or while being asked
+			// again, and is asked once, not at every presence.
 			List<string> asked = [];
-			NeuronMonitor again = this.Start(manager, account, new DatabaseKnownNeuronStore(db), _ => true, asked);
+			NeuronMonitor again = this.Start(manager, account, new DatabaseKnownNeuronStore(db), _ => false, asked);
 			again.RosterItemChanged(Kim, SubscriptionState.Both, "Kim");
 			Assert.Empty(again.Neurons);
 			await again.PresenceAsync(Kim, Kim + "/laptop", true);
+			await again.PresenceAsync(Kim, Kim + "/laptop", true);
 			Assert.Empty(again.Neurons);
-			Assert.Empty(asked);
+			Assert.Equal([Kim + "/laptop"], asked);
+			Assert.False(await again.IsNeuronSenderAsync(Kim + "/laptop"));
 		}
 		finally
 		{
 			await db.Stop();
 		}
+	}
+
+	[Fact]
+	public async Task NeuronThatAnsweredNoTooEarlyIsAskedAgain()
+	{
+		var (manager, account) = await this.AccountsAsync();
+		FilesProvider db = await this.OpenDatabaseAsync();
+		try
+		{
+			// Gamma is asked while it starts, before it can say that it is a Neuron.
+			bool ready = false;
+			List<string> asked = [];
+			DatabaseKnownNeuronStore store = new(db);
+			NeuronMonitor monitor = this.Start(manager, account, store, _ => ready, asked);
+
+			monitor.RosterItemChanged(Gamma, SubscriptionState.Both, "Gamma");
+			await monitor.PresenceAsync(Gamma, Gamma + "/neuron", true);
+			Assert.Empty(monitor.Neurons);
+			await WaitForAnswerAsync(store, account, Gamma, false);
+
+			// More presence from the same client is not a reason to ask again.
+			ready = true;
+			await monitor.PresenceAsync(Gamma, Gamma + "/neuron", true);
+			Assert.Empty(monitor.Neurons);
+			Assert.Single(asked);
+
+			// It went offline and came back: asked again, and listed now.
+			await monitor.PresenceAsync(Gamma, Gamma + "/neuron", false);
+			await monitor.PresenceAsync(Gamma, Gamma + "/neuron", true);
+			Assert.Equal(2, asked.Count);
+			Assert.Equal(Gamma, Assert.Single(monitor.Neurons).BareJid);
+			await WaitForAnswerAsync(store, account, Gamma, true);
+		}
+		finally
+		{
+			await db.Stop();
+		}
+	}
+
+	[Fact]
+	public async Task StoredNoIsAskedAgainAfterARestartAndAReconnect()
+	{
+		var (manager, account) = await this.AccountsAsync();
+		InMemoryKnownNeuronStore store = new();
+		await store.SetAsync(account, Gamma, false);
+
+		// A restart with the old "no" in the store: nothing is listed, and Gamma still says no.
+		bool ready = false;
+		List<string> asked = [];
+		NeuronMonitor monitor = this.Start(manager, account, store, _ => ready, asked);
+		monitor.RosterItemChanged(Gamma, SubscriptionState.Both, "Gamma");
+		await monitor.PresenceAsync(Gamma, Gamma + "/neuron", true);
+		Assert.Empty(monitor.Neurons);
+		Assert.Single(asked);
+
+		// The account reconnects and sees Gamma online again: asked again, and it is a Neuron.
+		ready = true;
+		monitor.ConnectionLost();
+		Assert.Empty(monitor.Neurons);
+		await monitor.PresenceAsync(Gamma, Gamma + "/neuron", true);
+		Assert.Equal(2, asked.Count);
+		Assert.Equal(Gamma, Assert.Single(monitor.Neurons).BareJid);
+		Assert.True(store.Load(account)[Gamma]);
 	}
 
 	[Fact]
