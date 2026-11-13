@@ -73,6 +73,20 @@ public sealed partial class FeatureSet : IFeatureHost, IAsyncDisposable
 		this.WatchSessions();
 	}
 
+	private Engine.Chat.ChatService? chat;
+
+	/// <summary>Lets the features use the end-to-end encryption chat keeps on each connection. The first chat given stays.</summary>
+	public void UseChat(Engine.Chat.ChatService chat)
+	{
+		lock (this.sync)
+			this.chat ??= chat;
+	}
+
+	public Waher.Networking.XMPP.IEndToEndEncryption? EncryptionOf(Guid accountId) => this.chat?.EncryptionOf(accountId);
+
+	public Task<string?> FetchKeysOfAsync(Guid accountId, string fullJid)
+		=> this.chat is Engine.Chat.ChatService chat ? chat.FetchKeysOfAsync(accountId, fullJid) : Task.FromResult<string?>("no encryption");
+
 	private void Accounts_SessionsChanged(object? sender, EventArgs e) => this.WatchSessions();
 
 	private void WatchSessions()

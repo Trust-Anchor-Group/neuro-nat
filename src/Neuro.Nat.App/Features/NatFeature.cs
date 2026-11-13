@@ -107,6 +107,18 @@ public interface IFeatureHost
 
 	/// <summary>A Neuron's software is not what it was the last time NAT read it. Any thread.</summary>
 	event EventHandler<FeatureNeuron>? SoftwareChanged;
+
+	/// <summary>
+	/// The end-to-end encryption on an account's connection (the one chat uses), for a feature
+	/// that sends something a Neuron takes only encrypted. Null when there is none.
+	/// </summary>
+	Waher.Networking.XMPP.IEndToEndEncryption? EncryptionOf(Guid accountId) => null;
+
+	/// <summary>
+	/// Makes sure the encryption keys of an online resource are known, asking it for them when its
+	/// presence did not carry them. Null when they are known, else why they are not, for the log.
+	/// </summary>
+	Task<string?> FetchKeysOfAsync(Guid accountId, string fullJid) => Task.FromResult<string?>("no encryption");
 }
 
 /// <summary>

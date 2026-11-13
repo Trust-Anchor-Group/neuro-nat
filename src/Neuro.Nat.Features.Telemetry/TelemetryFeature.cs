@@ -17,7 +17,9 @@ namespace Neuro.Nat.Features.Telemetry;
 /// <summary>
 /// App telemetry (the Neuro.App.Telemetry package) on the Neurons. It asks each account's own
 /// Neuron once when the account signs in, and again when that Neuron's software changes, whether
-/// the package is there and may be used. Where it is not, NAT shows nothing of it. Where it is,
+/// the package is there and may be used. Another Neuron the account administers is asked when its
+/// events start to stream, over XMPP: the account has no login to its web, but the package lets
+/// the Neuron's administrators in by the address they call from. Where it is not, NAT shows nothing of it. Where it is,
 /// the Software tab says so in one quiet line, the Neuron's page gets an App telemetry tab, the
 /// rail an App telemetry place, the Inbox what needs attention, and the big screen App numbers.
 /// </summary>
@@ -57,6 +59,8 @@ public sealed class TelemetryFeature : INatFeature
 	private readonly Dictionary<string, CollectorData> collectors = [];
 	private readonly Dictionary<string, DashboardViewModel> dashboards = [];
 	private readonly Dictionary<string, DateTime> firstSeen = [];
+	/// <summary>The stream (by when it went live) on which each other Neuron was last asked over XMPP.</summary>
+	private readonly Dictionary<string, DateTime> askedLive = [];
 	private XmppTokens? xmppTokens;
 	private TelemetryFetcher? fetcher;
 	private IFeatureHost? host;
@@ -79,7 +83,8 @@ public sealed class TelemetryFeature : INatFeature
 		if (handler is SocketsHttpHandler sockets)
 			sockets.AllowAutoRedirect = false;
 
-		this.http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+		// One client for both ways in: a request that names a Neuron to reach over XMPP goes there, the rest to the web.
+		this.http = new HttpClient(new XmppRoutingHandler(handler, this.OverXmppAsync)) { Timeout = TimeSpan.FromSeconds(15) };
 		this.tokensGiven = tokens;
 		this.addressesGiven = addresses;
 		this.utcNow = utcNow ?? (() => DateTime.UtcNow);
@@ -99,8 +104,7 @@ public sealed class TelemetryFeature : INatFeature
 	public void Start(IFeatureHost host)
 	{
 		this.host = host;
-		if (this.tokensGiven is null)
-			this.xmppTokens = new XmppTokens(host.Accounts);
+		this.xmppTokens = new XmppTokens(host.Accounts, host.Monitors, host.EncryptionOf, host.FetchKeysOfAsync);
 
 		this.fetcher = new TelemetryFetcher(this.http, this.TokenAsync, this.store, this.utcNow);
 		_ = this.fetcher.LoadAsync();
@@ -110,7 +114,13 @@ public sealed class TelemetryFeature : INatFeature
 		{
 			if (this.Hosts(n.AccountId, n.NeuronJid))
 				this.Ask(n.AccountId);
+			else
+				this.AskOverXmpp(n.AccountId, n.NeuronJid);
 		};
+
+		// Another Neuron the account administers: asked when its events start to stream.
+		host.Monitors.NeuronsChanged += this.Monitors_NeuronsChanged;
+		this.Monitors_NeuronsChanged(host.Monitors, EventArgs.Empty);
 
 		// The Inbox and the big screen follow the numbers without the dashboard open: at most once an hour.
 		this.hourly = new Timer(_ => this.RefreshAll(), null, TelemetryFetcher.Fresh, TelemetryFetcher.Fresh);
@@ -120,6 +130,14 @@ public sealed class TelemetryFeature : INatFeature
 		=> this.tokensGiven is not null ? this.tokensGiven(accountId, cancel)
 			: this.xmppTokens is not null ? this.xmppTokens.GetAsync(accountId, cancel)
 			: Task.FromResult<string?>(null);
+
+	/// <summary>Stands in for the Neuron's own client in tests: answers a request that would go over XMPP.</summary>
+	internal Func<XmppRoute, HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? OverXmppGiven { get; set; }
+
+	private Task<HttpResponseMessage> OverXmppAsync(XmppRoute route, HttpRequestMessage request, CancellationToken cancel)
+		=> this.OverXmppGiven is not null ? this.OverXmppGiven(route, request, cancel)
+			: this.xmppTokens is not null ? this.xmppTokens.SendAsync(route, request, cancel)
+			: throw new HttpRequestException("Not started.");
 
 	// ----- What NAT shows -----
 
@@ -137,15 +155,22 @@ public sealed class TelemetryFeature : INatFeature
 		};
 	}
 
-	/// <summary>What was last found on a Neuron, or null when it was not asked (or is not the account's own Neuron).</summary>
+	/// <summary>What was last found on a Neuron, or null when it was not asked.</summary>
 	public TelemetryStatus? StatusOf(Guid accountId, string neuronJid)
 	{
-		if (!this.Hosts(accountId, neuronJid) || this.DomainOf(accountId) is not string domain)
+		if (this.NameFor(accountId, neuronJid) is not string name)
 			return null;
 
 		lock (this.sync)
-			return this.found.TryGetValue(KeyOf(accountId, domain), out TelemetryStatus? s) ? s : null;
+			return this.found.TryGetValue(KeyOf(accountId, name), out TelemetryStatus? s) ? s : null;
 	}
+
+	/// <summary>
+	/// What a Neuron goes by in what is found and kept: the account's domain for the account's own
+	/// Neuron (asked over the web), else the address of the Neuron's own client (asked over XMPP).
+	/// </summary>
+	private string? NameFor(Guid accountId, string neuronJid)
+		=> this.Hosts(accountId, neuronJid) ? this.DomainOf(accountId) : neuronJid;
 
 	/// <summary>"App telemetry: installed, numbers up to yesterday, collects from 4 Neurons"</summary>
 	internal string Describe(TelemetryStatus s)
@@ -181,9 +206,20 @@ public sealed class TelemetryFeature : INatFeature
 
 				int bar = key.IndexOf('|', StringComparison.Ordinal);
 				if (Guid.TryParseExact(key[..bar], "N", out Guid account))
-					present.Add((new TelemetryCollector(account, key[(bar + 1)..], s.WebAddress), s));
+				{
+					string name = key[(bar + 1)..];
+					present.Add((new TelemetryCollector(account, name, s.WebAddress) { NeuronJid = XmppRoute.Is(s.WebAddress) ? name : null }, s));
+				}
 			}
 		}
+
+		// A Neuron asked over XMPP before it had said what it calls itself may be the account's own: that one is asked over the web.
+		// And a Neuron reached both ways (an account on it, and another account that administers it) is one dashboard: the web's.
+		static string Self((TelemetryCollector Collector, TelemetryStatus Status) p) => p.Status.Neuron is { Length: > 0 } self ? self : p.Collector.Domain;
+		HashSet<string> reached = new(present.Where(p => p.Collector.NeuronJid is null).Select(Self), StringComparer.OrdinalIgnoreCase);
+		present = [.. present
+			.OrderBy(p => p.Collector.Key, StringComparer.Ordinal)
+			.Where(p => p.Collector.NeuronJid is not string jid || (!this.Hosts(p.Collector.AccountId, jid) && reached.Add(Self(p))))];
 
 		HashSet<string> collected = new(present.Where(p => p.Status.Sources > 0).SelectMany(p => p.Status.SourceNames), StringComparer.OrdinalIgnoreCase);
 		return [.. present
@@ -231,10 +267,25 @@ public sealed class TelemetryFeature : INatFeature
 
 	public IReadOnlyList<FeatureTab> NeuronTabs(Guid accountId, string neuronJid)
 	{
-		if (!this.Hosts(accountId, neuronJid) || this.DomainOf(accountId) is not string domain)
+		if (this.NameFor(accountId, neuronJid) is not string name)
 			return [];
 
-		TelemetryCollector? c = this.Collectors().FirstOrDefault(x => x.AccountId == accountId && string.Equals(x.Domain, domain, StringComparison.OrdinalIgnoreCase));
+		string key = KeyOf(accountId, name);
+		IReadOnlyList<TelemetryCollector> all = this.Collectors();
+		TelemetryCollector? c = all.FirstOrDefault(x => x.Key == key);
+
+		// Reached both ways, this Neuron's dashboard is the web's: the tab shows that one.
+		if (c is null && this.StatusOf(accountId, neuronJid) is { Presence: FeaturePresence.Present, Neuron: { Length: > 0 } self })
+		{
+			c = all.FirstOrDefault(x =>
+			{
+				TelemetryStatus? s;
+				lock (this.sync)
+					this.found.TryGetValue(x.Key, out s);
+				return string.Equals(s?.Neuron, self, StringComparison.OrdinalIgnoreCase);
+			});
+		}
+
 		return c is null ? [] : [new FeatureTab(TabKey, Title, () => this.DashboardOf(c))];
 	}
 
@@ -458,6 +509,43 @@ public sealed class TelemetryFeature : INatFeature
 		this.Track(this.RoundAsync(accountId, domain));
 	}
 
+	/// <summary>Asks another Neuron the account administers, over XMPP, in the background.</summary>
+	private void AskOverXmpp(Guid accountId, string neuronJid)
+	{
+		if (this.stopping.IsCancellationRequested)
+			return;
+
+		this.Track(this.RoundAsync(accountId, neuronJid, overXmpp: true));
+	}
+
+	/// <summary>
+	/// A Neuron's events started to stream, so this account administers it. Unless it is the
+	/// account's own (asked over the web at sign-in), it is asked over XMPP: once per stream, so
+	/// a Neuron that got the package while it was away is found when it comes back.
+	/// </summary>
+	private void Monitors_NeuronsChanged(object? sender, EventArgs e)
+	{
+		if (this.host is not IFeatureHost host || this.stopping.IsCancellationRequested)
+			return;
+
+		foreach (WatchedNeuron n in host.Monitors.Neurons)
+		{
+			if (n.State != WatchState.Live || n.LiveSince is not DateTime since || this.Hosts(n.AccountId, n.BareJid))
+				continue;
+
+			string key = KeyOf(n.AccountId, n.BareJid);
+			lock (this.sync)
+			{
+				if (this.askedLive.TryGetValue(key, out DateTime asked) && asked == since)
+					continue;
+
+				this.askedLive[key] = since;
+			}
+
+			this.AskOverXmpp(n.AccountId, n.BareJid);
+		}
+	}
+
 	private void Track(Task t)
 	{
 		lock (this.sync)
@@ -490,7 +578,11 @@ public sealed class TelemetryFeature : INatFeature
 		}
 	}
 
-	private async Task RoundAsync(Guid accountId, string domain)
+	/// <summary>
+	/// One round of asking a Neuron. <paramref name="domain"/> is what it goes by: the account's
+	/// domain over the web, the address of the Neuron's own client over XMPP.
+	/// </summary>
+	private async Task RoundAsync(Guid accountId, string domain, bool overXmpp = false)
 	{
 		string key = KeyOf(accountId, domain);
 		long round = Interlocked.Increment(ref this.rounds);
@@ -500,7 +592,9 @@ public sealed class TelemetryFeature : INatFeature
 		TelemetryStatus result;
 		try
 		{
-			result = await this.AskStatusAsync(accountId, domain, this.stopping.Token);
+			result = overXmpp
+				? await this.AskStatusOverXmppAsync(accountId, domain, this.stopping.Token)
+				: await this.AskStatusAsync(accountId, domain, this.stopping.Token);
 		}
 		catch (Exception ex)
 		{
@@ -520,11 +614,13 @@ public sealed class TelemetryFeature : INatFeature
 			if (result.Presence == FeaturePresence.Unknown && was is not null)
 				result = was;
 
-			changed = was != result;
+			// Most Neurons an account administers have no telemetry: finding nothing on one is no news.
+			changed = was != result && (!overXmpp || was is not null || result.Presence is FeaturePresence.Present or FeaturePresence.NotAllowed);
 			this.found[key] = result;
 		}
 
-		AppLog.Info($"App telemetry on {domain}: {result.Presence}" + (result.Problem is null ? "." : $" ({result.Problem})."));
+		string where = overXmpp ? this.NameOf(domain) + ", over XMPP" : domain;
+		AppLog.Info($"App telemetry on {where}: {result.Presence}" + (result.Problem is null ? "." : $" ({result.Problem})."));
 		if (changed)
 			this.FoundChanged();
 
@@ -532,6 +628,41 @@ public sealed class TelemetryFeature : INatFeature
 		TelemetryCollector? c = this.FetchesNumbers ? this.Collectors().FirstOrDefault(x => x.Key == key) : null;
 		if (c is not null)
 			await this.RefreshAsync(c);
+	}
+
+	/// <summary>
+	/// One round over XMPP: GET /Status sent to the Neuron's own client. No token and no web
+	/// address: the Neuron goes by the address the request comes from, and lets its administrators in.
+	/// </summary>
+	private async Task<TelemetryStatus> AskStatusOverXmppAsync(Guid accountId, string neuronJid, CancellationToken cancel)
+	{
+		try
+		{
+			using HttpRequestMessage request = new(HttpMethod.Get, new Uri(XmppRoute.Address, ApiPath + "/Status"));
+			request.Options.Set(XmppRoute.Option, new XmppRoute(accountId, neuronJid));
+			request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+			using HttpResponseMessage response = await this.http.SendAsync(request, cancel);
+			string body = await response.Content.ReadAsStringAsync(cancel);
+
+			return response.StatusCode switch
+			{
+				HttpStatusCode.OK => TelemetryStatus.Parse(body, XmppRoute.Address) ?? TelemetryStatus.Absent("not the telemetry API"),
+				HttpStatusCode.Forbidden => new TelemetryStatus { Presence = FeaturePresence.NotAllowed, WebAddress = XmppRoute.Address, Privilege = TelemetryStatus.PrivilegeIn(body) },
+				HttpStatusCode.NotFound => TelemetryStatus.Absent("404"),
+
+				// The package is there, but an earlier one: it knows only logins to the Neuron's web, and this account has none.
+				HttpStatusCode.Unauthorized => TelemetryStatus.Unknown("401, the package there does not let administrators in over XMPP"),
+				HttpStatusCode code => TelemetryStatus.Unknown(((int)code).ToString(CultureInfo.InvariantCulture)),
+			};
+		}
+		catch (HttpRequestException ex)
+		{
+			return TelemetryStatus.Unknown(ex.Message);
+		}
+		catch (TaskCanceledException) when (!cancel.IsCancellationRequested)
+		{
+			return TelemetryStatus.Unknown("timeout");
+		}
 	}
 
 	/// <summary>One round: a fresh token, then GET /Status on each web address until one answers.</summary>
@@ -618,6 +749,8 @@ public sealed class TelemetryFeature : INatFeature
 	public async ValueTask DisposeAsync()
 	{
 		this.stopping.Cancel();
+		if (this.host is IFeatureHost host)
+			host.Monitors.NeuronsChanged -= this.Monitors_NeuronsChanged;
 		if (this.hourly is not null)
 			await this.hourly.DisposeAsync();
 		try

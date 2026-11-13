@@ -7,9 +7,16 @@ using Neuro.Nat.Features.Telemetry.Api;
 
 namespace Neuro.Nat.Features.Telemetry.Data;
 
-/// <summary>A Neuron whose telemetry API answers this account: its numbers make one dashboard.</summary>
+/// <summary>
+/// A Neuron whose telemetry API answers this account: its numbers make one dashboard. The account's
+/// own Neuron goes by its domain and is asked over the web. Another Neuron the account administers
+/// goes by the address of its own client (<see cref="NeuronJid"/>) and is asked over XMPP.
+/// </summary>
 public sealed record TelemetryCollector(Guid AccountId, string Domain, Uri WebAddress)
 {
+	/// <summary>The bare address of the Neuron's own client when the API is reached over XMPP. Null over the web.</summary>
+	public string? NeuronJid { get; init; }
+
 	/// <summary>The key its answers are kept under. Two collectors never share one.</summary>
 	public string Key => this.AccountId.ToString("N") + "|" + this.Domain.ToLowerInvariant();
 }
@@ -144,13 +151,17 @@ public sealed class TelemetryFetcher : IDisposable
 		string? problem;
 		try
 		{
-			string? token = await this.TokenAsync(c.AccountId, cancel);
-			if (string.IsNullOrEmpty(token))
+			// Over XMPP the Neuron goes by the address the request comes from: no token.
+			string? token = c.NeuronJid is null ? await this.TokenAsync(c.AccountId, cancel) : null;
+			if (c.NeuronJid is null && string.IsNullOrEmpty(token))
 				problem = "Not signed in";
 			else
 			{
 				using HttpRequestMessage request = new(HttpMethod.Get, new Uri(c.WebAddress, TelemetryFeature.ApiPath + path));
-				request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+				if (c.NeuronJid is string neuron)
+					request.Options.Set(XmppRoute.Option, new XmppRoute(c.AccountId, neuron));
+				else
+					request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 				request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 				if (kept?.ETag is string etag && EntityTagHeaderValue.TryParse(etag, out EntityTagHeaderValue? tag))
 					request.Headers.IfNoneMatch.Add(tag);

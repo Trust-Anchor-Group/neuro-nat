@@ -93,6 +93,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		this.Sources = new SourcesViewModel(fleet.Monitors, accounts);
 
 		Engine.Chat.ChatService chatService = this.chatService = chat ?? new Engine.Chat.ChatService(accounts, fleet.Monitors);
+		this.Features.UseChat(chatService);
 		this.devicesService = devices ?? new Engine.Devices.DevicesService(accounts);
 		this.identityService = identities ?? new Engine.Identity.IdentityService(accounts, chatService);
 

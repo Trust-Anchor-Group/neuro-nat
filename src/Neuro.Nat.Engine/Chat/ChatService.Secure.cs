@@ -15,6 +15,51 @@ using Waher.Security;
 
 namespace Neuro.Nat.Engine.Chat;
 
+/// <summary>
+/// End-to-end encryption that settles for a key type both ends have. The library encrypts to the
+/// far end's best key and gives up when this end has no key of that type, sending in the clear
+/// where that is allowed. A Neuron's client publishes stronger and newer key types than the
+/// Ed25519 and Ed448 an operator's client has, so nothing sent to it was ever encrypted. Here, when
+/// the best key will not do, the strongest safe key type the two ends share is used instead.
+/// </summary>
+internal sealed class SharedKeyEndpointSecurity(XmppClient client, int securityStrength, params IE2eEndpoint[] localEndpoints)
+	: EndpointSecurity(client, securityStrength, localEndpoints)
+{
+	public override async Task<bool> Encrypt(XmppClient Client, string Id, string Type, string From, string To, bool Pqc, int MinSecurityStrength, string DataXml, System.Text.StringBuilder Xml)
+	{
+		int start = Xml.Length;
+		if (await base.Encrypt(Client, Id, Type, From, To, Pqc, MinSecurityStrength, DataXml, Xml))
+			return true;
+
+		Xml.Length = start;
+		if (this.Shared(To, Pqc, MinSecurityStrength) is not (IE2eEndpoint local, IE2eEndpoint remote))
+			return false;
+
+		byte[] data = System.Text.Encoding.UTF8.GetBytes(DataXml);
+		uint counter = await local.GetNextCounter();
+		return local.DefaultSymmetricCipher.Encrypt(Id, Type, From, To, counter, data, Xml, local, remote);
+	}
+
+	/// <summary>The strongest safe key type both ends have: this end's key and the far end's. Null when they share none.</summary>
+	public (IE2eEndpoint Local, IE2eEndpoint Remote)? Shared(string fullJid, bool pqc = false, int minSecurityStrength = 0)
+	{
+		(IE2eEndpoint, IE2eEndpoint)? best = null;
+		foreach (IE2eEndpoint remote in this.GetE2eEndpoints(fullJid) ?? [])
+		{
+			if (!remote.Safe || remote.SecurityStrength < minSecurityStrength || (pqc && !remote.PostQuantumCryptography))
+				continue;
+
+			if (this.FindLocalEndpoint(remote.LocalName, remote.Namespace) is IE2eEndpoint local &&
+				(best is not (_, IE2eEndpoint had) || remote.SecurityStrength > had.SecurityStrength))
+			{
+				best = (local, remote);
+			}
+		}
+
+		return best;
+	}
+}
+
 /// <summary>What one account's connection carries for chat: encryption, file upload and rooms.</summary>
 internal sealed class AccountChat : IDisposable
 {
@@ -26,7 +71,7 @@ internal sealed class AccountChat : IDisposable
 
 		// The same key types and strength as IoTClient, Lil'Sis and Neuro-Access. Keys are
 		// published in presence; contacts' keys arrive the same way.
-		this.E2e = new EndpointSecurity(client, 128, new Edwards25519Endpoint(), new Edwards448Endpoint());
+		this.E2e = new SharedKeyEndpointSecurity(client, 128, new Edwards25519Endpoint(), new Edwards448Endpoint());
 		this.Upload = new HttpFileUploadClient(client);
 		this.Muc = new MultiUserChatClient(client, string.Empty);
 	}
@@ -34,7 +79,7 @@ internal sealed class AccountChat : IDisposable
 	public Guid AccountId { get; }
 	public XmppClient Client { get; }
 	public bool TrustServer { get; }
-	public EndpointSecurity E2e { get; }
+	public SharedKeyEndpointSecurity E2e { get; }
 	public HttpFileUploadClient Upload { get; private set; }
 	public MultiUserChatClient Muc { get; }
 
@@ -115,6 +160,59 @@ public sealed partial class ChatService
 		// The Ed25519 key, when the contact has one, so both sides show the same fingerprint.
 		IE2eEndpoint? key = keys.FirstOrDefault(k => k.LocalName == "ed25519") ?? keys.FirstOrDefault();
 		return new ContactSecurity(true, key is null ? null : Fingerprint(key.PublicKey), key?.LocalName, secure.Count);
+	}
+
+	/// <summary>
+	/// The end-to-end encryption on an account's connection, for what else must travel encrypted
+	/// (a Neuron takes HTTP over XMPP only that way). The same keys as chat: there is one set per
+	/// connection, published in presence. Null while the account has no connection.
+	/// </summary>
+	public IEndToEndEncryption? EncryptionOf(Guid accountId) => this.ChatOf(accountId)?.E2e;
+
+	/// <summary>
+	/// Makes sure the keys of an online resource are known, asking it for them when its presence did
+	/// not carry them. Null when they are known, else why they are not, for the log.
+	/// </summary>
+	public async Task<string?> FetchKeysOfAsync(Guid accountId, string fullJid)
+	{
+		if (this.ChatOf(accountId) is not AccountChat a)
+			return "no connection";
+
+		// Keys of kinds this end has none of cannot be encrypted to: say which they are.
+		string? Usable()
+		{
+			if (a.E2e.Shared(fullJid) is not null)
+				return null;
+
+			IE2eEndpoint[] theirs = a.E2e.GetE2eEndpoints(fullJid) ?? [];
+			return "its keys (" + string.Join(", ", theirs.Select(k => k.LocalName)) + ") are of kinds this connection has none of";
+		}
+
+		if (a.E2e.ContainsKey(fullJid))
+			return Usable();
+
+		try
+		{
+			TaskCompletionSource<IqResultEventArgs> done = new(TaskCreationOptions.RunContinuationsAsynchronously);
+			await a.E2e.SynchronizeE2e(fullJid, (_, e) =>
+			{
+				done.TrySetResult(e);
+				return Task.CompletedTask;
+			});
+
+			IqResultEventArgs answer = await done.Task.WaitAsync(TimeSpan.FromSeconds(10));
+			if (a.E2e.ContainsKey(fullJid))
+				return Usable();
+
+			return answer.Ok
+				? "it answered, but with no keys this connection can use"
+				: "it would not exchange keys: " + (answer.StanzaError is Exception error ? error.GetType().Name.Replace("Exception", string.Empty, StringComparison.Ordinal) : answer.ErrorType.ToString()) +
+					(string.IsNullOrWhiteSpace(answer.ErrorText) ? string.Empty : ", \"" + answer.ErrorText + "\"");
+		}
+		catch (TimeoutException)
+		{
+			return "it did not answer when asked for its keys";
+		}
 	}
 
 	/// <summary>The fingerprint of this account's own key, for contacts to compare.</summary>
