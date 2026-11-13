@@ -147,9 +147,13 @@ public sealed class AccountSession : IAsyncDisposable
 			credentials.FormSignatureSecret = registration.ApiSecret;
 		}
 
+		// The ordinary sign-in, not the library's quick login. Quick login skips binding a resource, and
+		// the client then never learns its own full address: FullJID stays "user@domain". End-to-end
+		// encryption mixes the sender's full address into every message, so the far end, which sees the
+		// real one, could not decrypt anything this client sent.
 		XmppClient c = new(credentials, "en", typeof(AccountSession).Assembly, this.Sniffer)
 		{
-			AllowQuickLogin = true,
+			AllowQuickLogin = false,
 		};
 
 		if (registration is not null)
