@@ -7,7 +7,7 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Company>NAT</Company>
     <Product>NAT</Product>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
       <!-- Waher.Content.Markdown is held at 6.3.3 below what the contracts client asks for; see Neuro.Nat.Engine.csproj. -->
     <NoWarn>$(NoWarn);NU1605</NoWarn>
   </PropertyGroup>
