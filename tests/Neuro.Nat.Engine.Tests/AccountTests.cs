@@ -70,6 +70,29 @@ public class AccountTests : IDisposable
 	}
 
 	[Fact]
+	public async Task TrafficKeepsComingAfterDisconnectAndConnect()
+	{
+		InMemoryCredentialVault vault = new();
+		JsonAccountStore store = new(Path.Combine(this.folder, "accounts.json"));
+		await using AccountManager manager = new(store, vault);
+
+		// Nothing listens on this port, so each connect fails at once, but it does create a client
+		// that carries the session's sniffer.
+		AccountSession s = await manager.AddAsync(new AccountProfile { Host = "127.0.0.1", Port = 1, UserName = "x" }, AccountSecret.FromPassword("pw"), connect: false);
+		await s.ConnectAsync();
+		await s.DisconnectAsync();
+
+		s.Sniffer.Information("after the first disconnect");
+		await StreamSnifferTests.WaitFor(() => s.Sniffer.Snapshot().Any(l => l.Text == "after the first disconnect"));
+
+		await s.ConnectAsync();
+		await s.DisconnectAsync();
+
+		s.Sniffer.Information("after the second disconnect");
+		await StreamSnifferTests.WaitFor(() => s.Sniffer.Snapshot().Any(l => l.Text == "after the second disconnect"));
+	}
+
+	[Fact]
 	public void SecretsNeverPrint()
 	{
 		Assert.DoesNotContain("hunter2", AccountSecret.FromPassword("hunter2").ToString());

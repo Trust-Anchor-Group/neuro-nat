@@ -372,6 +372,21 @@ public class ActionTests
 		await Arrived(sniffer, 2607);
 		vm.Flush();
 		Assert.Equal(2103, vm.Lines.Count);
+
+		// Cleared: the view starts over, and new lines keep coming.
+		vm.FindText = "message";
+		vm.FindNextCommand.Execute(null);
+		vm.FindNextCommand.Execute(null);
+		Assert.Equal("2 of 3", vm.FindStatus);
+		vm.ClearCommand.Execute(null);
+		Assert.True(vm.IsEmpty);
+		Assert.Equal("No match", vm.FindStatus);
+		sniffer.ReceiveText("<message id='after clear'/>");
+		await Arrived(sniffer, 2608);
+		vm.Flush();
+		Assert.Equal("<message id='after clear'/>", Assert.Single(vm.Lines).Text);
+		Assert.False(vm.IsEmpty);
+		Assert.Equal("1 match", vm.FindStatus);
 	}
 
 	[AvaloniaTheory]

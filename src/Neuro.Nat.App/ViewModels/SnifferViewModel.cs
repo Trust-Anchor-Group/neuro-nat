@@ -341,6 +341,7 @@ public sealed partial class SnifferViewModel : ObservableObject, IDisposable, IA
 		this.all.Clear();
 		this.Lines.Clear();
 		this.matches.Clear();
+		this.matchIndex = -1;
 		this.Dropped = 0;
 		this.NewCount = 0;
 		this.RefreshState();

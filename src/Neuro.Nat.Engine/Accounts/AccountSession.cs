@@ -199,6 +199,12 @@ public sealed class AccountSession : IAsyncDisposable
 		c.OnConnectionError -= this.Client_OnConnectionError;
 		c.OnError -= this.Client_OnConnectionError;
 
+		// The sniffer belongs to the session and outlives every client. Take it off the client
+		// first: OfflineAndDisposeAsync disposes every sniffer still attached, whatever its
+		// argument says, and a disposed sniffer stays silent for good. The traffic view then
+		// showed nothing after the first disconnect or reconnect.
+		c.Remove(this.Sniffer);
+
 		try
 		{
 			await c.OfflineAndDisposeAsync(false);
