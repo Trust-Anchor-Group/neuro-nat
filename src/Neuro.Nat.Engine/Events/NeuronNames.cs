@@ -42,6 +42,26 @@ public static class NeuronNames
 	private static string? Given(string? rosterName, string? ownName)
 		=> !string.IsNullOrWhiteSpace(rosterName) ? rosterName : string.IsNullOrWhiteSpace(ownName) ? null : ownName;
 
+	/// <summary>
+	/// True when a Neuron is the one an account is on: it calls itself by the account's domain.
+	/// Until it has said what it calls itself, the domain of its address stands in, though that can
+	/// be its parent broker's (see <see cref="WatchedNeuron.OwnName"/>). A Neuron without a domain
+	/// (a local one) hosts the accounts that reach it.
+	/// </summary>
+	/// <param name="ownName">What the Neuron calls itself, when it has said.</param>
+	/// <param name="bareJid">The address of the Neuron's own client.</param>
+	/// <param name="accountDomains">The account's domain, in each way it is known (as connected, as set up).</param>
+	public static bool Hosts(string? ownName, string bareJid, params string?[] accountDomains)
+	{
+		bool IsAccounts(string name) => accountDomains.Any(d => !string.IsNullOrEmpty(d) && string.Equals(d, name, StringComparison.OrdinalIgnoreCase));
+
+		if (!string.IsNullOrWhiteSpace(ownName))
+			return IsAccounts(ownName.Trim());
+
+		string domain = Domain(bareJid);
+		return domain.Length == 0 || IsAccounts(domain);
+	}
+
 	/// <summary>The name of one Neuron among the ones known: its full address when another known Neuron would get the same name.</summary>
 	public static string For(IEnumerable<WatchedNeuron> known, string bareJid)
 	{

@@ -38,7 +38,7 @@ public enum WorkspaceKind
 	/// <summary>The Identities tab of an account's page.</summary>
 	AccountIdentities,
 
-	/// <summary>The Storage tab of an account's page.</summary>
+	/// <summary>The PubSub tab of an account's page: its own publish/subscribe nodes.</summary>
 	AccountStorage,
 
 	/// <summary>Two Neurons side by side, or a Neuron beside a kept copy of it.</summary>
@@ -570,7 +570,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 		yield return new SearchItem("Accounts", "Your accounts and their connections", Icon("Accounts"), this.ShowAccounts);
 		yield return new SearchItem("Devices", "Devices your account owns", Icon("Devices"), this.ShowDevices);
 		yield return new SearchItem("Identities", "Your legal identities", Icon("Identities"), this.ShowIdentities);
-		yield return new SearchItem("Storage", "Your account's personal storage", Icon("PubSub"), this.ShowPubSub);
+		yield return new SearchItem("PubSub", "Your account's own publish/subscribe nodes", Icon("PubSub"), this.ShowPubSub) { Words = "storage publish subscribe pep nodes" };
 		yield return new SearchItem("Settings", "Status, look, pop-ups and sounds", Icon("Settings"), this.ShowSettings);
 
 		foreach (SearchItem i in this.CompareSearchItems(Icon))
@@ -798,7 +798,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 	[RelayCommand]
 	private void ShowSettings() => this.Workspace = WorkspaceKind.Settings;
 
-	/// <summary>Publish/subscribe has two homes: an account's Storage, and the nodes on a Neuron's page.</summary>
+	/// <summary>Publish/subscribe has two homes: an account's own nodes, and the nodes on a Neuron's page.</summary>
 	[RelayCommand]
 	private void ShowPubSub() => this.ShowAccountTab(WorkspaceKind.AccountStorage);
 

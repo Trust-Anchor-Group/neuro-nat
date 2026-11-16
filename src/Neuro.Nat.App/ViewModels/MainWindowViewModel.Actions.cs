@@ -257,9 +257,15 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 			return;
 		}
 
-		string? neuron = this.accounts.Get(accountId)?.Profile.EffectiveDomain;
-		if (neuron is not null && this.RowOf(neuron, accountId) is not null)
-			this.OpenNeuron(neuron, accountId, WorkspaceKind.PubSub);
+		// Already looking at that service, on whichever Neuron's page: the node opens there.
+		if (this.IsPubSub && this.PubSub.Account?.Id == accountId && string.Equals(this.PubSub.CurrentService, service, StringComparison.OrdinalIgnoreCase))
+		{
+			this.PubSub.Go(node, tab);
+			return;
+		}
+
+		if (this.OwnNeuronOf(accountId) is FleetRowViewModel own)
+			this.OpenNeuron(own.BareJid, accountId, WorkspaceKind.PubSub);
 
 		if (this.IsPubSub)
 			this.PubSub.Go(node, tab);

@@ -83,7 +83,7 @@ public static class Links
 		WorkspaceKind.NeuronConsole => "console",
 		WorkspaceKind.Updates => "software",
 		WorkspaceKind.Identities => "identity",
-		WorkspaceKind.PubSub => "storage",
+		WorkspaceKind.PubSub => "pubsub",
 		_ => null,
 	};
 
@@ -95,7 +95,7 @@ public static class Links
 		"console" => WorkspaceKind.NeuronConsole,
 		"software" => WorkspaceKind.Updates,
 		"identity" => WorkspaceKind.Identities,
-		"storage" => WorkspaceKind.PubSub,
+		"pubsub" or "storage" => WorkspaceKind.PubSub,   // "storage" is what earlier links call it
 		_ => WorkspaceKind.Neuron,
 	};
 

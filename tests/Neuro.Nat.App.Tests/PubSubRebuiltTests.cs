@@ -777,7 +777,7 @@ public class PubSubRebuiltTests
 		s.Vm.ShowAccountTabCommand.Execute(WorkspaceKind.AccountStorage);
 		await Settle(p);
 		Assert.True(s.Vm.IsAccountStorage);
-		Assert.Equal("Storage", p.Title);
+		Assert.Equal("PubSub", p.Title);
 		Assert.True(p.IsPersonal);
 		Assert.Equal(7, p.Nodes.Count);
 		Assert.False(Window_Shows(window, "NewNodeButton"));

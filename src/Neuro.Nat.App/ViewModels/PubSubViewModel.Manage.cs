@@ -317,7 +317,7 @@ public sealed partial class PubSubViewModel
 
 		try
 		{
-			this.NewSettings.Load(await this.pubsub.SettingsAsync(a.Id, null));
+			this.NewSettings.Load(await this.pubsub.SettingsAsync(a.Id, null, this.OtherNeuron));
 		}
 		catch (Exception)
 		{
@@ -353,7 +353,7 @@ public sealed partial class PubSubViewModel
 		this.CreateError = null;
 		try
 		{
-			PubSubNodeInfo n = await this.pubsub.CreateNodeAsync(a.Id, this.NewNodeName.Trim(), settings, parent);
+			PubSubNodeInfo n = await this.pubsub.CreateNodeAsync(a.Id, this.NewNodeName.Trim(), settings, parent, this.OtherNeuron);
 			this.NewNodeName = string.Empty;
 
 			PubSubNodeRow? inside = parent is null ? null : Tree(this.roots).FirstOrDefault(r => r.IsCollection && r.Node == parent);
@@ -367,7 +367,7 @@ public sealed partial class PubSubViewModel
 				{
 					try
 					{
-						inside.Children = [.. (await this.pubsub.NodesAsync(a.Id, inside.Node)).Where(x => x.Node != n.Node).Select(x => new PubSubNodeRow(x, inside.Depth + 1) { IsWatched = this.watched.Contains(x.Node) })];
+						inside.Children = [.. (await this.pubsub.NodesAsync(a.Id, inside.Node, this.OtherNeuron)).Where(x => x.Node != n.Node).Select(x => new PubSubNodeRow(x, inside.Depth + 1) { IsWatched = this.watched.Contains(x.Node) })];
 					}
 					catch (Exception)
 					{

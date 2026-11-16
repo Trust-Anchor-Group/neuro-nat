@@ -114,8 +114,9 @@ public sealed partial class MainWindowViewModel
 				this.Updates.Focus(p.AccountId, p.BareJid);
 				break;
 
-			case WorkspaceKind.PubSub when p.HostsAccount:
-				this.PubSub.Show(p.AccountId, personal: false);
+			case WorkspaceKind.PubSub:
+				// The Neuron the account is on: its service is the account's own. Any other Neuron: the service on its domain.
+				this.PubSub.Show(p.AccountId, personal: false, p.HostsAccount ? null : this.DomainOfNeuron(p.AccountId, p.BareJid));
 				break;
 
 			case WorkspaceKind.Identities:
@@ -229,6 +230,36 @@ public sealed partial class MainWindowViewModel
 		this.NeuronEvents.SelectedIssue = issue;
 	}
 
+	/// <summary>
+	/// True when a Neuron is the one the account is on. Not by the address of the Neuron's client,
+	/// which is often an account on its parent broker: by what the Neuron calls itself.
+	/// </summary>
+	private bool HostsAccount(Guid accountId, string neuronJid)
+	{
+		if (this.accounts.Get(accountId) is not AccountSession session)
+			return false;
+
+		string? own = this.fleet.Monitors.For(accountId)?.Neurons
+			.FirstOrDefault(n => string.Equals(n.BareJid, neuronJid, StringComparison.OrdinalIgnoreCase))?.OwnName;
+		return NeuronNames.Hosts(own, neuronJid, session.Client?.Domain, session.Profile.EffectiveDomain);
+	}
+
+	/// <summary>
+	/// A Neuron's own domain, where its services are found: what it calls itself, else the domain
+	/// of its client's address. Null for a Neuron without a domain (a local one).
+	/// </summary>
+	private string? DomainOfNeuron(Guid accountId, string neuronJid)
+	{
+		string? own = this.fleet.Monitors.For(accountId)?.Neurons
+			.FirstOrDefault(n => string.Equals(n.BareJid, neuronJid, StringComparison.OrdinalIgnoreCase))?.OwnName;
+		string domain = string.IsNullOrWhiteSpace(own) ? NeuronNames.Domain(neuronJid) : own.Trim();
+		return domain.Length == 0 ? null : domain;
+	}
+
+	/// <summary>The Neuron the account is on, among the ones watched through it. Null when it is not among them.</summary>
+	private FleetRowViewModel? OwnNeuronOf(Guid accountId)
+		=> this.Fleet.Rows.FirstOrDefault(r => r.AccountId == accountId && this.HostsAccount(accountId, r.BareJid));
+
 	/// <summary>Brings the page up to date. The lists that cost more are only rebuilt when asked or when something changed.</summary>
 	private void RefreshPage(bool everything = false)
 	{
@@ -241,8 +272,7 @@ public sealed partial class MainWindowViewModel
 
 		p.Apply(this.fleet.Get(p.AccountId, p.BareJid), DateTime.Now);
 
-		AccountProfile? profile = this.accounts.Get(p.AccountId)?.Profile;
-		p.HostsAccount = profile is not null && string.Equals(profile.EffectiveDomain, p.BareJid, StringComparison.OrdinalIgnoreCase);
+		p.HostsAccount = this.HostsAccount(p.AccountId, p.BareJid);
 
 		if (!everything && Interlocked.Exchange(ref this.pageDirty, 0) == 0)
 			return;

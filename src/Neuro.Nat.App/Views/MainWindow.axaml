@@ -445,8 +445,8 @@
             <TextBlock Text="Software" VerticalAlignment="Center" />
           </Button>
           <Button Classes="tab pageTab" Classes.current="{Binding IsPubSub}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.PubSub}"
-                  ToolTip.Tip="Storage" IsVisible="{Binding Page.HostsAccount}">
-            <TextBlock Text="Storage" VerticalAlignment="Center" />
+                  ToolTip.Tip="PubSub">
+            <TextBlock Text="PubSub" VerticalAlignment="Center" />
           </Button>
           <Button Classes="tab pageTab" Classes.current="{Binding IsIdentities}" Command="{Binding ShowPageTabCommand}" CommandParameter="{x:Static vm:WorkspaceKind.Identities}"
                   ToolTip.Tip="Identities">
@@ -764,8 +764,8 @@
                 </StackPanel>
               </Button>
               <Button Classes="tab" Classes.current="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountStorage}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowAccountTabCommand}"
-                      CommandParameter="{x:Static vm:WorkspaceKind.AccountStorage}" ToolTip.Tip="Storage">
-                <TextBlock Text="Storage" VerticalAlignment="Center" />
+                      CommandParameter="{x:Static vm:WorkspaceKind.AccountStorage}" ToolTip.Tip="PubSub">
+                <TextBlock Text="PubSub" VerticalAlignment="Center" />
               </Button>
             </StackPanel>
           </Border>

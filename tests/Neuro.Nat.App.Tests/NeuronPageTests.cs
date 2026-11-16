@@ -347,6 +347,58 @@ public class NeuronPageTests
 		window.Close();
 	}
 
+	[AvaloniaFact]
+	public async Task StorageIsOnTheNeuronTheAccountIsOnWhateverItsClientsAddress()
+	{
+		Sample s = await SampleAsync();
+		NeuronMonitor monitor = s.Monitors.For(s.Ops)!;
+
+		// A Neuron is watched through its own client, and that is often an account on its parent broker:
+		// the account's own Neuron, which has not said yet what it calls itself, and a sibling under the same parent.
+		monitor.Preview(new WatchedNeuron { AccountId = s.Ops, BareJid = "lab-neuron@example.com", State = WatchState.Live });
+		monitor.Preview(new WatchedNeuron { AccountId = s.Ops, BareJid = "edge-neuron@example.com", OwnName = "edge.example.com", State = WatchState.Live });
+		s.Vm.Fleet.Refresh();
+
+		// By its address it is on another domain: no PubSub tab yet.
+		s.Vm.OpenNeuron("lab-neuron@example.com");
+		Assert.Equal("lab-neuron@example.com", s.Vm.Page!.BareJid);
+		Assert.False(s.Vm.Page.HostsAccount);
+
+		// It calls itself by the account's domain: it is the Neuron the account is on.
+		monitor.SetOwnName("lab-neuron@example.com", "lab.example.com");
+		s.Vm.Fleet.Refresh();
+		s.Vm.OpenNeuron("edge-neuron@example.com");
+		Assert.False(s.Vm.Page!.HostsAccount);
+		s.Vm.OpenNeuron("lab-neuron@example.com");
+		Assert.True(s.Vm.Page!.HostsAccount);
+
+		// And its PubSub tab opens the nodes of its service.
+		s.Vm.ShowPageTabCommand.Execute(WorkspaceKind.PubSub);
+		Dispatcher.UIThread.RunJobs();
+		Assert.True(s.Vm.IsPubSub);
+		Assert.False(s.Vm.PubSub.IsPersonal);
+		Assert.Null(s.Vm.PubSub.OtherNeuron);
+
+		// Any other Neuron has the tab too: the service on that Neuron's own domain, asked through the account.
+		s.Vm.OpenNeuron("edge-neuron@example.com");
+		s.Vm.ShowPageTabCommand.Execute(WorkspaceKind.PubSub);
+		Dispatcher.UIThread.RunJobs();
+		Assert.True(s.Vm.IsPubSub);
+		Assert.Equal("edge.example.com", s.Vm.PubSub.OtherNeuron);
+
+		// One that has not said what it calls itself goes by the domain of its address.
+		s.Vm.OpenNeuron("gbg.lab.example.com");
+		s.Vm.ShowPageTabCommand.Execute(WorkspaceKind.PubSub);
+		Dispatcher.UIThread.RunJobs();
+		Assert.Equal("gbg.lab.example.com", s.Vm.PubSub.OtherNeuron);
+
+		// Back on the account's own Neuron, it is the account's own service again.
+		s.Vm.OpenNeuron("lab-neuron@example.com");
+		s.Vm.ShowPageTabCommand.Execute(WorkspaceKind.PubSub);
+		Dispatcher.UIThread.RunJobs();
+		Assert.Null(s.Vm.PubSub.OtherNeuron);
+	}
+
 	// ----- The account's page -----
 
 	[AvaloniaTheory]
@@ -409,7 +461,7 @@ public class NeuronPageTests
 		Dispatcher.UIThread.RunJobs();
 		Assert.True(vm.IsAccountStorage);
 		Assert.True(vm.PubSub.IsPinned);
-		Assert.Equal("Storage", vm.PubSub.Title);
+		Assert.Equal("PubSub", vm.PubSub.Title);
 		Capture(window, $"account-storage-{t}-1440");
 
 		// The old ways in still lead somewhere sensible.

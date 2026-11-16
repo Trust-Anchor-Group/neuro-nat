@@ -96,6 +96,30 @@ public class NeuronOwnNameTests : IDisposable
 	}
 
 	[Fact]
+	public void TheNeuronAnAccountIsOnIsKnownByWhatItCallsItself()
+	{
+		// It calls itself by the account's domain, whatever the address of its client.
+		Assert.True(NeuronNames.Hosts(LabName, LabClient, LabName));
+		Assert.True(NeuronNames.Hosts(" Lab.Example.Com ", LabClient, null, LabName));
+
+		// A sibling under the same parent, and the parent itself, are other Neurons.
+		Assert.False(NeuronNames.Hosts("edge.example.com", "edge-neuron@example.com", LabName));
+		Assert.False(NeuronNames.Hosts("example.com", "neuron@example.org", LabName));
+
+		// A child whose client is an account on the account's own domain is not the account's Neuron either.
+		Assert.False(NeuronNames.Hosts("child.lab.example.com", "child@lab.example.com", LabName));
+
+		// Until it has said what it calls itself, the domain of its address stands in.
+		Assert.False(NeuronNames.Hosts(null, LabClient, LabName));
+		Assert.True(NeuronNames.Hosts(null, "neuron@lab.example.com", LabName));
+		Assert.True(NeuronNames.Hosts(null, LabName, LabName));
+
+		// A local Neuron without a domain hosts the accounts that reach it. No account domain known: nothing is hosted by name.
+		Assert.True(NeuronNames.Hosts(null, "neuronode@", "localhost"));
+		Assert.False(NeuronNames.Hosts(LabName, LabClient, null, ""));
+	}
+
+	[Fact]
 	public void TwoChildrenOfOneParentGetTheirOwnNames()
 	{
 		Guid account = Guid.NewGuid();

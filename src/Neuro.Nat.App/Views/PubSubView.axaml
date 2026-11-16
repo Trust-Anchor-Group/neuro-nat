@@ -86,7 +86,7 @@
             <TextBlock Text="Service" />
           </ToggleButton>
           <ToggleButton Classes="seg last" IsChecked="{Binding IsPersonal, Mode=OneWay}" Margin="-1,0,0,0" Command="{Binding SetPersonalCommand}" CommandParameter="personal"
-                        ToolTip.Tip="Personal storage">
+                        ToolTip.Tip="Your own nodes">
             <TextBlock Text="Personal" />
           </ToggleButton>
         </StackPanel>

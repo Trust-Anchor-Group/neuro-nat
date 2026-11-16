@@ -486,16 +486,9 @@ public sealed class TelemetryFeature : INatFeature
 		if (this.DomainOf(accountId) is not string domain)
 			return false;
 
-		string? profileDomain = this.host?.Accounts.Get(accountId)?.Profile.EffectiveDomain;
-		bool IsAccounts(string name) => string.Equals(name, domain, StringComparison.OrdinalIgnoreCase) || string.Equals(name, profileDomain, StringComparison.OrdinalIgnoreCase);
-
 		string? own = this.host?.Monitors.For(accountId)?.Neurons
 			.FirstOrDefault(n => string.Equals(n.BareJid, neuronJid, StringComparison.OrdinalIgnoreCase))?.OwnName;
-		if (!string.IsNullOrWhiteSpace(own))
-			return IsAccounts(own);
-
-		string d = NeuronNames.Domain(neuronJid);
-		return d.Length == 0 || IsAccounts(d);
+		return NeuronNames.Hosts(own, neuronJid, domain, this.host?.Accounts.Get(accountId)?.Profile.EffectiveDomain);
 	}
 
 	private static string KeyOf(Guid accountId, string domain) => accountId.ToString("N") + "|" + domain.ToLowerInvariant();

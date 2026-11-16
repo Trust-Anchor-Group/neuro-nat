@@ -55,7 +55,7 @@ public sealed partial class MainWindowViewModel
 				WorkspaceKind.Sources => ", Sources",
 				WorkspaceKind.NeuronConsole => ", Console",
 				WorkspaceKind.Updates => ", Software",
-				WorkspaceKind.PubSub => ", Storage",
+				WorkspaceKind.PubSub => ", PubSub",
 				WorkspaceKind.Identities => ", Identity",
 				WorkspaceKind.NeuronFeature => ", " + this.FeatureTabTitle,
 				_ => string.Empty,
@@ -73,7 +73,7 @@ public sealed partial class MainWindowViewModel
 				{
 					WorkspaceKind.Devices => ", Devices",
 					WorkspaceKind.AccountIdentities => ", Identities",
-					WorkspaceKind.AccountStorage => ", Storage",
+					WorkspaceKind.AccountStorage => ", PubSub",
 					_ => string.Empty,
 				};
 				return this.SelectedAccount is AccountItemViewModel a

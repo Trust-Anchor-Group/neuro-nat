@@ -145,6 +145,10 @@ public sealed record NodeItemEvent(Guid AccountId, string Service, string Node, 
 internal interface IPubSubStandIn
 {
 	string ServiceAddress { get; }
+
+	/// <summary>The service of another Neuron, by its domain. Null when the stand-in has none there.</summary>
+	string? ServiceOf(string neuron) => null;
+
 	Task<IReadOnlyList<PubSubNodeInfo>> NodesAsync(Guid accountId, bool personal, string? parent);
 	Task<IReadOnlyList<PubSubItemInfo>> ItemsAsync(Guid accountId, PubSubNodeInfo node, int? latest);
 	Task<string> PublishAsync(Guid accountId, PubSubNodeInfo node, string? itemId, string payloadXml);

@@ -32,6 +32,11 @@ internal sealed class PreviewPubSub : IPubSubStandIn
 
 	public string ServiceAddress { get; }
 
+	/// <summary>The domains of other Neurons that have a service too. In a preview it is this same one.</summary>
+	public HashSet<string> OtherNeurons { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+	public string? ServiceOf(string neuron) => this.OtherNeurons.Contains(neuron) ? this.ServiceAddress : null;
+
 	/// <summary>Every call, in order: "publish ops/alerts a1". Tests read it.</summary>
 	public List<string> Calls { get; } = [];
 

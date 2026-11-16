@@ -28,6 +28,33 @@ public class PubSubServiceTests
 	}
 
 	[Fact]
+	public async Task AnotherNeuronsServiceGoesByThatNeuronsDomain()
+	{
+		var (pubsub, nodes, account) = await SampleAsync();
+		nodes.Add("ops/alerts", Me);
+		nodes.OtherNeurons.Add("edge.example.com");
+
+		// The account's own Neuron: its service is known without naming a Neuron.
+		Assert.True(pubsub.IsAvailable(account));
+		Assert.Equal(Service, pubsub.Service(account));
+		Assert.Equal(Service, pubsub.Service(account, " "));
+
+		// Another Neuron, by its domain, whatever the case: the service found there.
+		Assert.True(pubsub.IsAvailable(account, "Edge.Example.com"));
+		Assert.Equal(Service, pubsub.Service(account, "edge.example.com"));
+		Assert.Single(await pubsub.NodesAsync(account, null, "edge.example.com"));
+
+		// A Neuron with no service has none, and that is not a problem with the account's own.
+		Assert.False(pubsub.IsAvailable(account, "none.example.com"));
+		Assert.Null(pubsub.Service(account, "none.example.com"));
+		Assert.True(pubsub.IsAvailable(account));
+
+		// Looking for one asks nothing of a stand-in, and does not fail.
+		await pubsub.FindAsync(account, "none.example.com");
+		await pubsub.FindAsync(account, string.Empty);
+	}
+
+	[Fact]
 	public void SettingsGoToTheServiceAndBackUnchanged()
 	{
 		NodeSettings s = new()

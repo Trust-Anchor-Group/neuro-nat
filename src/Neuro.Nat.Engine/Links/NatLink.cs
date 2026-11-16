@@ -65,7 +65,7 @@ public sealed record NatLink(LinkKind Kind, string Domain, IReadOnlyList<string>
 	private const int MaxPart = 1024;
 
 	/// <summary>The tabs of a Neuron's page, as a link names them. The Overview has no name.</summary>
-	public static readonly IReadOnlyList<string> Tabs = ["events", "sources", "console", "software", "identity", "storage"];
+	public static readonly IReadOnlyList<string> Tabs = ["events", "sources", "console", "software", "identity", "pubsub", "storage"];
 
 	/// <summary>The words for the kinds, as a link spells them.</summary>
 	private static readonly Dictionary<string, LinkKind> kinds = new(StringComparer.OrdinalIgnoreCase)

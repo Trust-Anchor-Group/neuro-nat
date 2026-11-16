@@ -126,7 +126,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 	public bool IsService => !this.IsPersonal;
 
 	/// <summary>What the list of nodes is called where it is shown.</summary>
-	public string Title => !this.IsPinned ? "Storage" : this.IsPersonal ? "Storage" : "Nodes";
+	public string Title => !this.IsPinned ? "PubSub" : this.IsPersonal ? "PubSub" : "Nodes";
 
 	/// <summary>True on an account's or a Neuron's page, where the account and the kind of nodes are already chosen.</summary>
 	[ObservableProperty]
@@ -141,7 +141,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 	public string NodeTitle => this.SelectedNode?.Label ?? string.Empty;
 
 	public string NodeMeta => this.SelectedNode is not { } n ? string.Empty
-		: string.Join(". ", new[] { n.Sub, n.IsCollection ? "A collection" : null, n.Info.IsPersonal ? "In your personal storage" : "On " + n.Info.Service }.Where(s => !string.IsNullOrWhiteSpace(s)));
+		: string.Join(". ", new[] { n.Sub, n.IsCollection ? "A collection" : null, n.Info.IsPersonal ? "Among your own nodes" : "On " + n.Info.Service }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
 	/// <summary>Nothing is open on the right: no node, and no new node being made.</summary>
 	public bool ShowsPicker => !this.HasNode && !this.IsCreating;
@@ -181,16 +181,24 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 	/// Shows one account's nodes: its personal storage (on the account's page) or the nodes of the
 	/// publish/subscribe service on its Neuron (on the Neuron's page).
 	/// </summary>
-	public void Show(Guid accountId, bool personal)
+	/// <param name="accountId">The account the nodes are read through.</param>
+	/// <param name="personal">The account's own nodes, not a service's.</param>
+	/// <param name="neuron">
+	/// The domain of another Neuron whose service to show. Null for the service on the account's own Neuron.
+	/// </param>
+	public void Show(Guid accountId, bool personal, string? neuron = null)
 	{
 		this.IsPinned = true;
 		this.Sync();
+		neuron = personal || string.IsNullOrWhiteSpace(neuron) ? null : neuron.Trim();
 		DeviceAccountChoice? choice = this.AccountChoices.FirstOrDefault(c => c.Id == accountId);
-		if (!ReferenceEquals(choice, this.Account) || this.IsPersonal != personal)
+		if (!ReferenceEquals(choice, this.Account) || this.IsPersonal != personal || !string.Equals(this.neuron, neuron, StringComparison.OrdinalIgnoreCase))
 		{
 			this.loading = true;
 			try
 			{
+				this.neuron = neuron;
+				this.findAgain = true;
 				this.Account = choice;
 				this.IsPersonal = personal;
 			}
@@ -204,6 +212,18 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 		else if (this.roots.Count == 0 && !this.IsBusy)
 			_ = this.LoadNodesAsync();
 	}
+
+	/// <summary>The domain of another Neuron whose service is shown. Null for the account's own Neuron, and for its own nodes.</summary>
+	private string? neuron;
+
+	/// <summary>Look for another Neuron's service again, even if it could not be reached the last time.</summary>
+	private bool findAgain;
+
+	/// <summary>The Neuron whose service is shown when it is not the account's own: its domain. Null otherwise.</summary>
+	public string? OtherNeuron => this.IsPersonal ? null : this.neuron;
+
+	/// <summary>The address of the service whose nodes are shown. Null for an account's own nodes, and while none is known.</summary>
+	public string? CurrentService => this.IsPersonal || this.Account is not { } a ? null : this.pubsub.Service(a.Id, this.neuron);
 
 	private void Sync()
 	{
@@ -304,13 +324,30 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 		if (this.Account is not { } a)
 			return;
 
-		this.ServiceText = this.IsPersonal ? "Personal storage of " + a.Label : this.pubsub.Service(a.Id) is string svc ? "Service " + svc : this.pubsub.Problem(a.Id) ?? "Looking for the service…";
-		// Personal storage is the account's own, so it is there without a service. Everything else waits for one.
+		// Another Neuron's service, by that Neuron's domain. Null for the service on the account's own Neuron.
+		string? other = this.OtherNeuron;
 		bool connected = this.accounts.Sessions.FirstOrDefault(s => s.Profile.Id == a.Id)?.Status == ConnectionStatus.Connected;
-		this.looking = false;
-		if (!this.pubsub.IsAvailable(a.Id) && !(this.IsPersonal && connected))
+
+		// Another Neuron's service has to be found first: its domain is asked which services it has.
+		// One that could not be reached is asked again when the page is opened or read again, not on every refresh.
+		bool again = this.findAgain;
+		this.findAgain = false;
+		if (other is not null && connected && !this.pubsub.IsAvailable(a.Id, other) && (again || this.pubsub.Problem(a.Id, other) is null))
 		{
-			this.Error = this.pubsub.Problem(a.Id) ?? (connected ? null : "The account is not connected. Connect it to see what is here.");
+			this.ServiceText = "Looking for the service of " + other + "…";
+			this.looking = true;
+			this.OnPropertyChanged(nameof(this.NodesEmptyText));
+			await this.pubsub.FindAsync(a.Id, other);
+			if (run != this.nodesRun)
+				return;
+		}
+
+		this.ServiceText = this.IsPersonal ? "Own nodes of " + a.Label : this.pubsub.Service(a.Id, other) is string svc ? "Service " + svc : this.pubsub.Problem(a.Id, other) ?? "Looking for the service…";
+		// Personal storage is the account's own, so it is there without a service. Everything else waits for one.
+		this.looking = false;
+		if (!this.pubsub.IsAvailable(a.Id, other) && !(this.IsPersonal && connected))
+		{
+			this.Error = this.pubsub.Problem(a.Id, other) ?? (connected ? null : "The account is not connected. Connect it to see what is here.");
 			this.looking = this.Error is null;
 			this.OnPropertyChanged(nameof(this.NodesEmptyText));
 			return;
@@ -320,11 +357,11 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 		try
 		{
 			bool personal = this.IsPersonal;
-			IReadOnlyList<PubSubNodeInfo> nodes = personal ? await this.pubsub.PersonalNodesAsync(a.Id) : await this.pubsub.NodesAsync(a.Id);
+			IReadOnlyList<PubSubNodeInfo> nodes = personal ? await this.pubsub.PersonalNodesAsync(a.Id) : await this.pubsub.NodesAsync(a.Id, null, other);
 			IReadOnlyList<string> watching = [];
 			try
 			{
-				watching = await this.pubsub.WatchedAsync(a.Id, personal);
+				watching = await this.pubsub.WatchedAsync(a.Id, personal, other);
 			}
 			catch (Exception)
 			{
@@ -415,7 +452,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 				PubSubNodeRow? row = this.strays.FirstOrDefault(s => s.Node == w);
 				if (row is null)
 				{
-					string service = this.IsPersonal ? this.Me ?? string.Empty : this.pubsub.Service(a.Id) ?? string.Empty;
+					string service = this.IsPersonal ? this.Me ?? string.Empty : this.pubsub.Service(a.Id, this.OtherNeuron) ?? string.Empty;
 					row = new PubSubNodeRow(new PubSubNodeInfo(service, w, null, this.IsPersonal), 0) { IsWatched = true };
 					this.strays.Add(row);
 				}
@@ -473,7 +510,7 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 			try
 			{
 				this.Error = null;
-				IReadOnlyList<PubSubNodeInfo> inside = await this.pubsub.NodesAsync(a.Id, row.Node);
+				IReadOnlyList<PubSubNodeInfo> inside = await this.pubsub.NodesAsync(a.Id, row.Node, this.OtherNeuron);
 				row.Children = [.. inside.Select(n => new PubSubNodeRow(n, row.Depth + 1) { IsWatched = this.watched.Contains(n.Node) })];
 			}
 			catch (Exception ex)
@@ -495,7 +532,10 @@ public sealed partial class PubSubViewModel : ObservableObject, IActionSource
 	private Task Reload()
 	{
 		if (this.SelectedNode is null)
+		{
+			this.findAgain = true;
 			return this.LoadNodesAsync();
+		}
 
 		return this.Tab switch
 		{

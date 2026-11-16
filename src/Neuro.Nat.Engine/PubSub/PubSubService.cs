@@ -10,7 +10,8 @@ using Waher.Networking.XMPP.ServiceDiscovery;
 namespace Neuro.Nat.Engine.PubSub;
 
 /// <summary>
-/// Publish/subscribe through each account: the nodes of the service on its Neuron and the
+/// Publish/subscribe through each account: the nodes of the service on its Neuron, the nodes of
+/// the service on any other Neuron (asked over the federation, by that Neuron's domain), and the
 /// account's own personal storage (PEP). Lists nodes and what is inside collections, reads,
 /// publishes and removes items, watches nodes for what is published while you look, and manages
 /// a node: its settings, who may do what on it, who subscribes, and removing it.
@@ -22,6 +23,14 @@ public sealed class PubSubService : IAsyncDisposable
 	private readonly AccountManager accounts;
 	private readonly ConcurrentDictionary<Guid, PubSubClient> clients = new();
 	private readonly ConcurrentDictionary<Guid, string> problems = new();
+
+	/// <summary>The service on each account's own Neuron, where it has one.</summary>
+	private readonly ConcurrentDictionary<Guid, string> own = new();
+
+	/// <summary>The services found on other Neurons, by account and the Neuron's domain. Empty where a Neuron has none.</summary>
+	private readonly ConcurrentDictionary<string, string> others = new(StringComparer.OrdinalIgnoreCase);
+	private readonly ConcurrentDictionary<string, string> otherProblems = new(StringComparer.OrdinalIgnoreCase);
+	private readonly ConcurrentDictionary<string, Task> finding = new(StringComparer.OrdinalIgnoreCase);
 	private readonly HashSet<AccountSession> watched = [];
 	private readonly List<NodeRequest> requests = [];
 
@@ -44,13 +53,107 @@ public sealed class PubSubService : IAsyncDisposable
 	/// <summary>Raised when somebody asks to subscribe to a node an account owns, or such a request was answered. Any thread.</summary>
 	public event EventHandler? RequestsChanged;
 
-	public bool IsAvailable(Guid accountId) => this.StandIn is not null || this.clients.ContainsKey(accountId);
+	private static string OtherKey(Guid accountId, string neuron) => accountId.ToString("N") + "|" + neuron.Trim().ToLowerInvariant();
 
-	public string? Problem(Guid accountId) => this.StandIn is null && this.problems.TryGetValue(accountId, out string? p) ? p : null;
+	/// <summary>
+	/// True when the service is known: the one on the account's own Neuron, or, with
+	/// <paramref name="neuron"/> (another Neuron's domain), the one found there by <see cref="FindAsync"/>.
+	/// </summary>
+	public bool IsAvailable(Guid accountId, string? neuron = null) => this.Service(accountId, neuron) is not null;
 
-	/// <summary>The pubsub service's address for an account.</summary>
-	public string? Service(Guid accountId)
-		=> this.StandIn is IPubSubStandIn s ? s.ServiceAddress : this.clients.TryGetValue(accountId, out PubSubClient? c) ? c.ComponentAddress : null;
+	/// <summary>Why there is no service to show, when that is known.</summary>
+	public string? Problem(Guid accountId, string? neuron = null)
+	{
+		if (this.StandIn is not null)
+			return null;
+
+		if (string.IsNullOrWhiteSpace(neuron))
+			return this.problems.TryGetValue(accountId, out string? p) ? p : null;
+
+		return this.otherProblems.TryGetValue(OtherKey(accountId, neuron), out string? o) ? o : null;
+	}
+
+	/// <summary>The pubsub service's address: on the account's own Neuron, or on another Neuron by its domain.</summary>
+	public string? Service(Guid accountId, string? neuron = null)
+	{
+		if (this.StandIn is IPubSubStandIn s)
+			return string.IsNullOrWhiteSpace(neuron) ? s.ServiceAddress : s.ServiceOf(neuron);
+
+		if (string.IsNullOrWhiteSpace(neuron))
+			return this.own.TryGetValue(accountId, out string? mine) ? mine : null;
+
+		return this.others.TryGetValue(OtherKey(accountId, neuron), out string? theirs) && theirs.Length > 0 ? theirs : null;
+	}
+
+	/// <summary>The service's address, or an exception that says why there is none.</summary>
+	private string ServiceOrThrow(Guid accountId, string? neuron)
+		=> this.Service(accountId, neuron) ?? throw new InvalidOperationException(this.Problem(accountId, neuron) ??
+			(string.IsNullOrWhiteSpace(neuron) ? "The account is not connected." : "The publish/subscribe service of " + neuron + " has not been found yet."));
+
+	/// <summary>
+	/// Looks for the publish/subscribe service of another Neuron, by its domain, through this
+	/// account. Asked once; <see cref="Service"/> and <see cref="Problem"/> say what came of it.
+	/// What the account may see and do there is up to that service and its nodes.
+	/// </summary>
+	public Task FindAsync(Guid accountId, string neuron)
+	{
+		if (this.StandIn is not null || string.IsNullOrWhiteSpace(neuron))
+			return Task.CompletedTask;
+
+		string key = OtherKey(accountId, neuron);
+		return this.others.ContainsKey(key) ? Task.CompletedTask : this.finding.GetOrAdd(key, _ => this.FindOnceAsync(accountId, neuron.Trim(), key));
+	}
+
+	private async Task FindOnceAsync(Guid accountId, string neuron, string key)
+	{
+		try
+		{
+			string? component = await FindComponentAsync(this.Xmpp(accountId), neuron);
+			if (component is null)
+				this.otherProblems[key] = neuron + " has no publish/subscribe service.";
+			else
+				this.otherProblems.TryRemove(key, out _);
+
+			this.others[key] = component ?? string.Empty;
+		}
+		catch (Exception ex)
+		{
+			// Not kept as an answer: it is asked again the next time the page opens.
+			this.otherProblems[key] = "The publish/subscribe service of " + neuron + " could not be reached. " + ex.Message;
+		}
+		finally
+		{
+			this.finding.TryRemove(key, out _);
+		}
+
+		this.Changed?.Invoke(this, accountId);
+	}
+
+	/// <summary>The publish/subscribe service among the services a domain lists. Null when it lists none.</summary>
+	private static async Task<string?> FindComponentAsync(XmppClient client, string domain)
+	{
+		ServiceItemsDiscoveryEventArgs items;
+		try
+		{
+			items = await client.ServiceItemsDiscoveryAsync(domain).WaitAsync(wait);
+		}
+		catch (TimeoutException)
+		{
+			throw new TimeoutException(domain + " did not answer in time.");
+		}
+
+		if (!items.Ok)
+			throw new InvalidOperationException(Explain(items, domain + " did not list its services."));
+
+		foreach (Item item in items.Items ?? [])
+		{
+			ServiceDiscoveryEventArgs info = await client.ServiceDiscoveryAsync(item.JID).WaitAsync(TimeSpan.FromSeconds(10));
+			if (info.Ok && info.HasFeature(PubSubClient.NamespacePubSub) && info.Identities.Any(i => i.Category == "pubsub" && i.Type == "service"))
+				return item.JID;
+		}
+
+		return null;
+	}
 
 	private PubSubClient Client(Guid accountId)
 		=> this.clients.TryGetValue(accountId, out PubSubClient? c) ? c : throw new InvalidOperationException(this.Problem(accountId) ?? "The account is not connected.");
@@ -108,9 +211,12 @@ public sealed class PubSubService : IAsyncDisposable
 
 	// ---- Nodes -----------------------------------------------------------------------------
 
-	/// <summary>Nodes on the pubsub service: the top level, or what is inside a collection.</summary>
-	public Task<IReadOnlyList<PubSubNodeInfo>> NodesAsync(Guid accountId, string? parent = null)
-		=> this.StandIn is IPubSubStandIn s ? s.NodesAsync(accountId, false, parent) : this.ListAsync(accountId, this.Client(accountId).ComponentAddress, parent, false);
+	/// <summary>
+	/// Nodes on the pubsub service: the top level, or what is inside a collection. On the account's
+	/// own Neuron, or with <paramref name="neuron"/> on another Neuron's service.
+	/// </summary>
+	public Task<IReadOnlyList<PubSubNodeInfo>> NodesAsync(Guid accountId, string? parent = null, string? neuron = null)
+		=> this.StandIn is IPubSubStandIn s ? s.NodesAsync(accountId, false, parent) : this.ListAsync(accountId, this.ServiceOrThrow(accountId, neuron), parent, false);
 
 	/// <summary>Nodes in the account's personal storage (PEP): its avatar, nickname and so on.</summary>
 	public Task<IReadOnlyList<PubSubNodeInfo>> PersonalNodesAsync(Guid accountId)
@@ -169,18 +275,19 @@ public sealed class PubSubService : IAsyncDisposable
 	/// Creates a node. With no settings it gets the service's own; inside a collection when
 	/// <paramref name="parent"/> names one.
 	/// </summary>
-	public async Task<PubSubNodeInfo> CreateNodeAsync(Guid accountId, string name, NodeSettings? settings = null, string? parent = null)
+	public async Task<PubSubNodeInfo> CreateNodeAsync(Guid accountId, string name, NodeSettings? settings = null, string? parent = null, string? neuron = null)
 	{
 		if (this.StandIn is IPubSubStandIn s)
 			return await s.CreateNodeAsync(accountId, name, settings, parent);
 
 		PubSubClient c = this.Client(accountId);
+		string service = this.ServiceOrThrow(accountId, neuron);
 		NodeConfiguration config = settings is null ? new NodeConfiguration() : ToConfiguration(settings);
 		if (!string.IsNullOrEmpty(parent))
 			config.Collections = [parent];
 
-		NodeEventArgs r = await Ask<NodeEventArgs>(cb => c.CreateNode(c.ComponentAddress, name, config, cb, null), "The node was not created.");
-		return new PubSubNodeInfo(c.ComponentAddress, r.NodeName ?? name, string.IsNullOrWhiteSpace(settings?.Title) ? null : settings.Title, false)
+		NodeEventArgs r = await Ask<NodeEventArgs>(cb => c.CreateNode(service, name, config, cb, null), "The node was not created.");
+		return new PubSubNodeInfo(service, r.NodeName ?? name, string.IsNullOrWhiteSpace(settings?.Title) ? null : settings.Title, false)
 		{
 			Parent = parent,
 			IsCollection = settings?.IsCollection == true,
@@ -270,16 +377,14 @@ public sealed class PubSubService : IAsyncDisposable
 	/// The names of the nodes the account subscribes to on its service, or in its personal
 	/// storage. A subscription is kept by the service, so it is there again the next time.
 	/// </summary>
-	public async Task<IReadOnlyList<string>> WatchedAsync(Guid accountId, bool personal)
+	public async Task<IReadOnlyList<string>> WatchedAsync(Guid accountId, bool personal, string? neuron = null)
 	{
 		if (this.StandIn is IPubSubStandIn s)
 			return await s.WatchedAsync(accountId, personal);
 
 		PubSubClient c = this.Client(accountId);
-		string me = this.Xmpp(accountId).BareJID;
-		SubscriptionsEventArgs r = personal
-			? await Ask<SubscriptionsEventArgs>(cb => c.GetMySubscriptions(me, string.Empty, cb, null), "The service did not list what you watch.")
-			: await Ask<SubscriptionsEventArgs>(cb => c.GetMySubscriptions(cb, null), "The service did not list what you watch.");
+		string where = personal ? this.Xmpp(accountId).BareJID : this.ServiceOrThrow(accountId, neuron);
+		SubscriptionsEventArgs r = await Ask<SubscriptionsEventArgs>(cb => c.GetMySubscriptions(where, string.Empty, cb, null), "The service did not list what you watch.");
 
 		return [.. (r.Subscriptions ?? [])
 			.Where(x => x.Status is NodeSubscriptionStatus.subscribed or NodeSubscriptionStatus.unconfigured && !string.IsNullOrEmpty(x.Node))
@@ -322,14 +427,14 @@ public sealed class PubSubService : IAsyncDisposable
 	// ---- Settings --------------------------------------------------------------------------
 
 	/// <summary>A node's settings. With no node: the settings the service gives a new one.</summary>
-	public async Task<NodeSettings> SettingsAsync(Guid accountId, PubSubNodeInfo? node)
+	public async Task<NodeSettings> SettingsAsync(Guid accountId, PubSubNodeInfo? node, string? neuron = null)
 	{
 		if (this.StandIn is IPubSubStandIn s)
 			return await s.SettingsAsync(accountId, node);
 
 		PubSubClient c = this.Client(accountId);
 		ConfigurationEventArgs r = node is null
-			? await Ask<ConfigurationEventArgs>(cb => c.GetDefaultNodeConfiguration(c.ComponentAddress, cb, null), "The service did not give its settings for new nodes.")
+			? await Ask<ConfigurationEventArgs>(cb => c.GetDefaultNodeConfiguration(this.ServiceOrThrow(accountId, neuron), cb, null), "The service did not give its settings for new nodes.")
 			: await Ask<ConfigurationEventArgs>(cb => c.GetNodeConfiguration(node.Service, node.Node, cb, null), "The node did not give its settings.");
 
 		return FromConfiguration(r.Configuration);
@@ -569,6 +674,15 @@ public sealed class PubSubService : IAsyncDisposable
 				else if (this.clients.TryRemove(s.Profile.Id, out PubSubClient? old))
 				{
 					old.Dispose();
+					this.own.TryRemove(s.Profile.Id, out string? gone);
+
+					// What was found on other Neurons through this connection is asked for again on the next one.
+					string mine = s.Profile.Id.ToString("N") + "|";
+					foreach (string key in this.others.Keys.Where(k => k.StartsWith(mine, StringComparison.OrdinalIgnoreCase)).ToList())
+						this.others.TryRemove(key, out gone);
+					foreach (string key in this.otherProblems.Keys.Where(k => k.StartsWith(mine, StringComparison.OrdinalIgnoreCase)).ToList())
+						this.otherProblems.TryRemove(key, out gone);
+
 					this.Changed?.Invoke(this, s.Profile.Id);
 				}
 			};
@@ -587,25 +701,20 @@ public sealed class PubSubService : IAsyncDisposable
 		Guid id = s.Profile.Id;
 		try
 		{
-			string? component = null;
-			ServiceItemsDiscoveryEventArgs items = await client.ServiceItemsDiscoveryAsync(client.Domain).WaitAsync(wait);
-			foreach (Item item in items.Items ?? [])
+			string? found = null;
+			try
 			{
-				ServiceDiscoveryEventArgs info = await client.ServiceDiscoveryAsync(item.JID).WaitAsync(TimeSpan.FromSeconds(10));
-				if (info.Ok && info.HasFeature(PubSubClient.NamespacePubSub) && info.Identities.Any(i => i.Category == "pubsub" && i.Type == "service"))
-				{
-					component = item.JID;
-					break;
-				}
+				found = await FindComponentAsync(client, client.Domain);
+				if (found is null)
+					this.problems[id] = "The account's server has no publish/subscribe service.";
+			}
+			catch (Exception ex)
+			{
+				this.problems[id] = "Publish/subscribe is not available: " + ex.Message;
 			}
 
-			if (component is null)
-			{
-				this.problems[id] = "The account's server has no publish/subscribe service.";
-				this.Changed?.Invoke(this, id);
-				return;
-			}
-
+			// The connection's publish/subscribe client is there either way: it also reaches the services of other Neurons.
+			string component = found ?? client.Domain;
 			PubSubClient c = new(client, component);
 			c.ItemNotification += (_, e) =>
 			{
@@ -640,7 +749,13 @@ public sealed class PubSubService : IAsyncDisposable
 			if (this.clients.TryRemove(id, out PubSubClient? old))
 				old.Dispose();
 			this.clients[id] = c;
-			this.problems.TryRemove(id, out _);
+			if (found is null)
+				this.own.TryRemove(id, out _);
+			else
+			{
+				this.own[id] = found;
+				this.problems.TryRemove(id, out _);
+			}
 		}
 		catch (Exception ex)
 		{
