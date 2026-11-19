@@ -21,6 +21,6 @@ public sealed class ScriptReplyView : Decorator
 		base.OnPropertyChanged(change);
 		if (change.Property == ReplyProperty)
 			this.Child = this.Reply?.Table is not null || this.Reply?.List is not null
-				? new QueryTableView { DataContext = this.Reply } : new MarkdownView { Markdown = this.Reply?.Markdown };
+				? new QueryTableView { DataContext = this.Reply } : new MarkdownView { RenderGraphs = true, Markdown = this.Reply?.Markdown };
 	}
 }

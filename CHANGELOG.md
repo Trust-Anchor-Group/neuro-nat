@@ -1,5 +1,9 @@
 # NAT changelog
 
+## 0.8.1
+
+- **View charts in Chat admin and runbooks.** Numeric line, curve, and scatter plots appear inline, including plots with multiple series.
+
 ## 0.8.0
 
 - **Browse query results in Chat admin and runbooks.** Select a row to read every field and copy individual values, a row, or the whole result as CSV. Use **Show original** to inspect the script output.

@@ -31,6 +31,7 @@ public sealed class MarkdownView : Decorator
 
 	private readonly StackPanel root = new() { Spacing = 10 };
 	private int version;
+	internal bool RenderGraphs { get; init; }
 
 	public MarkdownView()
 	{
@@ -123,7 +124,9 @@ public sealed class MarkdownView : Decorator
 				return await this.TableAsync(t);
 
 			case CodeBlock cb:
-				return this.Code(string.Join('\n', cb.Rows ?? []));
+				string source = string.Join('\n', cb.Rows ?? []);
+				return this.RenderGraphs && string.Equals(cb.Language, "Graph", StringComparison.OrdinalIgnoreCase)
+					? this.GraphBlock(source) : this.Code(source);
 
 			case BulletList or NumberedList:
 				return await this.ListAsync(e);
@@ -182,6 +185,46 @@ public sealed class MarkdownView : Decorator
 				string plain = await PlainAsync(e);
 				return string.IsNullOrWhiteSpace(plain) ? null : Text(plain);
 		}
+	}
+
+	private Control GraphBlock(string source)
+	{
+		Border frame = new() { Child = Text("Rendering chart…") };
+		Task<byte[]?>? render = null;
+		frame.Loaded += async (_, _) =>
+		{
+			try
+			{
+				byte[]? png = await (render ??= Task.Run(() => BrokerGraph.Render(source)));
+				if (!frame.IsLoaded || frame.Child is Image)
+					return;
+				if (png is not null)
+				{
+					using MemoryStream stream = new(png);
+					Image chart = new() { Source = new Avalonia.Media.Imaging.Bitmap(stream), Stretch = Stretch.Uniform,
+						StretchDirection = StretchDirection.DownOnly, MaxHeight = 480, HorizontalAlignment = HorizontalAlignment.Left };
+					Avalonia.Automation.AutomationProperties.SetName(chart, "Script result chart");
+					frame.Child = chart;
+					return;
+				}
+			}
+			catch (Exception)
+			{
+				// An unreadable graph still has the same selectable source as other code blocks.
+			}
+			if (frame.IsLoaded)
+				frame.Child = this.Code(source);
+		};
+		frame.Unloaded += (_, _) =>
+		{
+			if (frame.Child is Image chart && chart.Source is Avalonia.Media.Imaging.Bitmap bitmap)
+			{
+				chart.Source = null;
+				frame.Child = null;
+				bitmap.Dispose();
+			}
+		};
+		return frame;
 	}
 
 	private Control Code(string literal)
