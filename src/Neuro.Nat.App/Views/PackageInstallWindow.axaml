@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Neuro.Nat.App.Views.PackageInstallWindow" Title="Install package"
+        Width="460" MinWidth="340" SizeToContent="Height" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <StackPanel Margin="20" Spacing="10">
+    <TextBlock x:Name="Target" Classes="section" TextWrapping="Wrap" />
+    <TextBlock Text="The Neuron may restart during installation." TextWrapping="Wrap" />
+    <TextBlock Text="Installation key" Margin="0,4,0,-4" />
+    <TextBox x:Name="KeyBox" PasswordChar="•" IsUndoEnabled="False" AutomationProperties.Name="Installation key" />
+    <TextBlock x:Name="KeyError" Classes="error" IsVisible="False" TextWrapping="Wrap"
+               Text="Paste the package’s installation key (76 or 108 characters)." />
+    <CheckBox x:Name="Backup" Content="Back up first" IsChecked="True" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="Cancel" IsCancel="True" Click="Cancel_Click" />
+      <Button x:Name="Install" Classes="primary" Content="Install package" Click="Install_Click" />
+    </StackPanel>
+  </StackPanel>
+</Window>

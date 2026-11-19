@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Neuro.Nat.App.Views.PackageUploadWindow"
-        Title="Upload package" Width="540" Height="550" MinWidth="380" MinHeight="390"
+        Title="Upload package" Width="540" Height="630" MinWidth="380" MinHeight="390"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
   <DockPanel Margin="20">
     <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
@@ -18,11 +18,21 @@
         <TextBlock Text="The broker distributes uploaded packages to its domain and connected child domains. Each Neuron follows its own update settings." TextWrapping="Wrap" />
         <TextBlock Text="Broker web address" Margin="0,6,0,0" />
         <TextBox x:Name="Address" PlaceholderText="https://broker.example.org" AutomationProperties.Name="Broker web address" />
-        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="4">
+        <TextBlock Text="Sign in with" Margin="0,6,0,0" />
+        <ComboBox x:Name="SignIn" HorizontalAlignment="Stretch" AutomationProperties.Name="Upload sign-in method">
+          <ComboBoxItem x:Name="Reuse" Content="Current session" IsVisible="False" />
+          <ComboBoxItem x:Name="ById" Content="Legal ID approval" />
+          <ComboBoxItem x:Name="ByPassword" Content="Web username and password" />
+        </ComboBox>
+        <StackPanel x:Name="LegalFields" Spacing="4">
+          <TextBlock Text="Legal ID" />
+          <AutoCompleteBox x:Name="LegalId" PlaceholderText="Select or enter your Legal ID" MinimumPrefixLength="0" AutomationProperties.Name="Legal ID" />
+        </StackPanel>
+        <Grid x:Name="PasswordFields" IsVisible="False" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="4">
           <TextBlock Text="Web account" />
           <TextBlock Grid.Column="1" Text="Password" />
           <TextBox x:Name="User" Grid.Row="1" AutomationProperties.Name="Web account" />
-          <TextBox x:Name="Password" Grid.Column="1" Grid.Row="1" PasswordChar="•" AutomationProperties.Name="Web password" />
+          <TextBox x:Name="Password" Grid.Column="1" Grid.Row="1" PasswordChar="•" IsUndoEnabled="False" AutomationProperties.Name="Web password" />
         </Grid>
         <TextBlock Text="Package file" Margin="0,6,0,0" />
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">

@@ -122,7 +122,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			OpenConsoleFor = (account, jid) => this.OpenNeuron(jid, account, WorkspaceKind.NeuronConsole),
 		};
 		Engine.Software.SoftwareService softwareService = software ?? new Engine.Software.SoftwareService(fleet.Monitors, chatService);
-		this.Updates = new UpdatesViewModel(softwareService, fleet.Monitors, accounts, this.Features);
+		this.Updates = new UpdatesViewModel(softwareService, fleet.Monitors, accounts, this.Features, this.identityService,
+			primary?.Updates.UploadSessions ?? new Engine.Software.BrokerUploadSessions());
 		this.StartCompare(softwareService);
 		this.Devices = new DevicesViewModel(this.devicesService, accounts);
 		Engine.PubSub.PubSubService pubsubService = pubsub ?? new Engine.PubSub.PubSubService(accounts);

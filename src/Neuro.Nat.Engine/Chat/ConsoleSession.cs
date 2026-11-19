@@ -119,7 +119,10 @@ public sealed partial class ConsoleSession
 	public bool IsAvailable => this.fullJid() is not null;
 
 	/// <summary>Sends a command or script. Returns its entry; replies are added as they arrive.</summary>
-	public async Task<ConsoleEntry> SendAsync(string command, string? broadcastId = null, bool hidden = false)
+	public Task<ConsoleEntry> SendAsync(string command, string? broadcastId = null, bool hidden = false) =>
+		this.SendAsync(command, broadcastId, hidden, null);
+
+	private async Task<ConsoleEntry> SendAsync(string command, string? broadcastId, bool hidden, string? privateArgument)
 	{
 		ConsoleEntry e = new("naa-" + Guid.NewGuid().ToString("N")[..12], command, broadcastId, hidden);
 		lock (this.entries)
@@ -132,7 +135,7 @@ public sealed partial class ConsoleSession
 		{
 			try
 			{
-				await this.send(to, command, e.ThreadId);
+				await this.send(to, privateArgument is null ? command : command + " " + privateArgument, e.ThreadId);
 			}
 			catch (Exception ex)
 			{
@@ -186,9 +189,9 @@ public sealed partial class ConsoleSession
 	/// <paramref name="quiet"/>. Empty when nothing came in <paramref name="timeout"/>.
 	/// For commands that report progress (check, install).
 	/// </summary>
-	public async Task<IReadOnlyList<string>> AskUntilQuietAsync(string command, TimeSpan quiet, TimeSpan timeout)
+	public async Task<IReadOnlyList<string>> AskUntilQuietAsync(string command, TimeSpan quiet, TimeSpan timeout, string? privateArgument = null)
 	{
-		ConsoleEntry entry = await this.SendAsync(command, hidden: true);
+		ConsoleEntry entry = await this.SendAsync(command, null, hidden: true, privateArgument);
 		if (entry.Error is not null)
 			return [];
 

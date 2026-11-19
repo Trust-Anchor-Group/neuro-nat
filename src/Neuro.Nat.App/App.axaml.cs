@@ -79,6 +79,7 @@ public partial class App : Application
 				services.Features.FeedBigScreen(BigScreenPages.Added);
 
 				MainWindowViewModel vm = new(services.Accounts, services.Fleet, services.Chat, services.Identities, services.Devices, services.PubSub, features: services.Features);
+				desktop.Exit += (_, _) => vm.Updates.UploadSessions.DisposeAsync().AsTask().GetAwaiter().GetResult();
 				vm.Compare.Store = services.NeuronCopies;
 				MainWindow window = new() { DataContext = vm };
 				_ = vm.Console.Runbooks.UseAsync(services.Runbooks);

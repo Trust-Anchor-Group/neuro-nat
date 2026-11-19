@@ -151,17 +151,23 @@
             <StackPanel Spacing="8">
               <TextBlock Classes="section" Text="Downloaded packages" />
               <TextBlock Classes="meta" TextWrapping="Wrap" IsVisible="{Binding !HasPackages}"
-                         Text="None" />
+                         Text="No downloaded packages reported. After uploading to this Neuron, refresh to see the package and its install action." />
               <ItemsControl ItemsSource="{Binding Packages}" IsVisible="{Binding HasPackages}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="sw:SoftwarePackage">
                     <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
-                      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12">
                         <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <Border Grid.Column="1" Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding IsInstalled}">
-                          <TextBlock Text="Installed" Foreground="{DynamicResource Ink.Secondary}" />
-                        </Border>
-                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="meta" Margin="0,3,0,0" TextTrimming="CharacterEllipsis">
+                        <StackPanel Grid.Column="1" Grid.RowSpan="2" Spacing="6" Orientation="Horizontal" VerticalAlignment="Center">
+                          <Border Classes="pill" Background="{DynamicResource Surface.Pressed}" IsVisible="{Binding IsInstalled}">
+                            <TextBlock Text="Installed" Foreground="{DynamicResource Ink.Secondary}" />
+                          </Border>
+                          <Button Classes="small" Content="Upgrade…" IsVisible="{Binding IsInstalled}"
+                                  Command="{Binding $parent[UserControl].((vm:UpdatesViewModel)DataContext).AskUpgradeCommand}" CommandParameter="{Binding FileName}" />
+                          <Button Classes="small" Content="Install…" IsVisible="{Binding CanInstall}" Click="Install_Click"
+                                  IsEnabled="{Binding $parent[UserControl].((vm:UpdatesViewModel)DataContext).CanInstallOnSelected}" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Classes="meta" Margin="0,3,0,0" TextTrimming="CharacterEllipsis">
                           <Run Text="{Binding Size}" /><Run Text=", published " /><Run Text="{Binding Published}" /><Run Text=" from " /><Run Text="{Binding From}" />
                         </TextBlock>
                       </Grid>

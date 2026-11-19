@@ -1,5 +1,10 @@
 # NAT changelog
 
+## Unreleased
+
+- **Approve package uploads with Legal ID.** Review the request in the NAT Inbox or your identity app. NAT reuses the session for later uploads to the same broker from the same NAT account. Web username and password sign-in is also available.
+- **Install a downloaded package.** In a Neuron’s **Software → Downloaded packages**, select **Install…**, enter the package’s installation key, and choose whether to back up first. An installed package offers **Upgrade…** on the same row.
+
 ## 0.6.0
 
 - **Check for NAT updates.** Open Settings and scroll to the version, or open the tray menu. Check for an update there and restart into it once the download finishes.

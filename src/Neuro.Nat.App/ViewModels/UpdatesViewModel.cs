@@ -50,15 +50,30 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	private readonly AccountManager accounts;
 	private readonly FeatureSet features;
 
-	public UpdatesViewModel(SoftwareService software, MonitorService monitors, AccountManager accounts, FeatureSet? features = null)
+	private readonly Engine.Identity.IdentityService? identities;
+	public BrokerUploadSessions UploadSessions { get; }
+
+	public UpdatesViewModel(SoftwareService software, MonitorService monitors, AccountManager accounts, FeatureSet? features = null,
+		Engine.Identity.IdentityService? identities = null, BrokerUploadSessions? uploadSessions = null)
 	{
 		this.software = software;
 		this.monitors = monitors;
 		this.accounts = accounts;
+		this.identities = identities;
+		this.UploadSessions = uploadSessions ?? new();
 		this.features = features ?? FeatureSet.None();
 		this.FeatureChecks = this.features.Features.Select(f => f.DiscoveryCheck).OfType<FeatureCheck>().ToList();
 		monitors.NeuronsChanged += (_, _) => Dispatcher.UIThread.Post(this.Sync);
 		this.features.Changed += (_, _) => Dispatcher.UIThread.Post(this.ShowFeatureLines);
+	}
+
+	public async Task<string[]> UploadLegalIdsAsync(Guid accountId)
+	{
+		if (this.identities?.IsAvailable(accountId) != true)
+			return [];
+		var ids = await this.identities.GetIdentitiesAsync(accountId);
+		return [.. ids.Where(i => i.State == Waher.Security.IdentityState.Approved && i.To >= DateTime.UtcNow)
+			.OrderByDescending(i => i.Created).Select(i => i.Id)];
 	}
 
 	public ObservableCollection<UpdateRowViewModel> Rows { get; } = [];
@@ -97,7 +112,7 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	}
 
 	[ObservableProperty]
-	[NotifyPropertyChangedFor(nameof(HasSelection))]
+	[NotifyPropertyChangedFor(nameof(HasSelection), nameof(CanInstallOnSelected))]
 	private UpdateRowViewModel? selected;
 
 	public bool HasSelection => this.Selected is not null;
@@ -105,7 +120,11 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	[ObservableProperty] private bool hasRows;
 	[ObservableProperty]
 	[NotifyCanExecuteChangedFor(nameof(AskUpgradeCommand), nameof(UpgradeNowCommand))]
+	[NotifyPropertyChangedFor(nameof(CanInstallOnSelected))]
 	private bool isBusy;
+
+	public bool CanInstallOnSelected => !this.IsBusy && this.Selected is { IsLive: true } row &&
+		this.accounts.Get(row.AccountId)?.Profile.ReadOnly == false;
 	[ObservableProperty] private string busyText = string.Empty;
 	[ObservableProperty] private string? error;
 
@@ -301,6 +320,7 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 			}
 
 			this.HasRows = this.Rows.Count > 0;
+			this.OnPropertyChanged(nameof(this.CanInstallOnSelected));
 		}
 		finally
 		{
@@ -478,6 +498,31 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	}
 
 	// ---- Actions ---------------------------------------------------------------------------
+
+	public async Task InstallPackageAsync(UpdateRowViewModel row, string package, string key, bool backup)
+	{
+		if (row != this.Selected || !this.CanInstallOnSelected || !this.Packages.Any(p => p.FileName == package && p.CanInstall))
+		{
+			Ui.Say("The package or target changed. Refresh Software and choose the package again.");
+			return;
+		}
+
+		this.IsConfirmingUpgrade = false;
+		await this.RunAsync(row, $"Installing {package}…", async () =>
+		{
+			var replies = await this.software.InstallAsync(row.AccountId, row.NeuronJid, package, key, backup);
+			if (this.Selected == row)
+			{
+				this.AddLog($"Install {package} on {row.NeuronJid}" + (backup ? " (with backup)" : " (without backup)"));
+				foreach (string reply in replies)
+					this.AddLog(reply);
+				if (replies.Count == 0)
+					this.AddLog("No reply to the install command. Refresh Software when the Neuron is connected to check its status.");
+			}
+			if (row.IsLive)
+				await this.ReadAsync(row, quiet: true);
+		});
+	}
 
 	[RelayCommand]
 	private Task Refresh() => this.Selected is { } r ? this.RunAsync(r, "Asking the Neuron…", () => this.ReadAsync(r, quiet: true)) : Task.CompletedTask;

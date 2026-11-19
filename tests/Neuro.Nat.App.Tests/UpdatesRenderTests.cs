@@ -103,11 +103,38 @@ public class UpdatesRenderTests
 		Dispatcher.UIThread.RunJobs();
 		var dialog = Assert.IsType<PackageUploadWindow>(Assert.Single(window.OwnedWindows));
 		Assert.Equal("https://gbg.lab.example.com/", dialog.FindControl<TextBox>("Address")!.Text);
+		Assert.True(dialog.FindControl<StackPanel>("LegalFields")!.IsVisible);
+		ComboBox signIn = dialog.FindControl<ComboBox>("SignIn")!;
+		signIn.SelectedItem = dialog.FindControl<ComboBoxItem>("ByPassword");
+		Assert.True(dialog.FindControl<Grid>("PasswordFields")!.IsVisible);
+		Assert.False(dialog.FindControl<StackPanel>("LegalFields")!.IsVisible);
+		dialog.FindControl<TextBox>("Password")!.Text = "sample";
+		signIn.SelectedItem = dialog.FindControl<ComboBoxItem>("ById");
+		Assert.True(string.IsNullOrEmpty(dialog.FindControl<TextBox>("Password")!.Text));
 		Assert.False(dialog.FindControl<CheckBox>("Downloadable")!.IsChecked);
 		dialog.FindControl<Button>("Send")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 		Assert.Contains("choose a package", dialog.FindControl<TextBlock>("Status")!.Text);
 		dialog.Close();
 		Dispatcher.UIThread.RunJobs();
+		Button install = window.GetVisualDescendants().OfType<Button>().Single(b =>
+			b.IsEffectivelyVisible && Equals(b.Content, "Install…"));
+		Assert.True(install.IsEnabled);
+		install.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+		Dispatcher.UIThread.RunJobs();
+		var installDialog = Assert.IsType<PackageInstallWindow>(Assert.Single(window.OwnedWindows));
+		Assert.Contains(packages[0].FileName, installDialog.FindControl<TextBlock>("Target")!.Text);
+		Assert.Contains(jids[1], installDialog.FindControl<TextBlock>("Target")!.Text);
+		Assert.True(installDialog.FindControl<CheckBox>("Backup")!.IsChecked);
+		TextBox keyBox = installDialog.FindControl<TextBox>("KeyBox")!;
+		Assert.Equal('•', keyBox.PasswordChar);
+		keyBox.Text = "invalid";
+		installDialog.FindControl<Button>("Install")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+		Assert.True(installDialog.FindControl<TextBlock>("KeyError")!.IsVisible);
+		installDialog.Close();
+		Dispatcher.UIThread.RunJobs();
+		Assert.True(string.IsNullOrEmpty(keyBox.Text));
+		Assert.Contains(window.GetVisualDescendants().OfType<Button>(), b =>
+			b.IsEffectivelyVisible && Equals(b.Content, "Upgrade…") && Equals(b.CommandParameter, packages[1].FileName));
 		Button upgrade = window.GetVisualDescendants().OfType<Button>().Single(b =>
 			b.IsEffectivelyVisible && Equals(b.Content, "Upgrade…") && Equals(b.CommandParameter, "TAG.Payments.package"));
 		upgrade.Command!.Execute(upgrade.CommandParameter);
@@ -124,6 +151,21 @@ public class UpdatesRenderTests
 		u.AskUpgradeCommand.Execute(null);
 		Assert.Equal("upgrade", u.UpgradeCommandPreview);
 		Assert.True(u.UpgradeBackup);
+		u.Selected = u.Rows.First(r => r.NeuronJid == jids[1]);
+		Dispatcher.UIThread.RunJobs();
+		Button installAgain = window.GetVisualDescendants().OfType<Button>().Single(b =>
+			b.IsEffectivelyVisible && Equals(b.Content, "Install…"));
+		installAgain.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+		Dispatcher.UIThread.RunJobs();
+		installDialog = Assert.IsType<PackageInstallWindow>(Assert.Single(window.OwnedWindows));
+		string testKey = Convert.ToBase64String(new byte[57]);
+		installDialog.FindControl<TextBox>("KeyBox")!.Text = " " + testKey + " ";
+		installDialog.FindControl<CheckBox>("Backup")!.IsChecked = false;
+		installDialog.FindControl<Button>("Install")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+		Dispatcher.UIThread.RunJobs();
+		Assert.Empty(window.OwnedWindows);
+		Assert.Contains(u.Log, line => line.Text == $"Install {packages[0].FileName} on {jids[1]} (without backup)");
+		Assert.DoesNotContain(u.Log, line => line.Text.Contains(testKey, StringComparison.Ordinal));
 		window.Close();
 	}
 

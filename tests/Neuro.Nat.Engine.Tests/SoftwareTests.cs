@@ -9,6 +9,37 @@ namespace Neuro.Nat.Engine.Tests;
 public class SoftwareTests
 {
 	[Theory]
+	[InlineData(true, "install fo.package")]
+	[InlineData(false, "install nobackup fo.package")]
+	public async Task InstallSendsTheKeyOnlyWithTheChosenPackage(bool backup, string expected)
+	{
+		string key = Convert.ToBase64String(new byte[57]) + (backup ? "" : new string('a', 32));
+		string? sent = null;
+		string? sentTo = null;
+		Guid account = Guid.NewGuid();
+		ConsoleSession? console = null;
+		console = new(account, "root.example", () => "root.example/admin", (to, body, thread) =>
+		{
+			sentTo = to;
+			sent = body;
+			console!.Receive(new(account, "root.example", "1", null, DateTime.Now, "Installing fo.package", ""), thread);
+			return Task.CompletedTask;
+		});
+		List<string> recorded = [];
+		console.Changed += (_, entry) => recorded.Add(entry.Command);
+
+		await Assert.ThrowsAsync<ArgumentException>(() => SoftwareService.InstallAsync(console, "nobackup", key, backup));
+		await Assert.ThrowsAsync<ArgumentException>(() => SoftwareService.InstallAsync(console, "fo.package", "", backup));
+		Assert.Null(sent);
+		Assert.Equal(["Installing fo.package"], await SoftwareService.InstallAsync(console, "fo.package", key, backup));
+		Assert.Equal("root.example/admin", sentTo);
+		Assert.Equal(expected + " " + key, sent);
+		Assert.NotEmpty(recorded);
+		Assert.All(recorded, command => Assert.Equal(expected, command));
+		Assert.Empty(console.Entries);
+	}
+
+	[Theory]
 	[InlineData(null, true, "upgrade")]
 	[InlineData(null, false, "upgrade nobackup")]
 	[InlineData("fo.package", true, "upgrade fo.package")]
@@ -49,12 +80,14 @@ public class SoftwareTests
 		string md = "| File Name | Size | Published | Supersedes | Created | Installed | Signature | Remote Endpoint |\n" +
 			"|:----------|:----:|:---------:|:----------:|:-------:|:---------:|:----------|:----------------|\n" +
 			"| [TAG.Neuron.package](https://x/Packages/TAG.Neuron.package) | 48.2 MB | 2026-11-01 10:00 | | 2026-11-02 08:00 | 2026-11-02 08:05 | <a href='javascript:Popup.Alert(\"abc\")'>abcdefghij...</a> | lab.example.com |\n" +
-			"| TAG.Payments.package | 1.1 MB | 2026-10-01 10:00 | | 2026-10-02 08:00 | | x | lab.example.com |\n";
+			"| <a href=\"https://x/ChatFile/TAG.Payments.package?jid=ops&amp;t=token\">TAG.Payments.package</a> | 1.1 MB | 2026-10-01 10:00 | | 2026-10-02 08:00 | | x | lab.example.com |\n";
 		IReadOnlyList<SoftwarePackage> p = SoftwareService.ParsePackages(md);
 		Assert.Equal(2, p.Count);
 		Assert.Equal("TAG.Neuron.package", p[0].FileName);
 		Assert.True(p[0].IsInstalled);
-		Assert.False(p[1].IsInstalled);
+		Assert.False(p[0].CanInstall);
+		Assert.Equal("TAG.Payments.package", p[1].FileName);
+		Assert.True(p[1].CanInstall);
 		Assert.Equal("lab.example.com", p[1].From);
 	}
 }

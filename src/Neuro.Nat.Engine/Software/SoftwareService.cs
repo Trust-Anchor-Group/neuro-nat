@@ -10,6 +10,7 @@ namespace Neuro.Nat.Engine.Software;
 public sealed record SoftwarePackage(string FileName, string Size, string Published, string? Supersedes, string Created, string? Installed, string? From)
 {
 	public bool IsInstalled => !string.IsNullOrEmpty(this.Installed);
+	public bool CanInstall => !this.IsInstalled && SoftwareService.CanUpgradePackage(this.FileName);
 }
 
 /// <summary>How a Neuron updates itself, and what it has.</summary>
@@ -130,6 +131,27 @@ public sealed partial class SoftwareService(MonitorService monitors, ChatService
 			throw new ArgumentException("Choose an installed package that the broker can upgrade individually.", nameof(package));
 
 		return "upgrade" + (backup ? string.Empty : " nobackup") + (package is null ? string.Empty : " " + package);
+	}
+
+	/// <summary>The broker accepts a Base64 public key, optionally followed by a 32-digit hex encryption key.</summary>
+	public static bool IsInstallationKey(string key) =>
+		key.Length is 76 or 108 && !key.Any(char.IsWhiteSpace) &&
+		Convert.TryFromBase64Chars(key.AsSpan(0, 76), stackalloc byte[57], out _) &&
+		(key.Length == 76 || key.AsSpan(76).IndexOfAnyExcept("0123456789abcdefABCDEF") < 0);
+
+	public Task<IReadOnlyList<string>> InstallAsync(Guid accountId, string neuronJid, string package, string key, bool backup) =>
+		InstallAsync(this.Console(accountId, neuronJid), package, key, backup);
+
+	internal static async Task<IReadOnlyList<string>> InstallAsync(ConsoleSession console, string package, string key, bool backup)
+	{
+		if (!CanUpgradePackage(package))
+			throw new ArgumentException("Choose a downloaded package that can be installed individually.", nameof(package));
+		if (!IsInstallationKey(key))
+			throw new ArgumentException("Enter the installation key supplied with the package.", nameof(key));
+
+		string command = (backup ? "install " : "install nobackup ") + package;
+		var replies = await console.AskUntilQuietAsync(command, TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(10), privateArgument: key);
+		return Plain(replies.Select(reply => reply.Replace(key, "[installation key]", StringComparison.Ordinal)));
 	}
 
 	private NeuronNotification? Pending(Guid accountId, string neuronJid)
