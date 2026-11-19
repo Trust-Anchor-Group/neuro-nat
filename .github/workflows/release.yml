@@ -71,6 +71,17 @@ jobs:
       - name: Install the Velopack CLI
         run: dotnet tool install --global vpk --version ${{ env.VPK_VERSION }}
 
+      - name: Read the changelog for the tagged version
+        shell: pwsh
+        run: |
+          $changelog = Get-Content -LiteralPath CHANGELOG.md -Raw -Encoding utf8
+          $version = [regex]::Escape($env:VERSION)
+          $sections = [regex]::Matches($changelog, "(?ms)^## $version[ \t]*\r?\n(?<notes>.*?)(?=^##[ \t]+|\z)")
+          if ($sections.Count -ne 1 -or [string]::IsNullOrWhiteSpace($sections[0].Groups['notes'].Value)) {
+            throw "CHANGELOG.md must have one nonempty section headed '## $env:VERSION' for this release."
+          }
+          $sections[0].Groups['notes'].Value.Trim() | Set-Content -LiteralPath release-notes.md -Encoding utf8NoBOM
+
       - name: Read the repository address
         id: repo
         shell: pwsh
@@ -96,8 +107,9 @@ jobs:
         run: dotnet publish src/Neuro.Nat.Desktop/Neuro.Nat.Desktop.csproj --configuration Release --runtime win-x64 --self-contained true --output publish -p:Version=${{ env.VERSION }}
 
       - name: Pack the installer
-        run: vpk pack --packId Neuro.Nat --packVersion ${{ env.VERSION }} --packDir publish --mainExe NAT.exe --packTitle NAT --packAuthors NAT --icon src/Neuro.Nat.Desktop/Assets/NAT.ico --shortcuts Desktop,StartMenuRoot --outputDir releases
+        run: vpk pack --packId Neuro.Nat --packVersion ${{ env.VERSION }} --packDir publish --mainExe NAT.exe --packTitle NAT --packAuthors NAT --icon src/Neuro.Nat.Desktop/Assets/NAT.ico --shortcuts Desktop,StartMenuRoot --releaseNotes release-notes.md --outputDir releases
 
+      # The GitHub uploader takes the release description from the full package's release notes.
       - name: Upload the release
         shell: pwsh
         env:

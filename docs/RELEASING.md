@@ -2,16 +2,19 @@
 
 ## Make a release
 
-1. Raise `<Version>` in `Directory.Build.props`, for example to `0.3.0`, and commit.
+1. Collect administrator-facing changes under `## Unreleased` in [CHANGELOG.md](../CHANGELOG.md).
+   When cutting a release, move those notes under a heading for the version, for example `## 0.5.0`.
+   Set `<Version>` in `Directory.Build.props` to the same version and commit both files.
 2. Tag the commit with the same version and push the tag:
 
    ```powershell
-   git tag v0.3.0
-   git push origin v0.3.0
+   git tag v0.5.0
+   git push origin v0.5.0
    ```
 
 3. GitHub builds it. The `Release` workflow runs the tests, packs the installer and the update
-   packages, and uploads them as a GitHub release. If a test fails, nothing is released.
+   packages, and uploads them as a GitHub release. Velopack embeds the tagged version’s changelog
+   section in the update package and uses it as the GitHub release description.
 
 A tag that is not a full version, such as `v0.3` or `release-1`, is refused with a message.
 
