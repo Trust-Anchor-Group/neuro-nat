@@ -45,6 +45,18 @@ public sealed partial class ConsoleResultViewModel(ConsoleEntry entry, string ne
 	[ObservableProperty] private bool isWaiting = true;
 	[ObservableProperty] private bool hasError;
 
+	public ObservableCollection<ScriptReply> Replies { get; } = [];
+	private bool refreshing;
+
+	partial void OnMarkdownChanged(string value)
+	{
+		if (this.refreshing)
+			return;
+		this.Replies.Clear();
+		if (value.Length > 0)
+			this.Replies.Add(new(value));
+	}
+
 	internal string AnswerText => this.HasError ? this.Status : ScriptResultText.Unwrap(this.Markdown) ?? this.Markdown;
 
 	[RelayCommand]
@@ -53,7 +65,18 @@ public sealed partial class ConsoleResultViewModel(ConsoleEntry entry, string ne
 	public void Refresh()
 	{
 		IReadOnlyList<ConsoleResponse> r = this.Entry.Responses;
+		this.refreshing = true;
 		this.Markdown = string.Join("\n\n", r.Select(x => x.Markdown));
+		this.refreshing = false;
+		while (this.Replies.Count > r.Count)
+			this.Replies.RemoveAt(this.Replies.Count - 1);
+		for (int i = 0; i < r.Count; i++)
+		{
+			if (i == this.Replies.Count)
+				this.Replies.Add(new(r[i].Markdown));
+			else if (this.Replies[i].Markdown != r[i].Markdown)
+				this.Replies[i] = new(r[i].Markdown);
+		}
 		this.HasError = this.Entry.Error is not null;
 		this.IsWaiting = r.Count == 0 && !this.HasError;
 		this.Status = this.HasError ? this.Entry.Error! :
@@ -248,17 +271,18 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 		{
 			case ConsoleResultViewModel r:
 				string command = r.Run?.Command ?? string.Empty;
-				string? csv = Export.MarkdownTablesAsCsv(r.Markdown);
+				var tables = r.Replies.Where(reply => reply.HasExportableTable).ToList();
+				string TableText(bool csv) => string.Join(Environment.NewLine, tables.Select(t => t.ExportTables(csv)));
 				list.Copy("Copy answer", () => r.AnswerText, "the answer", "Ctrl+C");
-				if (csv is not null)
+				if (tables.Count > 0)
 				{
-					list.Copy("Copy table for a spreadsheet", () => string.Join(Environment.NewLine, Export.MarkdownTables(r.Markdown).Select(t => Export.Tabs(t[0], t.Skip(1)))), "the table");
-					list.Copy("Copy table as CSV", () => csv, "the table as CSV");
+					list.Copy("Copy table for a spreadsheet", () => TableText(false), "the table");
+					list.Copy("Copy table as CSV", () => TableText(true), "the table as CSV");
 				}
 
 				List<SaveFormat> formats = [new SaveFormat("Markdown", "md", () => "> " + command + Environment.NewLine + Environment.NewLine + r.Markdown)];
-				if (csv is not null)
-					formats.Insert(0, new SaveFormat("Spreadsheet (CSV)", "csv", () => csv));
+				if (tables.Count > 0)
+					formats.Insert(0, new SaveFormat("Spreadsheet (CSV)", "csv", () => TableText(true)));
 				formats.Add(new SaveFormat("Text", "txt", () => r.AnswerText));
 				list.Save("Save…", Ui.FileName(command.Split(' ', 2)[0] + " " + r.NeuronLabel), [.. formats]);
 

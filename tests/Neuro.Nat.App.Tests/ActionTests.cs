@@ -1,9 +1,12 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -711,6 +714,129 @@ public class ActionTests
 	// ----- Console -----
 
 	[AvaloniaFact]
+	public void BrokerMatricesAndScriptRecordsKeepTheirFieldValues()
+	{
+		Desk desk = new();
+		ScriptReplyView view = new();
+		string Csv(string markdown)
+		{
+			view.Reply = new(markdown);
+			QueryTableView table = Assert.IsType<QueryTableView>(view.Child);
+			table.FindControl<Button>("CopyResult")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			return desk.Clipboard!;
+		}
+		string matrix = "| A | B |\n|---|---|\n| a&#124;b | one<br/>two |\n|  | \\-5 |";
+		Assert.Equal("A,B" + Environment.NewLine + "a|b,\"one\ntwo\"" + Environment.NewLine + ",-5" + Environment.NewLine, Csv(matrix));
+		Assert.Equal("Text" + Environment.NewLine + " padded " + Environment.NewLine, Csv("| Text |\n|---|\n|  padded  |"));
+		const string records = """[{Order: DateTime(2026, 1, 2), "nested values": [1, {N: 2}]}, {Order: null, More: "A\nB"}]""";
+		Assert.Equal("Order,nested values,More" + Environment.NewLine +
+			"\"DateTime(2026, 1, 2)\",\"[1, {N: 2}]\"," + Environment.NewLine + "null,,\"A\nB\"" + Environment.NewLine,
+			Csv("<font class=\"result\">\n\n```\n" + records + "\n```\n\n</font>"));
+		foreach (string value in new[] { "[{A: 1}", "{A: 1, A: 2}", "[{A: 1},]", "{A: [1)}", "[1, 2", "42", "| [Site](url) |\n|---|\n| foo |" })
+		{
+			view.Reply = new(value);
+			Assert.IsType<MarkdownView>(view.Child);
+		}
+		view.Reply = new("[]");
+		Assert.Equal("0 rows  /  0 fields", Assert.IsType<QueryTableView>(view.Child).FindControl<TextBlock>("Summary")!.Text);
+	}
+
+	[AvaloniaFact]
+	public void NestedScriptFieldsExpandAndCopyAtEachLevel()
+	{
+		Desk desk = new();
+		const string endpoints = """[{Name: "primary", Ports: [443, 8443]}, {Name: "backup", Ports: []}]""";
+		string record = """{Service: "Gateway", Note: "[1, 2]", Endpoints: """ + endpoints + "}";
+		ScriptReplyView reply = new() { Reply = new("<font class=\"result\">`" + record + "`</font>") };
+		Window window = new() { Width = 620, Height = 440, Content = new ScrollViewer { Content = reply, Margin = new Thickness(12) } };
+		window.Show();
+		try
+		{
+			var table = Assert.IsType<QueryTableView>(reply.Child);
+			void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			ToggleButton Toggle(string name) => table.GetVisualDescendants().OfType<ToggleButton>().Single(b => AutomationProperties.GetName(b) == name);
+			void Copy(string name) => Click(table.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Copy cell " + name));
+			Dispatcher.UIThread.RunJobs();
+			Click(table.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("record")));
+			Dispatcher.UIThread.RunJobs();
+			Copy("Endpoints");
+			Assert.Equal(endpoints, desk.Clipboard);
+			Assert.DoesNotContain(table.GetVisualDescendants().OfType<ToggleButton>(), b => AutomationProperties.GetName(b)?.StartsWith("Note,") == true);
+			Toggle("Endpoints, 2 items").IsChecked = true;
+			Toggle("[0], 2 fields").IsChecked = true;
+			Toggle("Ports, 2 items").IsChecked = true;
+			Assert.Contains(table.GetVisualDescendants().OfType<SelectableTextBlock>(), b => b.Text == "8443");
+			Copy("Ports");
+			Assert.Equal("[443, 8443]", desk.Clipboard);
+			Copy("Name");
+			Assert.Equal("primary", desk.Clipboard);
+			Toggle("Endpoints, 2 items").IsChecked = false;
+			Assert.False(Toggle("Ports, 2 items").IsEffectivelyVisible);
+			Toggle("Endpoints, 2 items").IsChecked = true;
+			Click(table.FindControl<Button>("ToggleOriginal")!);
+			Assert.Equal(record, table.FindControl<SelectableTextBlock>("Original")!.Text);
+			Click(table.FindControl<Button>("ToggleOriginal")!);
+			Assert.True(Toggle("Ports, 2 items").IsChecked);
+			Dispatcher.UIThread.RunJobs();
+			Capture(window, "console-nested-script");
+		}
+		finally
+		{
+			window.Close();
+		}
+	}
+
+	[AvaloniaFact]
+	public void MixedListsShowIndexedItemsAndLoadLargeBranchesOnDemand()
+	{
+		Desk desk = new();
+		string many = string.Join(", ", Enumerable.Range(100, 50));
+		string literal = """["summary", {Active: true}, [""" + many + "], DateTime(2026, 1, 2)]";
+		ScriptReplyView reply = new() { Reply = new(literal) };
+		Window window = new() { Content = reply, Width = 480, Height = 480 };
+		window.Show();
+		try
+		{
+			Dispatcher.UIThread.RunJobs();
+			var table = Assert.IsType<QueryTableView>(reply.Child);
+			Assert.Equal("4 items", table.FindControl<TextBlock>("Summary")!.Text);
+			var branch = table.GetVisualDescendants().OfType<ToggleButton>().Single(b => AutomationProperties.GetName(b) == "[2], 50 items");
+			branch.IsChecked = true;
+			var more = table.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == "Show next 24 (26 left)");
+			Assert.DoesNotContain(table.GetVisualDescendants().OfType<SelectableTextBlock>(), b => b.Text == "124");
+			more.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			Assert.Contains(table.GetVisualDescendants().OfType<SelectableTextBlock>(), b => b.Text == "124");
+			table.FindControl<Button>("CopyResult")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			Assert.Equal(literal, desk.Clipboard);
+		}
+		finally
+		{
+			window.Close();
+		}
+	}
+
+	[AvaloniaFact]
+	public void CorrectedResultsKeepOtherRepliesAndPaginationExportsEveryRow()
+	{
+		Desk desk = new();
+		Engine.Chat.ConsoleEntry entry = new("thread", "script", null, false);
+		ConsoleResultViewModel result = new(entry, "sample");
+		entry.Add(new("1", DateTime.Now, "Starting"));
+		entry.Add(new("2", DateTime.Now, "[{N: 1}]"));
+		result.Refresh();
+		var printed = result.Replies[0];
+		entry.TryCorrect("2", "[" + string.Join(",", Enumerable.Range(1, 21).Select(i => $"{{N: {i}}}")) + "]", DateTime.Now);
+		result.Refresh();
+		Assert.Equal(2, result.Replies.Count);
+		Assert.Same(printed, result.Replies[0]);
+		var table = Assert.IsType<QueryTableView>(new ScriptReplyView { Reply = result.Replies[1] }.Child);
+		table.FindControl<Button>("Next")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+		Assert.Contains("21 of 21", table.FindControl<TextBlock>("PageLabel")!.Text);
+		table.FindControl<Button>("CopyResult")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+		Assert.Equal(22, desk.Clipboard!.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Length);
+	}
+
+	[AvaloniaFact]
 	public async Task ConsoleRecordsWrapAndSupportSelectionAndWholeAnswerCopy()
 	{
 		Desk desk = new();
@@ -732,14 +858,24 @@ public class ActionTests
 		{
 			Dispatcher.UIThread.RunJobs();
 			var transcript = window.GetVisualDescendants().OfType<ScrollViewer>().Single(v => v.Name == "Transcript");
-			var bodies = transcript.GetVisualDescendants().OfType<SelectableTextBlock>().Where(b => b.Text?.StartsWith('[') == true).ToList();
-			Assert.Equal(2, bodies.Count);
-			var body = bodies[0];
-			Assert.Contains("\n    " + field.TrimEnd(), body.Text);
-			Assert.Contains("\n  },\n  {\n", body.Text);
-			Assert.True(body.Bounds.Height > 100);
+			var tables = transcript.GetVisualDescendants().OfType<QueryTableView>().ToList();
+			Assert.Equal(2, tables.Count);
+			var table = tables[0];
+			Button first = table.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("record"));
+			first.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			Dispatcher.UIThread.RunJobs();
+			var body = table.GetVisualDescendants().OfType<SelectableTextBlock>().Single(b => b.Text == "two, [items]: \"quoted\"");
+			var copyCell = table.GetVisualDescendants().OfType<Button>().First(b => Equals(b.Content, "Copy"));
+			copyCell.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			Assert.Equal(body.Text, desk.Clipboard);
+			var copyRow = table.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Copy row"));
+			copyRow.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			Assert.StartsWith("\"two, [items]: \"\"quoted\"\"\",", desk.Clipboard);
+			table.FindControl<Button>("CopyResult")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			Assert.StartsWith("Label,Code" + Environment.NewLine, desk.Clipboard);
+			Assert.EndsWith("second," + Environment.NewLine, desk.Clipboard);
 			Assert.True(transcript.Extent.Width <= transcript.Viewport.Width + 1);
-			Assert.True(bodies[1].TranslatePoint(default, transcript)!.Value.Y > body.TranslatePoint(default, transcript)!.Value.Y + body.Bounds.Height);
+			Assert.True(tables[1].TranslatePoint(default, transcript)!.Value.Y >= table.TranslatePoint(default, transcript)!.Value.Y + table.Bounds.Height);
 			body.Focus();
 			body.SelectionStart = body.Text!.IndexOf("two,", StringComparison.Ordinal);
 			body.SelectionEnd = body.SelectionStart + 3;
@@ -748,6 +884,8 @@ public class ActionTests
 			await console.ActionsFor([run.Results[0]]).Single(a => a.Text == "Copy answer").RunAsync();
 			Assert.Equal(literal, desk.Clipboard);
 			Capture(window, "console-query-results");
+			table.FindControl<Button>("ToggleOriginal")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+			Assert.Equal(literal, table.FindControl<SelectableTextBlock>("Original")!.Text);
 		}
 		finally
 		{

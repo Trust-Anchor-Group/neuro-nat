@@ -58,9 +58,11 @@ public static class Ui
 	}
 
 	/// <summary>Copies text and confirms it. <paramref name="what"/> finishes the sentence "Copied …".</summary>
-	public static async Task Copy(string? text, string what)
+	public static Task Copy(string? text, string what) => Copy(text, what, allowEmpty: false);
+
+	internal static async Task Copy(string? text, string what, bool allowEmpty)
 	{
-		if (string.IsNullOrEmpty(text))
+		if (text is null || text.Length == 0 && !allowEmpty)
 		{
 			Say("Nothing to copy");
 			return;

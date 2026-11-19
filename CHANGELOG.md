@@ -1,5 +1,10 @@
 # NAT changelog
 
+## 0.8.0
+
+- **Browse query results in Chat admin and runbooks.** Select a row to read every field and copy individual values, a row, or the whole result as CSV. Use **Show original** to inspect the script output.
+- **Explore nested script results.** Expand objects by field name and lists by index. Copy a single value or an entire branch, including its collapsed children.
+
 ## 0.7.0
 
 - **Choose the reporting period in App telemetry.** Select today, yesterday, the last seven days, last calendar week, the last 30 days, the last 12 full months, or custom UTC dates spanning multiple years. The dashboard shows the latest day the collector has published.

@@ -22,12 +22,14 @@ public static class Export
 	public static string Csv(IReadOnlyList<string> header, IEnumerable<IReadOnlyList<string?>> rows)
 	{
 		StringBuilder sb = new();
-		sb.AppendLine(string.Join(',', header.Select(CsvCell)));
+		sb.AppendLine(CsvRow(header));
 		foreach (IReadOnlyList<string?> row in rows)
-			sb.AppendLine(string.Join(',', row.Select(CsvCell)));
+			sb.AppendLine(CsvRow(row));
 
 		return sb.ToString();
 	}
+
+	internal static string CsvRow(IEnumerable<string?> cells) => string.Join(',', cells.Select(CsvCell));
 
 	public static string Markdown(IReadOnlyList<string> header, IEnumerable<IReadOnlyList<string?>> rows)
 	{

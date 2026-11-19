@@ -227,7 +227,13 @@
                               <TextBlock DockPanel.Dock="Right" Classes="meta" Text="{Binding Status}" Classes.error="{Binding HasError}" VerticalAlignment="Center" />
                               <TextBlock Classes="mono" Text="{Binding NeuronLabel}" FontWeight="SemiBold" />
                             </DockPanel>
-                            <c:MarkdownView Markdown="{Binding Markdown}" />
+                            <ItemsControl ItemsSource="{Binding Replies}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ScriptReply">
+                                  <c:ScriptReplyView Reply="{Binding}" Margin="0,2" />
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                           </StackPanel>
                         </Border>
                       </DataTemplate>

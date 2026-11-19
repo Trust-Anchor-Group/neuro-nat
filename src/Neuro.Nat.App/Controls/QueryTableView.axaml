@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Neuro.Nat.App.Controls.QueryTableView">
+  <UserControl.Styles>
+    <Style Selector="Border.branch">
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+      <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <Style Selector="Button.record">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="MinHeight" Value="28" />
+    </Style>
+    <Style Selector="Button.record.open">
+      <Setter Property="Background" Value="{DynamicResource Accent.Subtle}" />
+    </Style>
+    <Style Selector="Border.fields">
+      <Setter Property="Background" Value="{DynamicResource Surface.Ground}" />
+      <Setter Property="Padding" Value="12,8" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel Spacing="6">
+    <WrapPanel>
+      <TextBlock x:Name="Summary" Classes="section" VerticalAlignment="Center" Margin="0,0,16,0" />
+      <Button x:Name="ToggleOriginal" Classes="ghost small" Content="Show original" Click="ToggleOriginalClick" />
+      <Button x:Name="CopyResult" Classes="ghost small" Content="Copy as CSV" Click="CopyResultClick" />
+    </WrapPanel>
+    <StackPanel x:Name="Records" Spacing="2" />
+    <SelectableTextBlock x:Name="Original" Classes="mono" IsVisible="False" TextWrapping="Wrap" />
+    <StackPanel x:Name="Pager" Orientation="Horizontal" Spacing="8">
+      <Button x:Name="Previous" Classes="ghost small" Content="Previous" Click="PreviousClick" />
+      <TextBlock x:Name="PageLabel" Classes="meta" VerticalAlignment="Center" />
+      <Button x:Name="Next" Classes="ghost small" Content="Next" Click="NextClick" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

@@ -263,7 +263,7 @@
                                 <TextBlock Classes="mono" Text="{Binding NeuronLabel}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
                               </DockPanel>
                               <SelectableTextBlock Classes="mono" Text="{Binding Command}" TextWrapping="Wrap" IsVisible="{Binding IsDry}" />
-                              <c:MarkdownView Markdown="{Binding Markdown}" IsVisible="{Binding HasAnswer}" />
+                              <c:ScriptReplyView Reply="{Binding Reply}" IsVisible="{Binding HasAnswer}" />
                             </StackPanel>
                           </Border>
                         </DataTemplate>

@@ -53,6 +53,8 @@ public sealed partial class RunbookCellViewModel(string neuronLabel, bool dry) :
 
 	[ObservableProperty] private string command = string.Empty;
 	[ObservableProperty] private string markdown = string.Empty;
+	[ObservableProperty] private ScriptReply? reply;
+	partial void OnMarkdownChanged(string value) => this.Reply = new(value);
 	[ObservableProperty] private string status = string.Empty;
 	[ObservableProperty] private bool hasError;
 	[ObservableProperty] private bool isWaiting;
