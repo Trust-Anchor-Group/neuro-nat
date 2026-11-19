@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Choose the reporting period in App telemetry.** Select today, yesterday, the last seven days, last calendar week, the last 30 days, the last 12 full months, or custom UTC dates spanning multiple years. The dashboard shows the latest day the collector has published.
+- **Explore and share a telemetry report.** The overview puts application decisions and NFC read success above the findings. Select a headline metric to inspect its chart and table. Copied links reopen the same collector, metric or page, and dates.
 - **Approve package uploads with Legal ID.** Review the request in the NAT Inbox or your identity app. NAT reuses the session for later uploads to the same broker from the same NAT account. Web username and password sign-in is also available.
 - **Install a downloaded package.** In a Neuron’s **Software → Downloaded packages**, select **Install…**, enter the package’s installation key, and choose whether to back up first. An installed package offers **Upgrade…** on the same row.
 

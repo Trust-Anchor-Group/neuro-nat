@@ -26,6 +26,76 @@ public class DashboardTests
 	// ----- Asking -----
 
 	[Fact]
+	public void ReportRangesUseWholeUtcDaysAndCalendarBoundaries()
+	{
+		DateTime today = new(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+		Period Pick(string name) => ReportRange.All.Single(x => x.Title == name).Select!(today);
+		Assert.Equal(new(today, today), Pick("Today"));
+		Assert.Equal(new(today.AddDays(-1), today.AddDays(-1)), Pick("Yesterday"));
+		Assert.Equal(new(today.AddDays(-7), today.AddDays(-1)), Pick("Last 7 days"));
+		Period week = Pick("Last week");
+		Assert.Equal(new(new(2024, 2, 19), new(2024, 2, 25)), week);
+		Assert.Equal(new(new(2024, 2, 12), new(2024, 2, 18)), week.Previous);
+		Assert.Equal((week, week.Previous, "week"), week.Audience);
+
+		Period year = Pick("Last 12 full months");
+		Assert.Equal(new(new(2023, 3, 1), new(2024, 2, 29)), year);
+		Assert.Equal(366, year.Previous.Days);
+		Catalog catalog = TelemetryJson.Catalog(new StandInTelemetry(today).Catalog())!;
+		Questions q = new(catalog, year);
+		Assert.Equal("month", q.Trend!.Interval);
+		Assert.Equal(year.To, q.Trend.To);
+		Assert.Equal("month", q.Explore(M.Applicants, null)!.Interval);
+		Assert.Equal(new DateTime(2024, 2, 1), q.PeopleNow!.From);
+		Assert.Equal("day", new Questions(catalog, new(year.From.AddDays(1), year.To)).Trend!.Interval);
+	}
+
+	[AvaloniaFact]
+	public async Task ChangingTheReportDoesNotChangeTheInboxOrBigScreenWindow()
+	{
+		await using TelemetrySample s = await LabAsync();
+		s.StartFeatures();
+		await s.FindAsync();
+		TelemetryCollector collector = s.Feature.Collectors().Single();
+		CollectorData data = s.Feature.DataOf(collector);
+		DashboardViewModel d = s.Feature.DashboardOf(collector);
+		await d.LoadAsync(true);
+		Snapshot? original = data.Overview;
+		d.Range = d.Ranges.Single(r => r.Title == "Last week");
+		await d.LoadAsync(true);
+		Assert.True(d.ShowsNumbers);
+		Assert.Equal(7, d.Panels[0].Data.Count);
+		d.ShowPart("metric:Nfc.ReadSuccessRate/platform");
+		await d.LoadAsync(true);
+		Assert.Equal(7, d.ExploreChart!.Data.Count);
+		Assert.Contains("from=2026-11-02&to=2026-11-08", d.ExploreQuery);
+		d.Range = d.Ranges.Single(r => r.Title == "Today");
+		await d.LoadAsync(true);
+		Assert.True(d.HasNoNumbers);
+		Assert.Contains("11 Nov 2026", d.Freshness);
+		Assert.Same(original, data.Overview);
+	}
+
+	[AvaloniaFact]
+	public async Task ALinkedMetricCanSpanMoreThanAYear()
+	{
+		await using TelemetrySample s = await TelemetrySample.CreateAsync([(Lab, new StandInTelemetry(TelemetrySample.Start, [Lab]))]);
+		s.StartFeatures();
+		await s.FindAsync();
+		DashboardViewModel d = s.Feature.DashboardOf(s.Feature.Collectors().Single());
+		string part = "metric:Nfc.ReadSuccessRate/platform~2025-01-01~2026-02-28";
+		string link = Neuro.Nat.Engine.Links.NatLink.Feature(Lab, TelemetryFeature.TabKey, part).ToString();
+		Assert.True(Neuro.Nat.Engine.Links.NatLink.TryParse(link, out var parsed));
+		d.ShowPart(parsed.Page!);
+		await d.LoadAsync(true);
+		Assert.True(d.IsCustom);
+		Assert.Equal("Month", d.ExploreChart!.TableFirst);
+		Assert.Equal(14, d.ExploreChart.Data.Count);
+		Assert.Equal("platform", d.Split?.Key);
+		Assert.Contains("from=2025-01-01&to=2026-02-28&interval=month", d.ExploreQuery);
+	}
+
+	[Fact]
 	public void QueriesAreWrittenTheWayTheApiTakesThem()
 	{
 		DateTime from = new(2026, 10, 13, 0, 0, 0, DateTimeKind.Utc), to = new(2026, 11, 11, 0, 0, 0, DateTimeKind.Utc);
@@ -396,7 +466,7 @@ public class DashboardTests
 			};
 			d.ShowPart(Pages.Nfc);
 			Assert.True(d.CanCopyLink);
-			Assert.Equal(new FeatureTarget(TelemetryFeature.TabKey, s.AccountOf[Lab], Lab) { Part = Pages.Nfc }, asked);
+			Assert.Equal(new FeatureTarget(TelemetryFeature.TabKey, s.AccountOf[Lab], Lab) { Part = "nfc~2026-10-13~2026-11-11" }, asked);
 		}
 		finally
 		{

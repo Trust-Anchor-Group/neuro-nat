@@ -84,7 +84,9 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 	private readonly Func<DateTime> utcNow;
 	private readonly FeatureTarget target;
 	private DashboardModel? model;
+	private string? loadedPage;
 	private int loads;
+	private Period activePeriod;
 
 	public DashboardViewModel(CollectorData data, string name, FeatureTarget target, Func<DateTime>? utcNow = null)
 	{
@@ -92,6 +94,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 		this.Name = name;
 		this.target = target;
 		this.utcNow = utcNow ?? (() => DateTime.UtcNow);
+		this.activePeriod = Period.Before(this.utcNow());
 		foreach ((string key, string title) in Pages.All)
 			this.AllPages.Add(new DashboardPageItem(key, title));
 		this.PagesShown.Add(this.AllPages[0]);
@@ -118,6 +121,64 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 	public bool IsChartPage => !this.IsOverview && !this.IsMetrics;
 	public string PageTitle => Pages.TitleOf(this.Page);
 
+	public IReadOnlyList<ReportRange> Ranges => ReportRange.All;
+	public DateTime Today => this.utcNow().Date;
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(IsCustom))]
+	private ReportRange range = ReportRange.Default;
+	public bool IsCustom => this.Range.Select is null;
+	[ObservableProperty, NotifyPropertyChangedFor(nameof(DateError)), NotifyCanExecuteChangedFor(nameof(ApplyDatesCommand))]
+	private DateTime? customFrom;
+	[ObservableProperty, NotifyPropertyChangedFor(nameof(DateError)), NotifyCanExecuteChangedFor(nameof(ApplyDatesCommand))]
+	private DateTime? customTo;
+
+	public string? DateError => this.ValidateDates(this.CustomFrom, this.CustomTo);
+
+	private string? ValidateDates(DateTime? from, DateTime? to) => (from, to) switch
+	{
+		(null, _) or (_, null) => "Choose a start and an end date.",
+		(DateTime f, DateTime t) when f > t => "The end date must be on or after the start date.",
+		(_, DateTime t) when t > this.Today => "Choose an end date through today (UTC).",
+		(DateTime f, DateTime t) when (f - DateTime.MinValue).Days < (t - f).Days + 1 => "Choose a later start date to allow a comparison.",
+		_ => null,
+	};
+	private bool DatesValid => this.DateError is null;
+	public string PeriodText => this.activePeriod.Label + " UTC";
+	public string ComparisonText => "Compared with " + this.activePeriod.Previous.Label;
+
+	partial void OnRangeChanged(ReportRange value)
+	{
+		if (value.Select is null)
+		{
+			this.CustomFrom = this.activePeriod.From;
+			this.CustomTo = this.activePeriod.To;
+		}
+		else
+			_ = this.LoadAsync(ask: true);
+	}
+
+	[RelayCommand(CanExecute = nameof(DatesValid))]
+	private void ApplyDates()
+	{
+		if (this.DatesValid)
+		{
+			this.SetPeriod(new(this.CustomFrom!.Value.Date, this.CustomTo!.Value.Date));
+			_ = this.LoadAsync(ask: true);
+		}
+	}
+
+	private void SetPeriod(Period value)
+	{
+		if (this.activePeriod == value)
+			return;
+		this.activePeriod = value;
+		this.IsLoading = true;
+		this.HasNoNumbers = false;
+		this.Problem = null;
+		this.OnPropertyChanged(nameof(this.PeriodText));
+		this.OnPropertyChanged(nameof(this.ComparisonText));
+	}
+
 	// ----- State -----
 
 	/// <summary>True until the first numbers are there.</summary>
@@ -142,8 +203,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 	/// <summary>"Numbers through 11 Nov 2026"</summary>
 	[ObservableProperty] private string freshness = string.Empty;
 
-	/// <summary>"Last 30 days: 13 Oct to 11 Nov"</summary>
-	[ObservableProperty] private string periodText = string.Empty;
+	[ObservableProperty] private string emptyText = "No numbers available for this period.";
 
 	// ----- Overview -----
 
@@ -207,7 +267,15 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 	/// <summary>True when the shell makes links (it does not yet).</summary>
 	public bool CanCopyLink => FeatureLinks.Make(this.LinkTarget) is not null;
 
-	private FeatureTarget LinkTarget => this.target with { Part = this.IsMetrics && this.Metric?.Key is string m ? "metric:" + m + (this.Split?.Key is string s ? "/" + s : string.Empty) : this.Page };
+	private FeatureTarget LinkTarget
+	{
+		get
+		{
+			string part = this.IsMetrics && this.Metric?.Key is string m ? "metric:" + m + (this.Split?.Key is string s ? "/" + s : string.Empty) : this.Page;
+			part += "~" + TelemetryQuery.Day(this.activePeriod.From) + "~" + TelemetryQuery.Day(this.activePeriod.To);
+			return this.target with { Part = part };
+		}
+	}
 
 	[RelayCommand]
 	private async Task CopyLink()
@@ -236,6 +304,17 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 	/// <summary>Shows a page ("nfc"), or a metric on All metrics ("metric:Nfc.Attempts/platform").</summary>
 	public void ShowPart(string part)
 	{
+		string[] dates = part.Split('~');
+		if (dates.Length == 3 && TelemetryQuery.ParseDay(dates[1]) is DateTime from && TelemetryQuery.ParseDay(dates[2]) is DateTime to)
+		{
+			if (this.ValidateDates(from, to) is not null)
+				return;
+			this.Range = ReportRange.All.Single(r => r.Select is null);
+			this.CustomFrom = from;
+			this.CustomTo = to;
+			this.SetPeriod(new(from, to));
+			part = dates[0];
+		}
 		if (part.StartsWith("metric:", StringComparison.Ordinal))
 		{
 			string[] bits = part["metric:".Length..].Split('/', 2);
@@ -283,27 +362,36 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 	public async Task LoadAsync(bool ask)
 	{
 		int load = Interlocked.Increment(ref this.loads);
-		if (this.model is null)
-			await this.LoadOnceAsync(ask: false, load);
-		await this.LoadOnceAsync(ask, load);
+		Period period = this.Range.Select?.Invoke(this.Today) ?? this.activePeriod;
+		this.SetPeriod(period);
+		if (this.loadedPage != this.Page)
+		{
+			this.IsLoading = true;
+			this.HasNoNumbers = false;
+		}
+		if (ask && this.model is null)
+			await this.LoadOnceAsync(ask: false, load, period);
+		if (load == this.loads)
+			await this.LoadOnceAsync(ask, load, period);
 	}
 
-	private async Task LoadOnceAsync(bool ask, int load)
+	private async Task LoadOnceAsync(bool ask, int load, Period period)
 	{
 		string page = this.Page;
 		List<TelemetryQuery> more = [];
 		if (page == Pages.Metrics && this.model is DashboardModel m && this.Metric?.Key is string metric)
 		{
-			if (m.Questions.Explore(metric, this.Split?.Key) is TelemetryQuery x)
+			Questions questions = new(m.Catalog, period);
+			if (questions.Explore(metric, this.Split?.Key) is TelemetryQuery x)
 				more.Add(x);
-			if (this.Split?.Key is string s && m.Questions.ExploreTotal(metric, s) is TelemetryQuery t)
+			if (this.Split?.Key is string s && questions.ExploreTotal(metric, s) is TelemetryQuery t)
 				more.Add(t);
 		}
 
 		Snapshot snap;
 		try
 		{
-			snap = await Task.Run(() => this.data.GetAsync(page == Pages.Overview ? [Pages.Overview] : [Pages.Overview, page], more, ask));
+			snap = await Task.Run(() => this.data.GetAsync([page], more, ask, period: period));
 		}
 		catch (Exception ex)
 		{
@@ -316,14 +404,16 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 		else
 			await Dispatcher.UIThread.InvokeAsync(() => this.Apply(snap, ask, load));
 
-		// The All metrics page needs the catalog for its choices; then the chosen metric's numbers.
-		if (page == Pages.Metrics && more.Count == 0 && this.Metric?.Key is string chosen && this.model?.Questions.Explore(chosen, this.Split?.Key) is not null)
-			await this.LoadOnceAsync(ask, load);
+		if (load != this.loads)
+			return;
+		// A restricted page falls back to Overview. All metrics needs the catalog before it can ask for a metric.
+		if (this.Page != page || page == Pages.Metrics && more.Count == 0 && this.Metric?.Key is string chosen && this.model?.Questions.Explore(chosen, this.Split?.Key) is not null)
+			await this.LoadOnceAsync(ask, load, period);
 	}
 
 	private void Apply(Snapshot snap, bool asked, int load)
 	{
-		if (load != this.loads && !asked)
+		if (load != this.loads)
 			return;
 
 		this.Problem = asked ? snap.Problem : this.Problem;
@@ -332,13 +422,15 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 			if (asked)
 			{
 				this.IsLoading = false;
-				this.HasNoNumbers = this.model is null;
+				this.HasNoNumbers = this.HasNoNumbers || this.model?.Period != this.activePeriod || this.loadedPage != this.Page;
+				this.EmptyText = "No saved numbers for this period.";
 			}
 
 			return;
 		}
 
 		this.model = m;
+		this.loadedPage = this.Page;
 		this.IsLoading = false;
 		this.HasNoNumbers = false;
 
@@ -357,15 +449,20 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 		foreach (DashboardPageItem p in this.AllPages)
 			p.IsCurrent = p.Key == this.Page;
 
-		StatusNeuron? self = m.Status?.Self;
-		this.Freshness = self?.LastDay is DateTime d ? "Numbers through " + Words.FullDay(d) : "No numbers yet";
-		this.PeriodText = "Last 30 days, " + Words.Day(m.Period.From) + " to " + Words.Day(m.Period.To);
+		DateTime? latest = m.Status?.Neurons.Max(n => n.LastDay);
+		this.Freshness = latest is DateTime d ? "Latest reported day " + Words.FullDay(d) : "Latest reported day unknown";
+		bool unpublished = latest < m.Period.From;
+		this.HasNoNumbers = !this.IsNeurons && (unpublished || !snap.HasReportAnswer && !this.IsMetrics);
+		this.EmptyText = unpublished ? "The collector has not published numbers for these dates yet." : "No numbers available for this period.";
 
-		Replace(this.KeyNumbers, m.KeyNumbers());
-		List<Finding> findings = [.. m.Findings()];
-		this.NothingBroken = !findings.Any(f => f.Level is "bad" or "busy");
-		Replace(this.Findings, findings);
-		Replace(this.Facts, m.Facts());
+		if (this.IsOverview)
+		{
+			Replace(this.KeyNumbers, m.KeyNumbers());
+			IReadOnlyList<Finding> findings = m.Findings();
+			this.NothingBroken = snap.Problem is null && !findings.Any(f => f.Level is "bad" or "busy");
+			Replace(this.Findings, findings);
+			Replace(this.Facts, m.Facts());
+		}
 		Replace(this.NeuronRows, this.Page == Pages.Neurons ? m.NeuronRows() : []);
 
 		List<ChartPanelViewModel> panels = [.. m.Panels(this.Page).Select(p => new ChartPanelViewModel(p))];
@@ -418,10 +515,10 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 			return;
 
 		string? split = this.Split?.Key;
-		string first = metric.IsDistinct ? "Week" : "Day";
+		string first = m.Period.IntervalTitle;
 		this.ExploreChart = new ChartPanelViewModel(new PanelSpec("explore", metric.Name, split is null ? null : "The six largest", m.Explore(key, split), first, false));
 		this.ExploreTotal = split is null || metric.IsDistinct ? null
-			: new ChartPanelViewModel(new PanelSpec("exploreTotal", "Last 30 days in all", null, m.ExploreTotal(key, split), Words.Dimension(split), false));
+			: new ChartPanelViewModel(new PanelSpec("exploreTotal", "Totals for the selected period", null, m.ExploreTotal(key, split), Words.Dimension(split), false));
 		this.ExploreAbout = metric.Description ?? string.Empty;
 		this.ExploreQuery = m.Questions.Explore(key, split)?.ToPath() ?? string.Empty;
 	}
@@ -435,6 +532,9 @@ public sealed partial class DashboardViewModel : ObservableObject, IFeatureConte
 		foreach (T item in items)
 			list.Add(item);
 	}
+
+	[RelayCommand]
+	private void ExploreMetric(string metric) => this.ShowPart("metric:" + metric);
 
 	[RelayCommand]
 	private void Go(string? page)

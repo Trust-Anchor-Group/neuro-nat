@@ -2,34 +2,54 @@ using Neuro.Nat.Features.Telemetry.Api;
 
 namespace Neuro.Nat.Features.Telemetry.Data;
 
-/// <summary>The days a dashboard shows: the last 30 whole days (UTC), and the 30 before for comparison.</summary>
+/// <summary>An inclusive range of UTC reporting days.</summary>
 public sealed record Period(DateTime From, DateTime To)
 {
-	public const int Days = 30;
+	public int Days => (this.To - this.From).Days + 1;
+	public string Label => this.From == this.To ? Words.FullDay(this.To)
+		: (this.From.Year == this.To.Year ? Words.Day(this.From) : Words.FullDay(this.From)) + " to " + Words.FullDay(this.To);
+	public string Interval => this.Days >= 90 && this.From.Day == 1 ? "month"
+		: this.Days >= 56 && this.From.DayOfWeek == DayOfWeek.Monday ? "week" : "day";
+	public string IntervalTitle => this.Interval switch { "month" => "Month", "week" => "Week", _ => "Day" };
 
 	/// <summary>The 30 days up to and including yesterday.</summary>
-	public static Period Before(DateTime utcNow)
-	{
-		DateTime to = utcNow.Date.AddDays(-1);
-		return new Period(to.AddDays(-(Days - 1)), to);
-	}
+	public static Period Before(DateTime utcNow) => new(utcNow.Date.AddDays(-30), utcNow.Date.AddDays(-1));
 
-	public Period Previous => new(this.From.AddDays(-Days), this.From.AddDays(-1));
+	public Period Previous => new(this.From.AddDays(-this.Days), this.From.AddDays(-1));
 
-	/// <summary>This month so far.</summary>
-	public Period MonthSoFar => new(new DateTime(this.To.Year, this.To.Month, 1, 0, 0, 0, DateTimeKind.Utc), this.To);
+	public static DateTime Monday(DateTime day) => day.Date.AddDays(-(((int)day.DayOfWeek + 6) % 7));
+	public static DateTime MonthStart(DateTime day) => day.Date.AddDays(1 - day.Day);
 
-	/// <summary>The same days of the month before.</summary>
-	public Period MonthBefore
+	// The collector counts distinct accounts within a calendar bucket. Adding buckets would count people twice.
+	public (Period Current, Period Prior, string Interval) Audience
 	{
 		get
 		{
-			DateTime from = this.MonthSoFar.From.AddMonths(-1);
-			DateTime to = from.AddDays((this.To - this.MonthSoFar.From).TotalDays);
-			DateTime last = this.MonthSoFar.From.AddDays(-1);
-			return new Period(from, to > last ? last : to);
+			DateTime month = MonthStart(this.To);
+			if (this.Days >= 28 && month >= this.From)
+				return (new(month, this.To), new(month.AddMonths(-1), this.To.AddMonths(-1)), "month");
+			DateTime monday = Monday(this.To);
+			if (this.Days >= 7 && monday >= this.From)
+				return (new(monday, this.To), new(monday.AddDays(-7), this.To.AddDays(-7)), "week");
+			return (new(this.To, this.To), new(this.To.AddDays(-1), this.To.AddDays(-1)), "day");
 		}
 	}
+}
+
+public sealed record ReportRange(string Title, Func<DateTime, Period>? Select)
+{
+	public static ReportRange Default { get; } = new("Last 30 days", Period.Before);
+	public static IReadOnlyList<ReportRange> All { get; } =
+	[
+		new("Today", d => new(d, d)),
+		new("Yesterday", d => new(d.AddDays(-1), d.AddDays(-1))),
+		new("Last 7 days", d => new(d.AddDays(-7), d.AddDays(-1))),
+		new("Last week", d => new(Period.Monday(d).AddDays(-7), Period.Monday(d).AddDays(-1))),
+		Default,
+		new("Last 12 full months", d => new(Period.MonthStart(d).AddMonths(-12), Period.MonthStart(d).AddDays(-1))),
+		new("Custom dates", null),
+	];
+	public override string ToString() => this.Title;
 }
 
 /// <summary>Metric keys the dashboard knows by name. Anything else is found through /Catalog.</summary>
@@ -77,7 +97,7 @@ public sealed class Questions(Catalog catalog, Period period)
 		=> this.Ask(TelemetryQuery.Of(metrics).Over(p.From, p.To, "total").By(by));
 
 	private TelemetryQuery? Daily(string[] metrics, params string[] by)
-		=> this.Ask(TelemetryQuery.Of(metrics).Over(period.From, period.To).By(by));
+		=> this.Ask(TelemetryQuery.Of(metrics).Over(period.From, period.To, period.Interval).By(by));
 
 	private static readonly string[] KeyTotals = [M.Submitted, M.ApprovalRate, M.ReadSuccessRate, M.JourneySuccessRate];
 	private static readonly string[] PeopleCounts = [M.Applicants, M.Users];
@@ -88,8 +108,9 @@ public sealed class Questions(Catalog catalog, Period period)
 	public TelemetryQuery? Totals => this.Total(period, KeyTotals);
 	public TelemetryQuery? TotalsBefore => this.Total(period.Previous, KeyTotals);
 	public TelemetryQuery? Trend => this.Daily(KeyTotals);
-	public TelemetryQuery? PeopleNow => this.Ask(TelemetryQuery.Of(PeopleCounts).Over(period.MonthSoFar.From, period.MonthSoFar.To, "month"));
-	public TelemetryQuery? PeopleBefore => this.Ask(TelemetryQuery.Of(PeopleCounts).Over(period.MonthBefore.From, period.MonthBefore.To, "month"));
+	public TelemetryQuery? PeopleNow => this.People(period.Audience.Current);
+	public TelemetryQuery? PeopleBefore => this.People(period.Audience.Prior);
+	private TelemetryQuery? People(Period p) => this.Ask(TelemetryQuery.Of(PeopleCounts).Over(p.From, p.To, period.Audience.Interval));
 	public TelemetryQuery? PlatformsNow => this.Total(period, [M.ReadSuccessRate], "platform");
 	public TelemetryQuery? PlatformsBefore => this.Total(period.Previous, [M.ReadSuccessRate], "platform");
 	public TelemetryQuery? Versions => this.Total(period, [M.ReadSuccessRate], "appVersion");
@@ -123,14 +144,14 @@ public sealed class Questions(Catalog catalog, Period period)
 
 	// ----- All metrics -----
 
-	/// <summary>One metric over the period, split by a dimension or not. Daily, or weekly for people counts.</summary>
+	/// <summary>One metric over the selected period, optionally split by a dimension.</summary>
 	public TelemetryQuery? Explore(string metric, string? split)
 	{
 		CatalogMetric? m = catalog.Metric(metric);
 		if (m is null)
 			return null;
 
-		TelemetryQuery q = TelemetryQuery.Of(metric).Over(period.From, period.To, m.IsDistinct ? "week" : "day");
+		TelemetryQuery q = TelemetryQuery.Of(metric).Over(period.From, period.To, period.Interval);
 		if (split is not null)
 			q = q.By(split);
 		return this.Ask(q);

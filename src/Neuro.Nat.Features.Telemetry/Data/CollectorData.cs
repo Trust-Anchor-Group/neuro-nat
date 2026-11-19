@@ -6,6 +6,7 @@ namespace Neuro.Nat.Features.Telemetry.Data;
 public sealed record Snapshot(DashboardModel? Model, string? Problem, DateTime? AskedAt)
 {
 	public bool HasNumbers => this.Model is not null;
+	public bool HasReportAnswer { get; init; }
 }
 
 /// <summary>
@@ -38,7 +39,7 @@ public sealed class CollectorData(TelemetryCollector collector, TelemetryFetcher
 	/// kept is used (nothing goes to the Neuron); else each question goes to the Neuron when its
 	/// answer is an hour old.
 	/// </summary>
-	public async Task<Snapshot> GetAsync(IReadOnlyList<string> pages, IReadOnlyList<TelemetryQuery>? more, bool ask, CancellationToken cancel = default)
+	public async Task<Snapshot> GetAsync(IReadOnlyList<string> pages, IReadOnlyList<TelemetryQuery>? more, bool ask, CancellationToken cancel = default, Period? period = null)
 	{
 		await fetcher.LoadAsync();
 		Task<Fetched> Get(string path) => ask ? fetcher.GetAsync(collector, path, cancel) : Task.FromResult(fetcher.Kept(collector, path));
@@ -52,9 +53,10 @@ public sealed class CollectorData(TelemetryCollector collector, TelemetryFetcher
 		StatusAnswer? status = statusFetched.Body is string sb ? TelemetryJson.Status(sb) : null;
 
 		DateTime now = utcNow();
-		Questions q = new(catalog, Period.Before(now));
+		Questions q = new(catalog, period ?? Period.Before(now));
 		List<TelemetryQuery> all = [.. pages.SelectMany(q.For), .. more ?? []];
-		all = [.. all.DistinctBy(x => x.ToPath())];
+		DateTime? latest = status?.Neurons.Max(n => n.LastDay);
+		all = latest < q.Period.From ? [] : [.. all.DistinctBy(x => x.ToPath())];
 
 		// A few at a time, so the Neuron is not flooded.
 		using SemaphoreSlim gate = new(4, 4);
@@ -100,8 +102,11 @@ public sealed class CollectorData(TelemetryCollector collector, TelemetryFetcher
 
 		DashboardModel model = new(q, query => query is not null && answers.TryGetValue(query.ToPath(), out QueryAnswer? a) ? a : QueryAnswer.Empty, status, nameOf, now);
 		string? problem = catalogFetched.Problem ?? statusFetched.Problem ?? problems.FirstOrDefault();
-		Snapshot snapshot = new(model, problem, oldest);
-		if (pages.Contains(Pages.Overview))
+		Snapshot snapshot = new(model, problem, oldest)
+		{
+			HasReportAnswer = all.Any(x => x.To >= q.Period.From && answers.ContainsKey(x.ToPath())),
+		};
+		if (pages.Contains(Pages.Overview) && q.Period == Period.Before(now) && (answers.Count > 0 || latest < q.Period.From))
 		{
 			lock (this.sync)
 				this.overview = snapshot;

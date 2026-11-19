@@ -114,6 +114,38 @@ public class DashboardRenderTests
 		_ = window;
 	}
 
+	[AvaloniaFact]
+	public async Task CustomDateControlsApplyAnInclusiveRange()
+	{
+		(TelemetrySample s, _, MainWindow window, DashboardViewModel d) = await OpenAsync("Light", 760, 900);
+		await using TelemetrySample owned = s;
+		try
+		{
+			ComboBox picker = window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.ItemsSource == d.Ranges);
+			picker.SelectedItem = d.Ranges.Single(r => r.Select is null);
+			Dispatcher.UIThread.RunJobs();
+			CalendarDatePicker[] dates = [.. window.GetVisualDescendants().OfType<CalendarDatePicker>().Where(c => c.IsEffectivelyVisible)];
+			Assert.Equal(2, dates.Length);
+			dates[0].SelectedDate = new DateTime(2026, 11, 8);
+			dates[1].SelectedDate = new DateTime(2026, 11, 7);
+			Button apply = window.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Apply dates"));
+			Assert.False(apply.Command!.CanExecute(null));
+			dates[1].SelectedDate = new DateTime(2026, 11, 9);
+			Assert.True(apply.Command.CanExecute(null));
+			apply.Command.Execute(null);
+			await d.LoadAsync(true);
+			Assert.Equal(2, d.Panels[0].Data.Count);
+			d.ShowPageCommand.Execute(Pages.Applications);
+			await d.LoadAsync(true);
+			Assert.Equal(2, d.Panels[0].Data.Count);
+			Assert.Equal("8 Nov to 9 Nov 2026 UTC", d.PeriodText);
+		}
+		finally
+		{
+			window.Close();
+		}
+	}
+
 	[AvaloniaTheory]
 	[InlineData("Light", 1440, 900)]
 	[InlineData("Dark", 1440, 900)]

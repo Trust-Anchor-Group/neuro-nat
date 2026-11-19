@@ -84,8 +84,8 @@ public sealed class DashboardModel(Questions q, Func<TelemetryQuery?, QueryAnswe
 		new(M.ApprovalRate, "Approval rate", true, false, "Approved of decided"),
 		new(M.ReadSuccessRate, "NFC read success", true, false, "Reads that worked once started"),
 		new(M.JourneySuccessRate, "NFC completion", true, false, "People who got a read in the end"),
-		new(M.Applicants, "Applicants", false, true, "This month, against last month"),
-		new(M.Users, "NFC users", false, true, "This month, against last month"),
+		new(M.Applicants, "Applicants", false, true, ""),
+		new(M.Users, "NFC users", false, true, ""),
 	];
 
 	public IReadOnlyList<KeyNumber> KeyNumbers()
@@ -96,10 +96,13 @@ public sealed class DashboardModel(Questions q, Func<TelemetryQuery?, QueryAnswe
 		foreach (KeySpec k in Keys.Where(k => this.Catalog.Has(k.Metric)))
 		{
 			double? v = k.People ? peopleNow.LastOf(k.Metric) : now.TotalOf(k.Metric);
-			double? was = k.People ? peopleBefore.LastOf(k.Metric) : before.Complete ? before.TotalOf(k.Metric) : null;
-			(string delta, string change, string tone, string arrow) = Delta(v, was, k.Percent, k.People ? "vs last month" : "vs 30 days before");
+			QueryAnswer prior = k.People ? peopleBefore : before;
+			double? was = !prior.Complete ? null : k.People ? prior.LastOf(k.Metric) : prior.TotalOf(k.Metric);
+			string against = k.People ? "vs previous " + this.Period.Audience.Interval : "vs prior period";
+			(string delta, string change, string tone, string arrow) = Delta(v, was, k.Percent, against);
+			string hint = k.People ? "Unique, " + this.Period.Audience.Current.Label : k.Hint;
 			list.Add(new KeyNumber(k.Metric, k.Label, v is double d ? (k.Percent ? d.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) : Words.N(d)) : "None",
-				k.Percent && v is not null ? "%" : string.Empty, delta, tone, arrow, k.Hint)
+				k.Percent && v is not null ? "%" : string.Empty, delta, tone, arrow, hint)
 			{
 				Trend = k.People ? null : trend.Find(k.Metric)?.Points.Select(p => p.Value).ToList(),
 				Change = change,
@@ -202,7 +205,7 @@ public sealed class DashboardModel(Questions q, Func<TelemetryQuery?, QueryAnswe
 			if (v is double a && was is double b && platBefore.Complete && b - a >= RateFall)
 			{
 				list.Add(new Finding("rate", "busy", "NFC read success on " + Words.Value(platform) + " fell " + Words.Pts(b - a),
-					"Now " + Words.Pct(a) + ", was " + Words.Pct(b) + " in the 30 days before.", Pages.Nfc, platform));
+					"Now " + Words.Pct(a) + ", previously " + Words.Pct(b) + " (" + this.Period.Previous.Label + ").", Pages.Nfc, platform));
 			}
 		}
 
@@ -289,7 +292,8 @@ public sealed class DashboardModel(Questions q, Func<TelemetryQuery?, QueryAnswe
 	private (List<string> Labels, List<string> Tips) Days(QueryAnswer a)
 	{
 		IReadOnlyList<QueryPoint> pts = a.Series.FirstOrDefault()?.Points ?? [];
-		return ([.. pts.Select(p => Words.Day(p.StartDay))], [.. pts.Select(p => p.StartDay == p.EndDay ? Words.LongDay(p.StartDay) : Words.Day(p.StartDay) + " to " + Words.Day(p.EndDay))]);
+		return ([.. pts.Select(p => a.Interval == "month" ? p.StartDay.ToString("MMM yy", System.Globalization.CultureInfo.InvariantCulture) : Words.Day(p.StartDay))],
+			[.. pts.Select(p => new Period(p.StartDay, p.EndDay).Label)]);
 	}
 
 	private int SettleFrom(QueryAnswer a)
@@ -419,7 +423,7 @@ public sealed class DashboardModel(Questions q, Func<TelemetryQuery?, QueryAnswe
 					_ => this.Across(this.A(q.ByMethod), M.ApprovalRate, "method", withAverage: true), "Method", M.ApprovalRate);
 				Add(q.ByNationality, "nationality", "Applications by nationality", null, a => this.Across(a, M.Submitted, "nationality"), "Nationality", M.Submitted);
 				Add(q.Reasons, "reasons", "Rejection reasons", "One application can have several", a => this.Across(a, M.RejectionReasons, "rejectionReason"), "Reason", M.RejectionReasons);
-				Add(q.Activity, "activity", "Daily work", "Sent, approved and rejected on each day", a => this.MetricLines(a, (M.Submissions, "Sent"), (M.Approvals, "Approved"), (M.Rejections, "Rejected")), "Day", M.Submissions);
+				Add(q.Activity, "activity", "Application activity", "Submissions and decisions by " + this.Period.Interval, a => this.MetricLines(a, (M.Submissions, "Sent"), (M.Approvals, "Approved"), (M.Rejections, "Rejected")), "Day", M.Submissions);
 				break;
 
 			case Pages.Nfc:
@@ -448,7 +452,12 @@ public sealed class DashboardModel(Questions q, Func<TelemetryQuery?, QueryAnswe
 		}
 
 		// Neurons by their names.
-		return [.. list.Select(p => p.TableFirst == "Neuron" ? p with { Data = p.Data with { Labels = [.. p.Data.Labels.Select(nameOf)] } } : p)];
+		return [.. list.Select(p => p.TableFirst switch
+		{
+			"Neuron" => p with { Data = p.Data with { Labels = [.. p.Data.Labels.Select(nameOf)] } },
+			"Day" => p with { TableFirst = this.Period.IntervalTitle },
+			_ => p,
+		})];
 	}
 
 	private ChartData QualityBars(QueryAnswer a)

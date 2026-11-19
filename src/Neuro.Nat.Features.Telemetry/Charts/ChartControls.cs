@@ -172,7 +172,7 @@ public sealed class TimeChart : ChartBase
 
 	private double Step(ChartData d) => d.Kind == ChartKind.Line ? this.Plot.Width / Math.Max(1, d.Count - 1) : this.Plot.Width / Math.Max(1, d.Count);
 
-	private double X(ChartData d, int i) => d.Kind == ChartKind.Line ? this.Plot.Left + i * this.Step(d) : this.Plot.Left + (i + 0.5) * this.Step(d);
+	private double X(ChartData d, int i) => this.Plot.Left + (d.Kind == ChartKind.Line && d.Count > 1 ? i : i + 0.5) * this.Step(d);
 
 	protected override int HitTest(Point p)
 	{
