@@ -332,6 +332,9 @@
         <StackPanel Spacing="4">
           <TextBlock Classes="section" Text="NAT" />
           <TextBlock Classes="hint" Text="{x:Static vm:SettingsViewModel.About}" />
+          <TextBlock Classes="hint" Text="{Binding AppUpdate.Message}" TextWrapping="Wrap" />
+          <Button Content="{Binding AppUpdate.ActionLabel}" Command="{Binding UpdateAppCommand}"
+                  HorizontalAlignment="Left" Margin="0,4,0,2" />
           <TextBlock Classes="hint" Text="{Binding StorageNote}" IsVisible="{Binding HasStorageNote}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>

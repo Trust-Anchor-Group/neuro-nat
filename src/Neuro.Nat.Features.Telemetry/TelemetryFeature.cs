@@ -65,7 +65,7 @@ public sealed class TelemetryFeature : INatFeature
 	private TelemetryFetcher? fetcher;
 	private IFeatureHost? host;
 	private Timer? hourly;
-	private TelemetryPlaceViewModel? place;
+	private readonly List<WeakReference<TelemetryPlaceViewModel>> places = [];
 	private AppNumbersViewModel? appNumbers;
 	private long rounds;
 
@@ -321,9 +321,25 @@ public sealed class TelemetryFeature : INatFeature
 
 	private TelemetryPlaceViewModel Place()
 	{
-		this.place ??= new TelemetryPlaceViewModel(() => [.. this.Collectors().Select(this.DashboardOf)]);
-		this.place.Sync();
-		return this.place;
+		TelemetryPlaceViewModel place = new(this.CollectorChoices);
+		this.places.Add(new(place));
+		return place;
+	}
+
+	private IReadOnlyList<CollectorChoice> CollectorChoices()
+	{
+		IReadOnlyList<TelemetryCollector> all = this.Collectors();
+		var byDomain = all.ToLookup(c => c.Domain, StringComparer.OrdinalIgnoreCase);
+		return [.. all.Select(c =>
+		{
+			string? account = null;
+			if (byDomain[c.Domain].Count() > 1)
+			{
+				AccountProfile? profile = this.host?.Accounts.Sessions.FirstOrDefault(s => s.Profile.Id == c.AccountId)?.Profile;
+				account = profile?.Label ?? c.AccountId.ToString();
+			}
+			return new CollectorChoice(this.DashboardOf(c), account);
+		})];
 	}
 
 	// ----- The Inbox -----
@@ -452,8 +468,13 @@ public sealed class TelemetryFeature : INatFeature
 	/// <summary>Which Neurons have the package changed: the rail's picker follows, then NAT hears of it.</summary>
 	private void FoundChanged()
 	{
-		if (this.place is TelemetryPlaceViewModel p)
-			Dispatcher.UIThread.Post(p.Sync);
+		Dispatcher.UIThread.Post(() =>
+		{
+			this.places.RemoveAll(w => !w.TryGetTarget(out _));
+			foreach (WeakReference<TelemetryPlaceViewModel> w in this.places)
+				if (w.TryGetTarget(out TelemetryPlaceViewModel? place))
+					place.Sync();
+		});
 		this.Changed?.Invoke(this, null);
 	}
 

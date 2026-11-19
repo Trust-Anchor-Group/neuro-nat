@@ -187,9 +187,12 @@ public class DashboardRenderTests
 		await s.FindAsync();
 		vm.ShowFeaturePlaceCommand.Execute(TelemetryFeature.PlaceKey);
 		TelemetryPlaceViewModel place = Assert.IsType<TelemetryPlaceViewModel>(vm.FeatureContent);
-		place.PickCommand.Execute(place.Collectors.Single(c => c.Name == "Lab").Key);
 		MainWindow window = new() { DataContext = vm, Width = width, Height = height };
 		window.Show();
+		Dispatcher.UIThread.RunJobs();
+		ComboBox picker = window.GetVisualDescendants().OfType<ComboBox>().Single(box => box.ItemsSource == place.Collectors);
+		picker.SelectedItem = place.Collectors.Single(c => c.Name == "Lab");
+		Assert.Equal(Lab, place.Current!.Collector.Domain);
 		await place.Current!.LoadAsync(ask: true);
 		Dispatcher.UIThread.RunJobs();
 		await Task.Delay(50);

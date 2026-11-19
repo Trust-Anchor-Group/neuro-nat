@@ -24,22 +24,24 @@ internal sealed class VelopackUpdates : IAppUpdates, IDisposable
 	private static readonly TimeSpan FirstCheck = TimeSpan.FromMinutes(1);
 	private static readonly TimeSpan Interval = TimeSpan.FromHours(4);
 
-	private readonly UpdateManager manager;
+	private readonly UpdateManager? manager;
 	private readonly CancellationTokenSource stop = new();
-	private VelopackAsset? ready;
+	private volatile VelopackAsset? ready;
+	private volatile AppUpdateStatus status;
+	private int checking;
 
-	private VelopackUpdates(UpdateManager manager, string source)
+	internal VelopackUpdates(UpdateManager manager)
 	{
 		this.manager = manager;
-		this.Source = source;
 		this.ready = manager.UpdatePendingRestart;
+		this.status = this.ready is null ? new(AppUpdatePhase.Idle, "NAT checks for updates automatically.") : ReadyStatus(this.ready);
 	}
 
-	public string Source { get; }
+	private VelopackUpdates(string unavailableReason) => this.status = new(AppUpdatePhase.Unavailable, unavailableReason);
 
-	public string? ReadyVersion => this.ready?.Version.ToString();
+	public AppUpdateStatus Status => this.status;
 
-	public event EventHandler? Ready;
+	public event EventHandler? Changed;
 
 	/// <summary>Starts looking for updates, or returns null when NAT was not installed with its installer (a dev build).</summary>
 	public static VelopackUpdates? TryStart(string dataFolder)
@@ -50,44 +52,43 @@ internal sealed class VelopackUpdates : IAppUpdates, IDisposable
 			if (source is null)
 			{
 				AppLog.Info("No update source is built in; not looking for updates.");
-				return null;
+				return new VelopackUpdates("Configure an update source to enable updates.");
 			}
 
 			UpdateManager manager = new(CreateSource(source));
 			if (!manager.IsInstalled)
 				return null;
 
-			VelopackUpdates updates = new(manager, source);
+			VelopackUpdates updates = new(manager);
 			AppLog.Info($"NAT {manager.CurrentVersion} installed; updates from {source}.");
-			_ = updates.RunAsync();
+			_ = updates.RunAsync(updates.stop.Token);
 			return updates;
 		}
 		catch (Exception ex)
 		{
 			AppLog.Error("Could not start looking for updates.", ex);
-			return null;
+			return new VelopackUpdates("The updater could not start. Check the NAT log and restart the app.");
 		}
 	}
 
 	public void InstallWhenQuit(bool restart)
 	{
-		if (this.ready is null)
-			return;
+		VelopackAsset target = this.ready ?? throw new InvalidOperationException("No downloaded update is ready.");
 
 		// A small helper waits for NAT to exit, installs quietly, and starts it again if asked.
-		this.manager.WaitExitThenApplyUpdates(this.ready, silent: true, restart: restart, restartArgs: []);
-		AppLog.Info($"Update to {this.ready.Version} will be installed when NAT quits{(restart ? ", then started again" : "")}.");
+		this.manager!.WaitExitThenApplyUpdates(target, silent: true, restart: restart, restartArgs: []);
+		AppLog.Info($"Update to {target.Version} will be installed when NAT quits{(restart ? ", then started again" : "")}.");
 	}
 
-	private async Task RunAsync()
+	private async Task RunAsync(CancellationToken token)
 	{
 		try
 		{
-			await Task.Delay(FirstCheck, this.stop.Token);
-			while (!this.stop.IsCancellationRequested)
+			await Task.Delay(FirstCheck, token);
+			while (!token.IsCancellationRequested)
 			{
 				await this.CheckAsync();
-				await Task.Delay(Interval, this.stop.Token);
+				await Task.Delay(Interval, token);
 			}
 		}
 		catch (OperationCanceledException)
@@ -95,30 +96,53 @@ internal sealed class VelopackUpdates : IAppUpdates, IDisposable
 		}
 	}
 
-	private async Task CheckAsync()
+	private static AppUpdateStatus ReadyStatus(VelopackAsset target) =>
+		new(AppUpdatePhase.Ready, $"NAT {target.Version} is downloaded. Restart now or install when NAT quits.", target.Version.ToString());
+
+	private void SetStatus(AppUpdateStatus value)
 	{
+		this.status = value;
+		this.Changed?.Invoke(this, EventArgs.Empty);
+	}
+
+	public async Task CheckAsync()
+	{
+		if (this.manager is null || Interlocked.Exchange(ref this.checking, 1) != 0)
+			return;
+
+		string? staged = this.ready?.Version.ToString();
 		try
 		{
-			UpdateInfo? info = await this.manager.CheckForUpdatesAsync();
-			if (info is null)
+			CancellationToken token = this.stop.Token;
+			this.SetStatus(new(AppUpdatePhase.Checking, "Checking for updates…", staged));
+			UpdateInfo? info = await this.manager.CheckForUpdatesAsync().ConfigureAwait(false);
+			token.ThrowIfCancellationRequested();
+			if (info is null || this.ready is not null && this.ready.Version >= info.TargetFullRelease.Version)
+			{
+				this.SetStatus(this.ready is null ? new(AppUpdatePhase.Current, "NAT is up to date.") : ReadyStatus(this.ready));
 				return;
+			}
 
 			VelopackAsset target = info.TargetFullRelease;
-			if (this.ready is not null && this.ready.Version >= target.Version)
-				return;
-
 			AppLog.Info($"Downloading NAT {target.Version}.");
-			await this.manager.DownloadUpdatesAsync(info, cancelToken: this.stop.Token);
+			this.SetStatus(new(AppUpdatePhase.Downloading, $"Downloading NAT {target.Version}…", staged));
+			await this.manager.DownloadUpdatesAsync(info, cancelToken: token).ConfigureAwait(false);
 			this.ready = target;
 			AppLog.Info($"NAT {target.Version} is downloaded and will be installed on restart.");
-			this.Ready?.Invoke(this, EventArgs.Empty);
+			this.SetStatus(ReadyStatus(target));
 		}
-		catch (OperationCanceledException)
+		catch (OperationCanceledException) when (this.stop.IsCancellationRequested)
 		{
 		}
 		catch (Exception ex)
 		{
-			AppLog.Error($"Could not look for updates at {this.Source}.", ex);
+			AppLog.Error("Could not check for or download an update.", ex);
+			string message = this.status.Phase == AppUpdatePhase.Downloading ? "Download failed." : "Update check failed.";
+			this.SetStatus(new(AppUpdatePhase.Failed, message + (staged is null ? " Check the connection and update source, then try again." : $" NAT {staged} is still ready to install."), staged));
+		}
+		finally
+		{
+			Volatile.Write(ref this.checking, 0);
 		}
 	}
 

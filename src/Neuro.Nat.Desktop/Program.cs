@@ -148,12 +148,13 @@ internal static class Program
 			Engine.Devices.DevicesService devices = new(accounts);
 			Engine.PubSub.PubSubService pubsub = new(accounts);
 
+			using VelopackUpdates? updates = VelopackUpdates.TryStart(dataFolder);
 			App.App.Services = new AppServices(accounts, monitors, new FleetService(monitors), chat, identities, devices, pubsub, dataFolder)
 			{
 				StartHidden = startHidden && startLink is null,
 				StartLink = startLink,
 				Autostart = OperatingSystem.IsWindows() ? new WindowsAutostart() : null,
-				Updates = VelopackUpdates.TryStart(dataFolder),
+				Updates = updates,
 				AlertSettings = stores.AlertSettings,
 				UiSettings = stores.UiSettings,
 				KeepsData = stores.KeepsData,

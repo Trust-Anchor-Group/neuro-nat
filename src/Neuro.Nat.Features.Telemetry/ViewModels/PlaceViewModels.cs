@@ -1,19 +1,24 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using Neuro.Nat.App.Features;
 using Neuro.Nat.Features.Telemetry.Data;
 
 namespace Neuro.Nat.Features.Telemetry.ViewModels;
 
 /// <summary>A collector in the picker at the top of the rail's dashboard.</summary>
-public sealed partial class CollectorChoice(DashboardViewModel dashboard) : ObservableObject
+public sealed record CollectorChoice(DashboardViewModel Dashboard, string? Account)
 {
-	public DashboardViewModel Dashboard { get; } = dashboard;
 	public string Name => this.Dashboard.Name;
 	public string Key => this.Dashboard.Collector.Key;
-
-	[ObservableProperty] private bool isCurrent;
+	public string Label
+	{
+		get
+		{
+			string address = this.Dashboard.Collector.Domain;
+			string target = string.Equals(this.Name, address, StringComparison.OrdinalIgnoreCase) ? address : $"{this.Name} ({address})";
+			return this.Account is null ? target : $"{target} via {this.Account}";
+		}
+	}
 }
 
 /// <summary>
@@ -22,51 +27,35 @@ public sealed partial class CollectorChoice(DashboardViewModel dashboard) : Obse
 /// </summary>
 public sealed partial class TelemetryPlaceViewModel : ObservableObject, IFeatureContent
 {
-	private readonly Func<IReadOnlyList<DashboardViewModel>> dashboards;
+	private readonly Func<IReadOnlyList<CollectorChoice>> choices;
 
-	public TelemetryPlaceViewModel(Func<IReadOnlyList<DashboardViewModel>> dashboards)
+	public TelemetryPlaceViewModel(Func<IReadOnlyList<CollectorChoice>> choices)
 	{
-		this.dashboards = dashboards;
+		this.choices = choices;
 		this.Sync();
 	}
 
-	public ObservableCollection<CollectorChoice> Collectors { get; } = [];
-
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasPicker))]
-	private DashboardViewModel? current;
+	private IReadOnlyList<CollectorChoice> collectors = [];
 
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(Current))]
+	private CollectorChoice? selected;
+
+	public DashboardViewModel? Current => this.Selected?.Dashboard;
 	public bool HasPicker => this.Collectors.Count > 1;
 
 	/// <summary>Brings the picker up to date with the collectors found now.</summary>
 	public void Sync()
 	{
-		List<DashboardViewModel> now = [.. this.dashboards()];
-		if (!now.SequenceEqual(this.Collectors.Select(c => c.Dashboard)))
-		{
-			this.Collectors.Clear();
-			foreach (DashboardViewModel d in now)
-				this.Collectors.Add(new CollectorChoice(d));
-		}
-
-		if (this.Current is null || !now.Contains(this.Current))
-			this.Current = now.FirstOrDefault();
-		foreach (CollectorChoice c in this.Collectors)
-			c.IsCurrent = c.Dashboard == this.Current;
-		this.OnPropertyChanged(nameof(this.HasPicker));
-	}
-
-	[RelayCommand]
-	private void Pick(string? key)
-	{
-		CollectorChoice? c = this.Collectors.FirstOrDefault(x => x.Key == key);
-		if (c is null)
+		IReadOnlyList<CollectorChoice> now = this.choices();
+		if (now.SequenceEqual(this.Collectors))
 			return;
 
-		this.Current = c.Dashboard;
-		foreach (CollectorChoice x in this.Collectors)
-			x.IsCurrent = x == c;
-		c.Dashboard.Shown();
+		string? key = this.Selected?.Key;
+		this.Collectors = now;
+		this.Selected = now.FirstOrDefault(c => c.Key == key) ?? now.FirstOrDefault();
 	}
 
 	/// <summary>"lab.example.com/nfc" picks that collector and shows the page; "nfc" shows it on the one shown.</summary>
@@ -78,8 +67,9 @@ public sealed partial class TelemetryPlaceViewModel : ObservableObject, IFeature
 		{
 			string domain = part[..slash];
 			CollectorChoice? c = this.Collectors.FirstOrDefault(x => string.Equals(x.Dashboard.Collector.Domain, domain, StringComparison.OrdinalIgnoreCase));
-			if (c is not null)
-				this.Pick(c.Key);
+			if (c is null)
+				return;
+			this.Selected = c;
 			part = part[(slash + 1)..];
 		}
 

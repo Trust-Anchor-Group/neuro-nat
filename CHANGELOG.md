@@ -1,7 +1,9 @@
 # NAT changelog
 
-## Unreleased
+## 0.6.0
 
+- **Check for NAT updates.** Open Settings and scroll to the version, or open the tray menu. Check for an update there and restart into it once the download finishes.
+- **Choose a telemetry collector.** App telemetry shows the selected Neuron’s address. Switch between discovered collectors in the sidebar dashboard, or open **Choose collector…** from a Neuron’s telemetry tab.
 - **Upload and upgrade packages from Software.** Upload a package to a broker with an optional signature, or let the broker sign it. To upgrade one installed package, select **Upgrade…** beside its name and choose whether to back up first. The confirmation shows the chat admin command that will run.
 
 ## 0.5.0

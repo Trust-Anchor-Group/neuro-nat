@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Neuro.Nat.App.Watch;
 using Neuro.Nat.Engine.Alerts;
 using Neuro.Nat.Engine.Chat;
 using Waher.Networking.XMPP;
@@ -146,6 +147,34 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 
 	/// <summary>The app's long name and version, at the bottom of Settings.</summary>
 	public static string About { get; } = $"Neuro Administration Tool, version {typeof(SettingsViewModel).Assembly.GetName().Version?.ToString(3)}";
+
+	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(UpdateAppCommand))]
+	private AppUpdateStatus appUpdate = AppUpdateStatus.Unavailable;
+
+	private IAppUpdates? updater;
+	private Action? restartForUpdate;
+
+	internal void AttachUpdater(IAppUpdates? updater, Action restart)
+	{
+		this.updater = updater;
+		this.restartForUpdate = restart;
+		this.AppUpdate = updater?.Status ?? AppUpdateStatus.Unavailable;
+	}
+
+	private bool CanUpdateApp => this.AppUpdate.CanAct;
+
+	[RelayCommand(CanExecute = nameof(CanUpdateApp))]
+	private async Task UpdateAppAsync()
+	{
+		if (this.updater is null || !this.updater.Status.CanAct || this.updater.Status.ReadyVersion != this.AppUpdate.ReadyVersion)
+			return;
+
+		if (this.AppUpdate.ReadyVersion is not null)
+			this.restartForUpdate?.Invoke();
+		else
+			await this.updater.CheckAsync();
+	}
 
 	/// <summary>Every keyboard shortcut, as Settings lists them.</summary>
 	public static IReadOnlyList<ShortcutGroup> Shortcuts { get; } =

@@ -26,7 +26,6 @@ public sealed class WatchAgent : IDisposable
 	private readonly List<ToastWindow> toasts = [];
 	private readonly DispatcherTimer refresh;
 	private readonly IAppUpdates? updates;
-	private NativeMenu? menu;
 	private NativeMenuItem? quietItem;
 	private NativeMenuItem? updateItem;
 	private IconState? shownState;
@@ -40,6 +39,9 @@ public sealed class WatchAgent : IDisposable
 		this.vm = vm;
 		this.alerts = alerts;
 		this.updates = updates;
+		if (updates is not null)
+			updates.Changed += this.UpdatesChanged;
+		vm.Settings.AttachUpdater(updates, this.RestartForUpdate);
 
 		desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 		window.Icon = AppIcon.Get(IconState.NotConnected);
@@ -67,12 +69,7 @@ public sealed class WatchAgent : IDisposable
 		this.refresh = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => this.UpdateTray());
 		this.refresh.Start();
 
-		if (updates is not null)
-		{
-			updates.Ready += (_, _) => Dispatcher.UIThread.Post(this.OfferUpdate);
-			if (updates.ReadyVersion is not null)
-				this.OfferUpdate();
-		}
+		this.RefreshUpdate();
 	}
 
 	// ---- The window ------------------------------------------------------------------------
@@ -109,7 +106,7 @@ public sealed class WatchAgent : IDisposable
 		this.quitting = true;
 
 		// A downloaded update is installed quietly once NAT has quit.
-		if (!this.updateArranged && this.updates?.ReadyVersion is not null)
+		if (!this.updateArranged && this.updates?.Status.ReadyVersion is not null)
 			this.ArrangeUpdate(restart: false);
 
 		foreach (ToastWindow t in this.toasts.ToList())
@@ -132,32 +129,42 @@ public sealed class WatchAgent : IDisposable
 		this.quietItem.Click += (_, _) => this.vm.Settings.SetStatus(this.vm.Settings.IsDoNotDisturb ? OwnStatus.Available : OwnStatus.DoNotDisturb);
 		menu.Add(this.quietItem);
 
+		if (this.updates is not null)
+		{
+			this.updateItem = new NativeMenuItem { Command = this.vm.Settings.UpdateAppCommand };
+			menu.Add(this.updateItem);
+		}
 		menu.Add(new NativeMenuItemSeparator());
 		NativeMenuItem quit = new("Quit");
 		quit.Click += (_, _) => this.Quit();
 		menu.Add(quit);
-		this.menu = menu;
 		return menu;
 	}
 
-	/// <summary>An update has been downloaded: offer to restart into it, at the top of the menu.</summary>
-	private void OfferUpdate()
+	private void UpdatesChanged(object? sender, EventArgs e) => Dispatcher.UIThread.Post(this.RefreshUpdate);
+
+	private void RefreshUpdate()
 	{
-		if (this.menu is null || this.updates?.ReadyVersion is not string version || this.quitting)
+		if (this.quitting || this.updates is null)
 			return;
 
-		if (this.updateItem is null)
-		{
-			this.updateItem = new NativeMenuItem();
-			this.updateItem.Click += (_, _) =>
+		AppUpdateStatus status = this.updates.Status;
+		this.vm.Settings.AppUpdate = status;
+		if (this.updateItem is not null)
+			this.updateItem.Header = status.Phase switch
 			{
-				this.ArrangeUpdate(restart: true);
-				this.Quit();
+				AppUpdatePhase.Current => "Up to date (check again)",
+				AppUpdatePhase.Failed when status.ReadyVersion is null => "Update failed (try again)",
+				_ when !status.CanAct => status.Message,
+				_ => status.ActionLabel,
 			};
-			this.menu.Items.Insert(0, this.updateItem);
-			this.menu.Items.Insert(1, new NativeMenuItemSeparator());
-		}
-		this.updateItem.Header = $"Restart to update to {version}";
+	}
+
+	private void RestartForUpdate()
+	{
+		this.ArrangeUpdate(restart: true);
+		if (this.updateArranged)
+			this.Quit();
 	}
 
 	private void ArrangeUpdate(bool restart)
@@ -170,6 +177,9 @@ public sealed class WatchAgent : IDisposable
 		catch (Exception ex)
 		{
 			AppLog.Error("Could not arrange for the update to be installed.", ex);
+			this.vm.Settings.AppUpdate = new(AppUpdatePhase.Failed, "Could not start the installer. Check the NAT log and try again.", this.updates?.Status.ReadyVersion);
+			if (this.updateItem is not null)
+				this.updateItem.Header = "Install failed (retry update and restart)";
 		}
 	}
 
@@ -282,6 +292,8 @@ public sealed class WatchAgent : IDisposable
 
 	public void Dispose()
 	{
+		if (this.updates is not null)
+			this.updates.Changed -= this.UpdatesChanged;
 		this.refresh.Stop();
 		this.tray.Dispose();
 	}

@@ -181,7 +181,12 @@ public class DashboardTests
 		TelemetryPlaceViewModel place = Assert.IsType<TelemetryPlaceViewModel>(vm.FeatureContent);
 		Assert.True(place.HasPicker);
 		Assert.Equal(["edge.example.org", "Lab"], place.Collectors.Select(c => c.Name));
-		place.PickCommand.Execute(place.Collectors[1].Key);
+		Assert.Contains(Lab, place.Collectors[1].Label);
+		place.Selected = place.Collectors[1];
+		place.Sync();
+		Assert.Same(labBoard, place.Current);
+		TelemetryPlaceViewModel secondWindow = Assert.IsType<TelemetryPlaceViewModel>(s.Feature.Places().Single().Content());
+		Assert.Same(edgeBoard, secondWindow.Current);
 		Assert.Same(labBoard, place.Current);
 
 		// Each collector's page has its own tab, showing its own dashboard.
@@ -194,6 +199,15 @@ public class DashboardTests
 		IReadOnlyList<AppNumbersRow> rows = s.Feature.AppNumberRows();
 		Assert.Equal(["edge.example.org", "Lab"], rows.Select(r => r.Name));
 		Assert.All(rows, r => Assert.True(r.ShowName));
+
+		s.Apis.Remove(Edge);
+		await s.FindAsync();
+		Assert.False(place.HasPicker);
+		Assert.Same(labBoard, secondWindow.Current);
+		s.Apis[Edge] = small;
+		await s.FindAsync();
+		Assert.True(place.HasPicker);
+		Assert.Same(labBoard, place.Current);
 	}
 
 	[AvaloniaFact]

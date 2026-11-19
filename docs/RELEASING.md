@@ -33,9 +33,13 @@ The installer is not signed, so Windows SmartScreen warns the first time: "More 
 
 ## Where installed copies look for updates
 
-Installed copies look every few hours, download in the background, offer "Restart to update" in
-the tray menu, and otherwise install the update when NAT quits. They look in the first of these
-that is set:
+Installed copies check one minute after startup and every four hours after that. To check immediately,
+select **Check for updates** beside the version at the bottom of Settings or in the tray menu. NAT
+downloads an available release in the background. When it is ready, either location offers
+**Update to … and restart**. You can also keep working and let NAT install it when you quit.
+Closing the window with **Keep watching from the tray** enabled keeps NAT running.
+
+NAT uses the first configured source in this table.
 
 | Where | Used for |
 |:------|:---------|
