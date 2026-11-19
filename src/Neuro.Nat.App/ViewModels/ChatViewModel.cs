@@ -978,7 +978,7 @@ public sealed partial class ChatViewModel : ObservableObject, IActionSource
 				if (m.CanChange)
 					list.Add(new ItemAction("Edit", ActionGroup.Open, () => this.Edit(m)) { Icon = "Edit", Key = "E" });
 
-				list.Copy("Copy text", () => m.Markdown, "the message", "Ctrl+C");
+				list.Copy("Copy text", () => ScriptResultText.Unwrap(m.Markdown) ?? m.Markdown, "the message", "Ctrl+C");
 				list.Copy("Copy as a quote", () => Export.Quote(m.Markdown), "the message as a quote", "Ctrl+Shift+C");
 
 				if (this.SelectedPerson is PersonViewModel with)

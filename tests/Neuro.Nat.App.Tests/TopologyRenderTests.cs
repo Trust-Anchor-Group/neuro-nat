@@ -77,7 +77,9 @@ public class TopologyRenderTests
 		Answer(gbg, "lab.example.com", ("lab.example.com", null));
 		Answer(sto, "lab.example.com", ("lab.example.com", null), ("gbg.lab.example.com", null));
 		Answer(mmx, "lab.example.com");
-		Answer(prod, null, ("lab.example.com", null), ("partner.example.org", "HTTP"), ("backup.prod.example.com", null));
+		Answer(prod, null, ("lab.example.com", null), ("partner.example.org", "HTTP"), ("backup.prod.example.com", null),
+			("eu.partner.example", null), ("us.partner.example", null), ("id.partner.example", null),
+			("stage.partner.example", null), ("auth.partner.example", null));
 		Answer(backup, "prod.example.com");
 		answers.Add(new(new WatchedNeuron { AccountId = admin.Profile.Id, BareJid = "legacy.prod.example.com", Name = "Legacy", State = WatchState.Live },
 			null, [], [], [], "The Neuron does not support topology graphs: Unknown command."));
@@ -101,7 +103,8 @@ public class TopologyRenderTests
 		if (!select)
 		{
 			vm.Topology.ShowOtherServers = true;
-			Assert.Equal(9, vm.Topology.Graph.Nodes.Count);
+			Assert.Equal(14, vm.Topology.Graph.Nodes.Count);
+			Capture(window, $"topology-external-{theme.ToLowerInvariant()}-{width}");
 			vm.Topology.ShowOtherServers = false;
 		}
 

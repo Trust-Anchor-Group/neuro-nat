@@ -299,7 +299,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 		if (this.SelectedIssue is IssueItemViewModel issue)
 			return e.Fingerprint == issue.Fingerprint;
 
-		if (this.hidden.Count > 0 && this.hidden.Contains(e.Fingerprint))
+		if (this.hidden.Contains(e.Fingerprint) || (e.EventId is string id && this.hiddenIds.Contains(id)))
 			return false;
 
 		switch (this.SeverityFilter)
@@ -473,12 +473,14 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 
 	/// <summary>Set by the shell: the moves to other screens.</summary>
 	public IShell? Shell { get; set; }
+	internal SettingsViewModel? Settings { get; init; }
 
 	/// <summary>Set by the view: the events selected in the stream.</summary>
 	public IReadOnlyList<NeuronEvent> SelectedEvents { get; set; } = [];
 
 	/// <summary>Kinds of events the person asked not to see, by fingerprint. Kept until the app closes.</summary>
 	private readonly HashSet<string> hidden = [];
+	private readonly HashSet<string> hiddenIds = new(StringComparer.Ordinal);
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasHidden), nameof(HiddenText))]
@@ -491,6 +493,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 	private void ShowHidden()
 	{
 		this.hidden.Clear();
+		this.hiddenIds.Clear();
 		this.HiddenCount = 0;
 		this.Rebuild();
 	}
@@ -500,7 +503,18 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 		foreach (NeuronEvent e in events)
 			this.hidden.Add(e.Fingerprint);
 
-		this.HiddenCount = this.hidden.Count;
+		this.RefreshHidden();
+	}
+
+	private void HideId(string id)
+	{
+		this.hiddenIds.Add(id);
+		this.RefreshHidden();
+	}
+
+	private void RefreshHidden()
+	{
+		this.HiddenCount = this.hidden.Count + this.hiddenIds.Count;
 		this.Rebuild();
 		Ui.Say("Hidden until you close the app. Show them again above the list.");
 	}
@@ -578,7 +592,11 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 			if (this.SelectedIssue is null && this.issueIndex.TryGetValue(e.Fingerprint, out IssueItemViewModel? issue))
 				list.Filter("Only events like this", () => this.OpenIssue(issue));
 			if (this.SelectedIssue is null)
+			{
+				if (!string.IsNullOrWhiteSpace(e.EventId))
+					list.Filter("Hide event ID " + e.EventId, () => this.HideId(e.EventId));
 				list.Filter("Hide events like this", () => this.Hide(events));
+			}
 
 			if (this.Shell is IShell shell)
 				list.Sub("Go to " + Converters.NeuronNameConverter.Name(jid), ActionGroup.GoTo, shell.NeuronPlaces(jid, e.Source.AccountId, WorkspaceKind.Events));
@@ -634,6 +652,7 @@ public sealed partial class EventsViewModel : ObservableObject, IDisposable, IAc
 		if (issues.Count == 1)
 		{
 			IssueItemViewModel issue = issues[0];
+			this.Settings?.AddRuleActions(list, Engine.Alerts.AlertRule.KeyFor(issue.Issue.Latest), issue.Title);
 			if (!ReferenceEquals(this.SelectedIssue, issue))
 				list.Open("Show its events", () => this.SelectedIssue = issue);
 

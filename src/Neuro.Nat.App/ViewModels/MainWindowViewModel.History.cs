@@ -13,8 +13,8 @@ public sealed class HistoryMenu
 
 /// <summary>
 /// Back and forward. Every screen you land on is a stop: the screen, and the Neuron, account or
-/// conversation it showed. Back walks through the stops the way a browser does, and going
-/// somewhere new from the middle drops what was ahead.
+/// conversation it showed. A manual revisit moves that destination to the latest stop.
+/// Going somewhere from the middle drops what was ahead.
 /// </summary>
 public sealed partial class MainWindowViewModel
 {
@@ -129,15 +129,13 @@ public sealed partial class MainWindowViewModel
 			}
 
 			// Chat opening its first conversation on its own is still the same stop.
-			if (last.Screen == now.Screen && last.Account is null && last.Jid is null)
-			{
-				this.stops[this.stopAt] = now;
-				this.DescribeStops();
-				return;
-			}
+			if (last.Screen == now.Screen && last.Account is null && last.Jid is null && now.Account is not null)
+				this.stops.RemoveAt(this.stopAt--);
 		}
 
 		this.stops.RemoveRange(this.stopAt + 1, this.stops.Count - this.stopAt - 1);
+		// A manual revisit moves the destination to the most recent end of history.
+		this.stops.RemoveAll(s => Same(s, now));
 		this.stops.Add(now);
 		if (this.stops.Count > MaxStops)
 			this.stops.RemoveRange(0, this.stops.Count - MaxStops);
@@ -253,7 +251,10 @@ public sealed partial class MainWindowViewModel
 			list.GoTo(name, () =>
 			{
 				// The list may have changed since the menu opened: walk to the same stop, not the same number.
-				int steps = this.stops.IndexOf(target) - this.stopAt;
+				int targetIndex = this.stops.FindIndex(s => Same(s, target));
+				if (targetIndex < 0)
+					return;
+				int steps = targetIndex - this.stopAt;
 				for (int n = Math.Abs(steps); n > 0; n--)
 					this.Walk(Math.Sign(steps));
 			});

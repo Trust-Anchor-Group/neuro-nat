@@ -224,7 +224,7 @@
         </ScrollViewer>
 
         <!-- A run: each step, with each Neuron's answer under it, and how it ended -->
-        <ScrollViewer x:Name="RunScroll" IsVisible="{Binding HasRun}" Padding="24,14">
+        <ScrollViewer x:Name="RunScroll" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasRun}" Padding="24,14">
           <StackPanel Spacing="14">
             <DockPanel>
               <Button DockPanel.Dock="Right" Classes="ghost small" Content="Back to steps" Command="{Binding CloseRunCommand}" IsVisible="{Binding !IsRunning}" />
@@ -248,24 +248,22 @@
                       </Border>
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Cells}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <UniformGrid Columns="{Binding Columns}" />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:RunbookCellViewModel">
                           <Border Classes="result" Classes.pending="{Binding IsPending}">
                             <StackPanel Spacing="6">
                               <DockPanel>
+                                <Button DockPanel.Dock="Right" Classes="ghost small" Padding="5" Margin="6,-4,0,-4"
+                                        Command="{Binding CopyAnswerCommand}" IsVisible="{Binding HasAnswer}"
+                                        ToolTip.Tip="Copy answer" AutomationProperties.Name="Copy answer">
+                                  <c:LineIcon Data="{StaticResource Icon.Copy}" Width="14" Height="14" />
+                                </Button>
                                 <TextBlock DockPanel.Dock="Right" Classes="meta" Text="{Binding Status}" Classes.error="{Binding HasError}"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320" ToolTip.Tip="{Binding Status}" />
                                 <TextBlock Classes="mono" Text="{Binding NeuronLabel}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
                               </DockPanel>
                               <SelectableTextBlock Classes="mono" Text="{Binding Command}" TextWrapping="Wrap" IsVisible="{Binding IsDry}" />
-                              <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MaxHeight="10000" IsVisible="{Binding HasAnswer}">
-                                <c:MarkdownView Markdown="{Binding Markdown}" />
-                              </ScrollViewer>
+                              <c:MarkdownView Markdown="{Binding Markdown}" IsVisible="{Binding HasAnswer}" />
                             </StackPanel>
                           </Border>
                         </DataTemplate>

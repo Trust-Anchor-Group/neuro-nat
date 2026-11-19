@@ -56,6 +56,7 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 		this.monitors = monitors;
 		this.accounts = accounts;
 		this.features = features ?? FeatureSet.None();
+		this.FeatureChecks = this.features.Features.Select(f => f.DiscoveryCheck).OfType<FeatureCheck>().ToList();
 		monitors.NeuronsChanged += (_, _) => Dispatcher.UIThread.Post(this.Sync);
 		this.features.Changed += (_, _) => Dispatcher.UIThread.Post(this.ShowFeatureLines);
 	}
@@ -69,6 +70,31 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	public ObservableCollection<string> FeatureLines { get; } = [];
 
 	[ObservableProperty] private bool hasFeatureLines;
+	public IReadOnlyList<FeatureCheck> FeatureChecks { get; }
+	public bool HasFeatureChecks => this.FeatureChecks.Count > 0;
+	[ObservableProperty] private string? featureCheckNote;
+
+	[RelayCommand]
+	private async Task CheckFeature(FeatureCheck check)
+	{
+		if (this.Selected is not { } row)
+			return;
+
+		this.FeatureCheckNote = "Checking " + row.Label + "…";
+		string result;
+		try
+		{
+			result = await check.RunAsync(new FeatureNeuron(row.AccountId, row.NeuronJid));
+		}
+		catch (Exception ex)
+		{
+			AppLog.Error("Feature check failed.", ex);
+			result = "The check failed. Try again when the Neuron is connected.";
+		}
+
+		if (this.Selected == row)
+			this.FeatureCheckNote = result;
+	}
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(HasSelection))]
@@ -115,6 +141,7 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 		this.Error = null;
 		this.Log.Clear();
 		this.HasLog = false;
+		this.FeatureCheckNote = null;
 		this.OnPropertyChanged(nameof(this.UpgradeConfirmHint));
 		this.ShowDetail();
 

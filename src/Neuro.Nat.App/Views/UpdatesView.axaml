@@ -3,6 +3,7 @@
              xmlns:vm="using:Neuro.Nat.App.ViewModels"
              xmlns:conv="using:Neuro.Nat.App.Converters"
              xmlns:c="using:Neuro.Nat.App.Controls"
+             xmlns:features="using:Neuro.Nat.App.Features"
              xmlns:sw="using:Neuro.Nat.Engine.Software"
              x:Class="Neuro.Nat.App.Views.UpdatesView"
              x:DataType="vm:UpdatesViewModel">
@@ -155,6 +156,19 @@
                           Content="Install content-only packages as soon as they arrive" />
               </Grid>
             </Border>
+
+            <StackPanel Spacing="6" IsVisible="{Binding HasFeatureChecks}">
+              <ItemsControl ItemsSource="{Binding FeatureChecks}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="features:FeatureCheck">
+                    <Button Classes="ghost" Content="{Binding Label}" HorizontalAlignment="Left"
+                            Command="{Binding $parent[UserControl].((vm:UpdatesViewModel)DataContext).CheckFeatureCommand}" CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <SelectableTextBlock Text="{Binding FeatureCheckNote}" TextWrapping="Wrap"
+                                   IsVisible="{Binding FeatureCheckNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
 
             <!-- What features say about this Neuron, one quiet line each (app telemetry) -->
             <ItemsControl ItemsSource="{Binding FeatureLines}" IsVisible="{Binding HasFeatureLines}" Margin="2,-6,0,0">

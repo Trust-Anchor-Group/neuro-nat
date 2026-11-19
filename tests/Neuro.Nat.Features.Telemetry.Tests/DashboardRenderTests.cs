@@ -72,6 +72,38 @@ public class DashboardRenderTests
 		return (s, vm, window, d);
 	}
 
+	[AvaloniaFact]
+	public async Task SoftwareTabCanDiscoverTelemetryWithoutReconnecting()
+	{
+		await using TelemetrySample s = await TelemetrySample.CreateAsync([(Lab, null)]);
+		MainWindowViewModel vm = await s.WindowModelAsync();
+		await s.FindAsync();
+		Assert.Empty(vm.FeaturePlaces);
+		vm.OpenNeuron(Lab, s.AccountOf[Lab], WorkspaceKind.Updates);
+		MainWindow window = new() { DataContext = vm, Width = 1100, Height = 800 };
+		window.Show();
+		try
+		{
+			Dispatcher.UIThread.RunJobs();
+			Button check = window.GetVisualDescendants().OfType<Button>()
+				.Single(b => b.IsEffectivelyVisible && Equals(b.Content, "Check app telemetry"));
+			check.Command!.Execute(check.CommandParameter);
+			await vm.Updates.CheckFeatureCommand.ExecutionTask!;
+			Assert.Contains("Web address", vm.Updates.FeatureCheckNote);
+
+			s.Apis[Lab] = new StandInTelemetry(TelemetrySample.Start);
+			check.Command.Execute(check.CommandParameter);
+			await vm.Updates.CheckFeatureCommand.ExecutionTask!;
+			Dispatcher.UIThread.RunJobs();
+			Assert.Contains("available", vm.Updates.FeatureCheckNote);
+			Assert.Single(vm.FeaturePlaces);
+		}
+		finally
+		{
+			window.Close();
+		}
+	}
+
 	private static async Task ShowAsync(MainWindow window, DashboardViewModel d, string part)
 	{
 		d.ShowPart(part);

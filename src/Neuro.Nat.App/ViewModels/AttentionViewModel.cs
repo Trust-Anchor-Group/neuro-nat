@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Neuro.Nat.Engine.Accounts;
+using Neuro.Nat.Engine.Alerts;
 using Neuro.Nat.Engine.Attention;
 using Neuro.Nat.Engine.Events;
 
@@ -31,6 +32,7 @@ public sealed partial class AttentionItemViewModel(string id) : ObservableObject
 	[ObservableProperty] private bool isOpen;
 	[ObservableProperty] private bool isUnread;
 	[ObservableProperty] private bool isHandled;
+	[ObservableProperty] private bool canReopen;
 	[ObservableProperty] private string neuronJid = string.Empty;
 	[ObservableProperty] private string neuronLabel = string.Empty;
 	[ObservableProperty] private string accountLabel = string.Empty;
@@ -43,16 +45,17 @@ public sealed partial class AttentionItemViewModel(string id) : ObservableObject
 	[ObservableProperty] private IReadOnlyList<NotificationLink> links = [];
 	[ObservableProperty] private bool hasLinks;
 
-	internal void Apply(NeuronNotification n, string neuronLabel, AccountProfile? account, DateTime now)
+	internal void Apply(NeuronNotification n, string neuronLabel, AccountProfile? account, DateTime now, bool tracked)
 	{
 		this.Model = n;
 		this.Title = n.Title;
-		this.KindLabel = n.Kind.Label();
+		this.KindLabel = tracked ? n.Kind.Label() + " (tracked)" : n.Kind.Label();
 		this.Severity = n.Severity;
 		this.NeedsAction = n.NeedsAction;
-		this.IsOpen = n.IsOpen;
+		this.IsOpen = n.IsWaiting(tracked);
 		this.IsUnread = n.State == AttentionState.Unread;
 		this.IsHandled = n.State == AttentionState.Handled;
+		this.CanReopen = !this.IsOpen && (n.NeedsAction || tracked);
 		this.NeuronJid = n.NeuronJid;
 		this.NeuronLabel = neuronLabel;
 		this.AccountLabel = account?.ShortLabel ?? string.Empty;
@@ -86,10 +89,15 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 	private int dirty = 1;
 	private int tick;
 
-	public AttentionViewModel(MonitorService monitors, AccountManager accounts)
+	internal SettingsViewModel? Settings { get; }
+
+	public AttentionViewModel(MonitorService monitors, AccountManager accounts, SettingsViewModel? settings = null)
 	{
 		this.monitors = monitors;
 		this.accounts = accounts;
+		this.Settings = settings;
+		if (settings is not null)
+			settings.AlertRulesChanged += this.RulesChanged;
 		monitors.Attention.Changed += this.Inbox_Changed;
 		monitors.Attention.Reset += this.Inbox_Reset;
 		monitors.NeuronsChanged += this.Inbox_Reset;
@@ -154,11 +162,13 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 	partial void OnSelectedItemChanged(AttentionItemViewModel? value)
 	{
 		if (value is not null && value.IsUnread)
-			this.monitors.Attention.SetState(value.Id, AttentionState.Read);
+			this.monitors.Attention.SetState(value.Id, AttentionState.Read, AttentionState.Unread);
 	}
 
 	private void Inbox_Changed(object? sender, NeuronNotification e) => Interlocked.Exchange(ref this.dirty, 1);
 	private void Inbox_Reset(object? sender, EventArgs e) => Interlocked.Exchange(ref this.dirty, 1);
+
+	private void RulesChanged(object? sender, EventArgs e) => this.Refresh();
 
 	private void Tick()
 	{
@@ -180,13 +190,26 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 		Dictionary<Guid, AccountProfile> profiles = this.accounts.Sessions.ToDictionary(s => s.Profile.Id, s => s.Profile);
 		string search = this.SearchText.Trim();
 
-		IEnumerable<NeuronNotification> shown = all;
-		if (this.Filter == AttentionFilter.Open)
-			shown = shown.Where(n => n.IsOpen);
+		AlertSettings? settings = this.Settings?.Alerts;
+		int openCount = 0, unreadCount = 0, total = 0;
 
 		List<AttentionItemViewModel> keep = [];
-		foreach (NeuronNotification n in shown)
+		foreach (NeuronNotification n in all)
 		{
+			AlertRuleMode? rule = settings?.Rules.Length > 0 ? settings.RuleFor(AlertRule.KeyFor(n), now) : null;
+			if (rule == AlertRuleMode.Hide)
+				continue;
+
+			bool tracked = rule == AlertRuleMode.Track;
+			bool open = n.IsWaiting(tracked);
+			total++;
+			if (open)
+				openCount++;
+			if (n.State == AttentionState.Unread)
+				unreadCount++;
+			if (this.Filter == AttentionFilter.Open && !open)
+				continue;
+
 			string label = labels.TryGetValue((n.AccountId, n.NeuronJid.ToLowerInvariant()), out string? l) ? l : NeuronNames.For(known, n.NeuronJid);
 
 			if (search.Length > 0 &&
@@ -199,7 +222,7 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 			}
 
 			AttentionItemViewModel vm = this.Items.FirstOrDefault(i => i.Id == n.Id) ?? new AttentionItemViewModel(n.Id);
-			vm.Apply(n, label, profiles.TryGetValue(n.AccountId, out AccountProfile? p) ? p : null, now);
+			vm.Apply(n, label, profiles.TryGetValue(n.AccountId, out AccountProfile? p) ? p : null, now, tracked);
 			keep.Add(vm);
 		}
 
@@ -225,12 +248,12 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 		if (selected is not null && !keep.Contains(selected))
 			this.SelectedItem = keep.Count == 0 ? null : keep[Math.Clamp(selectedIndex, 0, keep.Count - 1)];
 
-		this.OpenCount = all.Count(n => n.IsOpen);
-		this.UnreadCount = all.Count(n => n.State == AttentionState.Unread);
-		this.TotalCount = all.Count;
+		this.OpenCount = openCount;
+		this.UnreadCount = unreadCount;
+		this.TotalCount = total;
 		this.HasItems = keep.Count > 0;
 		this.Summary = this.OpenCount == 0
-			? (all.Count == 0 ? "Nothing yet" : "Nothing needs you")
+			? (total == 0 ? "Nothing yet" : "Nothing needs you")
 			: $"{this.OpenCount} need{(this.OpenCount == 1 ? "s" : "")} you";
 	}
 
@@ -257,6 +280,26 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 			this.monitors.Attention.SetState(item.Id, AttentionState.Read);
 			this.Refresh();
 		}
+	}
+
+	internal void AddSimilarActions(ActionList list, NeuronNotification notification, Action refreshInbox)
+	{
+		string key = AlertRule.KeyFor(notification);
+		var ids = this.monitors.Attention.Items
+			.Where(n => n.State is AttentionState.Unread or AttentionState.Read && AlertRule.KeyFor(n) == key)
+			.Select(n => n.Id).ToHashSet(StringComparer.Ordinal);
+		if (ids.Count > 0)
+		{
+			string label = string.IsNullOrWhiteSpace(notification.EventId) ? notification.Title : notification.EventId;
+			list.Do($"Mark all {ids.Count} read across all Neurons ({label})", () =>
+			{
+				this.monitors.Attention.MarkAllRead(n => ids.Contains(n.Id) && AlertRule.KeyFor(n) == key);
+				this.Refresh();
+				refreshInbox();
+			}, icon: "Check");
+		}
+
+		this.Settings?.AddRuleActions(list, key, notification.Title);
 	}
 
 	[RelayCommand]
@@ -299,6 +342,8 @@ public sealed partial class AttentionViewModel : ObservableObject, IDisposable
 	public void Dispose()
 	{
 		this.timer.Stop();
+		if (this.Settings is not null)
+			this.Settings.AlertRulesChanged -= this.RulesChanged;
 		this.monitors.Attention.Changed -= this.Inbox_Changed;
 		this.monitors.Attention.Reset -= this.Inbox_Reset;
 		this.monitors.NeuronsChanged -= this.Inbox_Reset;

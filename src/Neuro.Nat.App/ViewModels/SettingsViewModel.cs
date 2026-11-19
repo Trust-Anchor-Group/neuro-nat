@@ -257,10 +257,45 @@ public sealed partial class SettingsViewModel(ChatService chat) : ObservableObje
 		this.ApplyStatus();
 		this.RaiseAll();
 		this.Loaded?.Invoke(this, EventArgs.Empty);
+		this.AlertRulesChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	/// <summary>The alert settings in force.</summary>
 	public AlertSettings Alerts => this.alerts?.Settings ?? this.local;
+
+	public event EventHandler? AlertRulesChanged;
+
+	public IReadOnlyList<AlertRule> AlertRules => this.Alerts.Rules;
+
+	internal void AddRuleActions(ActionList list, string key, string title)
+	{
+		ActionList choices = [];
+		void Set(AlertRuleMode mode, DateTimeOffset? until = null)
+		{
+			this.SetRule(key, new AlertRule(key, title, mode, until));
+		}
+
+		choices.Do("Mute pop-ups and sounds", () => Set(AlertRuleMode.Mute));
+		choices.Do("Mute and hide for 1 hour", () => Set(AlertRuleMode.Hide, DateTimeOffset.Now.AddHours(1)));
+		choices.Do("Mute and hide until restored", () => Set(AlertRuleMode.Hide));
+		choices.Do("Track each recurrence", () => Set(AlertRuleMode.Track));
+		if (this.Alerts.RuleFor(key, DateTimeOffset.Now) is not null)
+			choices.Do("Restore default", () => this.SetRule(key, null));
+		list.Sub("Similar alerts across all Neurons", ActionGroup.Do, choices);
+	}
+
+	[RelayCommand]
+	private void RemoveRule(AlertRule rule) => this.SetRule(rule.Key, null);
+
+	private void SetRule(string key, AlertRule? rule)
+	{
+		DateTimeOffset now = DateTimeOffset.Now;
+		List<AlertRule> rules = [.. this.AlertRules.Where(r => r.Key != key && (r.Until is null || r.Until > now))];
+		if (rule is not null)
+			rules.Add(rule);
+		this.Change(s => s with { Rules = [.. rules] });
+		this.AlertRulesChanged?.Invoke(this, EventArgs.Empty);
+	}
 
 	private void Change(Func<AlertSettings, AlertSettings> change)
 	{

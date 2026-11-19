@@ -152,6 +152,24 @@ public class TelemetryOverXmppTests
 	}
 
 	[Fact]
+	public async Task ManualCheckFindsTelemetryOnAnExistingStream()
+	{
+		HttpStatusCode response = HttpStatusCode.NotFound;
+		await using Sample s = await SampleAsync((_, _) => Json(response, StatusOf(Auth)));
+		await s.GoesLiveAsync(AuthClient, Auth);
+		Assert.Empty(s.Feature.Places());
+		FeatureNeuron target = new(s.Account, AuthClient);
+		Assert.Contains("package", await s.Feature.DiscoveryCheck.RunAsync(target));
+		response = HttpStatusCode.OK;
+		Assert.Contains("available", await s.Feature.DiscoveryCheck.RunAsync(target));
+		Assert.Single(s.Feature.Places());
+		Assert.Empty(s.Web.Asked);
+		response = HttpStatusCode.Unauthorized;
+		Assert.Contains("XMPP", await s.Feature.DiscoveryCheck.RunAsync(target));
+		Assert.Single(s.Feature.Places());
+	}
+
+	[Fact]
 	public async Task AskedOncePerStreamAndAgainWhenItsSoftwareChanges()
 	{
 		await using Sample s = await SampleAsync((_, _) => Json(HttpStatusCode.OK, StatusOf(Auth)));

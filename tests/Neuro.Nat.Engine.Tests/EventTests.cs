@@ -10,6 +10,26 @@ public class EventTests
 	private static SnifferLine Line(SnifferDirection d, string text, DateTime? at = null)
 		=> new(1, at ?? new DateTime(2026, 11, 9, 14, 2, 0), d, text);
 
+	[Theory]
+	[InlineData("<font class='result'>`12.5`</font>", 12.5)]
+	[InlineData("0", 0d)]
+	[InlineData("64,2 %", 64.2)]
+	[InlineData("1000", null)]
+	[InlineData("403 forbidden", null)]
+	[InlineData("null", null)]
+	public async Task CurrentCpuReadsOneConsoleReply(string reply, double? expected)
+	{
+		Chat.ConsoleSession? session = null;
+		session = new(source.AccountId, source.NeuronJid, () => source.NeuronJid + "/admin", (_, command, thread) =>
+		{
+			Assert.Equal("PerformanceCounterValue('Processor','_Total','% Processor Time')", command);
+			session!.Receive(new(source.AccountId, source.NeuronJid, null, null, DateTime.Now, reply, ""), thread);
+			return Task.CompletedTask;
+		});
+		Assert.Equal(expected, await HealthReader.ReadCurrentCpuAsync(session));
+		Assert.Empty(session.Entries);
+	}
+
 	[Fact]
 	public void ParsesFieldsAndTagsFromSniffedEvent()
 	{

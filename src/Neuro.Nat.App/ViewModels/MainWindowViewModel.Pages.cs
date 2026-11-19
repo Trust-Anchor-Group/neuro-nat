@@ -173,10 +173,21 @@ public sealed partial class MainWindowViewModel
 	}
 
 	[RelayCommand]
-	private void ReadPageHealth()
+	private async Task ReadPageHealth()
 	{
-		this.Fleet.RefreshNowCommand.Execute(null);
-		Ui.Say("Reading its health");
+		if (this.Page is NeuronPageViewModel page)
+			await this.fleet.RefreshAsync(page.AccountId, page.BareJid);
+	}
+
+	[RelayCommand]
+	private async Task ReadCpuNow()
+	{
+		if (this.Page is not NeuronPageViewModel page)
+			return;
+
+		page.CpuReading = "Reading CPU…";
+		double? cpu = await HealthReader.ReadCurrentCpuAsync(this.chatService.Console(page.AccountId, page.BareJid));
+		page.CpuReading = cpu.HasValue ? $"{cpu:0.#} % at {DateTime.Now:G}" : "Current CPU unavailable";
 	}
 
 	/// <summary>Opens what a row under "Waiting for you" on the page points at, in the Inbox.</summary>

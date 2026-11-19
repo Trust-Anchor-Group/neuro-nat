@@ -180,7 +180,7 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 		{
 			Guid a = row.AccountId;
 			list.Window("Open in a new window", () => this.OpenNeuronWindow(neuronJid, a));
-			list.Do("Read its health now", () => this.Fleet.RefreshNowCommand.Execute(null), icon: "Refresh");
+			list.Do("Read its health now", () => this.fleet.RefreshAsync(a, neuronJid), icon: "Refresh");
 			this.AddCompareActions(list, neuronJid, a);
 			list.Do("Watch its traffic", () => this.WatchTrafficOf(a, neuronJid), icon: "Sniffer");
 			list.Do("Check for updates", () =>
@@ -399,8 +399,10 @@ public sealed partial class MainWindowViewModel : IShell, IActionSource
 	{
 		switch (this.Workspace)
 		{
-			case WorkspaceKind.Fleet:
 			case WorkspaceKind.Neuron:
+				this.ReadPageHealthCommand.Execute(null);
+				break;
+			case WorkspaceKind.Fleet:
 				this.Fleet.RefreshNowCommand.Execute(null);
 				break;
 			case WorkspaceKind.Attention:

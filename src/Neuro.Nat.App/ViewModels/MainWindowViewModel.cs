@@ -86,12 +86,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
 			},
 		};
 		this.Picker = new NeuronPickerViewModel(this.NeuronChips, jids => this.SetLens(jids)) { Actions = this };
-		this.Events = new EventsViewModel(fleet.Monitors);
-		this.NeuronEvents = new EventsViewModel(fleet.Monitors);
-		this.Fleet = new FleetViewModel(fleet, accounts) { ShowEventsFor = this.ShowEventsOf };
-		this.Attention = new AttentionViewModel(fleet.Monitors, accounts) { ShowEventsFor = this.ShowEventsOf };
-		this.Sources = new SourcesViewModel(fleet.Monitors, accounts);
-
 		Engine.Chat.ChatService chatService = this.chatService = chat ?? new Engine.Chat.ChatService(accounts, fleet.Monitors);
 		this.Features.UseChat(chatService);
 		this.devicesService = devices ?? new Engine.Devices.DevicesService(accounts);
@@ -99,6 +93,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 		// Windows opened beside the main one share its Settings.
 		this.Settings = primary?.Settings ?? new SettingsViewModel(chatService);
+		this.Events = new EventsViewModel(fleet.Monitors) { Settings = this.Settings };
+		this.NeuronEvents = new EventsViewModel(fleet.Monitors) { Settings = this.Settings };
+		this.Fleet = new FleetViewModel(fleet, accounts) { ShowEventsFor = this.ShowEventsOf };
+		this.Attention = new AttentionViewModel(fleet.Monitors, accounts, this.Settings) { ShowEventsFor = this.ShowEventsOf };
+		this.Sources = new SourcesViewModel(fleet.Monitors, accounts);
+
 		Ui.Layout = this.Settings;
 		this.Settings.Loaded += (_, _) =>
 		{

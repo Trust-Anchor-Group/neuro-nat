@@ -500,6 +500,7 @@ public sealed class NeuronMonitor : IAsyncDisposable
 		string? markdown = null;
 		string? replaces = null;
 		string? retracts = ReadRetraction(e.Message);
+		bool delayed = false;
 		DateTime timestamp = DateTime.Now;
 
 		if (e.Message is XmlElement message)
@@ -520,6 +521,7 @@ public sealed class NeuronMonitor : IAsyncDisposable
 						break;
 
 					case "delay" when x.NamespaceURI == "urn:xmpp:delay":
+						delayed = true;
 						if (DateTime.TryParse(x.GetAttribute("stamp"), CultureInfo.InvariantCulture,
 							DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime stamp))
 						{
@@ -539,6 +541,7 @@ public sealed class NeuronMonitor : IAsyncDisposable
 			string.IsNullOrEmpty(replaces) ? null : replaces, timestamp, markdown, text)
 		{
 			Retracts = retracts,
+			Delayed = delayed,
 		};
 	}
 

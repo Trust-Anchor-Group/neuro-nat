@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -521,14 +522,24 @@ public class ActionTests
 		Dispatcher.UIThread.RunJobs();
 		Assert.False(bar.IsVisible);
 
-		// Hide events like this: every event of that kind leaves the stream until asked back.
 		NeuronEvent socket = events.Stream.First(e => e.Message.StartsWith("SocketException"));
+		// One ID can have different messages, fingerprints and levels on different Neurons.
+		await events.ActionsFor([socket]).Single(a => a.Text == "Hide event ID S2S").RunAsync();
+		NeuronEvent next = socket with { EventId = "S2S", Message = "Another S2S message", Fingerprint = "different", Timestamp = DateTime.Now };
+		s.Monitors.Hub.Add(next);
+		events.Flush();
+		Assert.DoesNotContain(events.Stream, e => e.EventId == "S2S");
+		Assert.Contains(events.Stream, e => e.EventId == "Blocked");
+		events.ShowHiddenCommand.Execute(null);
+		Assert.Contains(events.Stream, e => e.Message == next.Message);
+
+		// Hide events like this: every event of that kind leaves the stream until asked back.
 		await events.ActionsFor([socket]).First(a => a.Text == "Hide events like this").RunAsync();
 		Assert.DoesNotContain(events.Stream, e => e.Fingerprint == socket.Fingerprint);
 		Assert.True(events.HasHidden);
 		Capture(window, $"events-hidden-{t}-1440");
 		events.ShowHiddenCommand.Execute(null);
-		Assert.Equal(25, events.Stream.Count);
+		Assert.Equal(26, events.Stream.Count);
 
 		// Go to: from an event to its Neuron on another screen.
 		ItemAction goTo = events.ActionsFor([socket]).First(a => a.Text.StartsWith("Go to "));
@@ -698,6 +709,51 @@ public class ActionTests
 	}
 
 	// ----- Console -----
+
+	[AvaloniaFact]
+	public async Task ConsoleRecordsWrapAndSupportSelectionAndWholeAnswerCopy()
+	{
+		Desk desk = new();
+		Sample sample = await SampleAsync();
+		ConsoleViewModel console = sample.Vm.Console;
+		const string field = """Label: "two, [items]: \"quoted\"" """;
+		string literal = "[{" + field.TrimEnd() + ", Code: \"" + new string('x', 160) + "\"}, {Label: \"second\"}]";
+		ConsoleRunViewModel run = new("Select top 2 * from Samples", DateTime.Now);
+		foreach (string name in new[] { "alpha.example", "beta.example" })
+			run.Results.Add(new(new Engine.Chat.ConsoleEntry(name, run.Command, null, false), name)
+			{
+				Markdown = "<font class=\"result\">`" + literal + "`</font>", IsWaiting = false, Status = "Answered",
+			});
+		console.Runs.Add(run);
+		console.HasRuns = true;
+		Window window = new() { Width = 900, Height = 700, Content = new ConsoleView { DataContext = console } };
+		window.Show();
+		try
+		{
+			Dispatcher.UIThread.RunJobs();
+			var transcript = window.GetVisualDescendants().OfType<ScrollViewer>().Single(v => v.Name == "Transcript");
+			var bodies = transcript.GetVisualDescendants().OfType<SelectableTextBlock>().Where(b => b.Text?.StartsWith('[') == true).ToList();
+			Assert.Equal(2, bodies.Count);
+			var body = bodies[0];
+			Assert.Contains("\n    " + field.TrimEnd(), body.Text);
+			Assert.Contains("\n  },\n  {\n", body.Text);
+			Assert.True(body.Bounds.Height > 100);
+			Assert.True(transcript.Extent.Width <= transcript.Viewport.Width + 1);
+			Assert.True(bodies[1].TranslatePoint(default, transcript)!.Value.Y > body.TranslatePoint(default, transcript)!.Value.Y + body.Bounds.Height);
+			body.Focus();
+			body.SelectionStart = body.Text!.IndexOf("two,", StringComparison.Ordinal);
+			body.SelectionEnd = body.SelectionStart + 3;
+			window.KeyPressQwerty(PhysicalKey.C, RawInputModifiers.Control);
+			Assert.Equal("two", await window.Clipboard!.TryGetTextAsync());
+			await console.ActionsFor([run.Results[0]]).Single(a => a.Text == "Copy answer").RunAsync();
+			Assert.Equal(literal, desk.Clipboard);
+			Capture(window, "console-query-results");
+		}
+		finally
+		{
+			window.Close();
+		}
+	}
 
 	[AvaloniaFact]
 	public async Task AConsoleAnswerCanBeCopiedAsATableAndRunAgain()

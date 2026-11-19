@@ -406,7 +406,7 @@ public sealed partial class FleetViewModel : ObservableObject, IDisposable, IAct
 			});
 		}
 
-		list.Do("Read their health now", () => this.RefreshNowCommand.Execute(null), icon: "Refresh");
+		list.Do("Read their health now", () => Task.WhenAll(rows.Select(r => this.fleet.RefreshAsync(r.AccountId, r.BareJid))), icon: "Refresh");
 		list.Add(new ItemAction("Check for updates", ActionGroup.Do, () => this.Shell?.CheckUpdatesAsync([.. rows.Select(r => (r.AccountId, r.BareJid))]) ?? Task.CompletedTask)
 		{
 			InBar = true,

@@ -172,7 +172,7 @@ public static class ActionMenu
 			return;
 
 		// Keys typed into a text box belong to the text box.
-		if (e.Source is TextBox)
+		if (e.Source is TextBox || (e.Key == Key.C && e.Source is SelectableTextBlock { SelectedText.Length: > 0 }))
 			return;
 
 		if (e.Key == Key.Escape && c is ListBox many && (many.SelectedItems?.Count ?? 0) > 1)

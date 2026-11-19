@@ -25,6 +25,9 @@ public enum FeaturePresence
 	Present,
 }
 
+/// <summary>A read-only check offered on the Software tab, even before the feature is discovered.</summary>
+public sealed record FeatureCheck(string Label, Func<FeatureNeuron, Task<string>> RunAsync);
+
 /// <summary>A Neuron as one account reaches it.</summary>
 public readonly record struct FeatureNeuron(Guid AccountId, string NeuronJid);
 
@@ -139,6 +142,8 @@ public interface INatFeature : IAsyncDisposable
 
 	/// <summary>Whether the feature is on a Neuron.</summary>
 	FeaturePresence PresenceOn(Guid accountId, string neuronJid);
+
+	FeatureCheck? DiscoveryCheck => null;
 
 	/// <summary>Quiet lines on a Neuron's Software tab.</summary>
 	IReadOnlyList<string> SoftwareLines(Guid accountId, string neuronJid) => [];

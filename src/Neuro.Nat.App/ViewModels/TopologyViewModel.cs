@@ -74,7 +74,11 @@ public sealed partial class TopologyViewModel : ObservableObject, IActionSource
 
 	partial void OnShowParentsChanged(bool value) => this.Rebuild();
 	partial void OnShowFederationChanged(bool value) => this.Rebuild();
-	partial void OnShowOtherServersChanged(bool value) => this.Rebuild();
+	partial void OnShowOtherServersChanged(bool value)
+	{
+		this.Rebuild();
+		this.FitVersion++;
+	}
 
 	partial void OnShowGroupsChanged(bool value)
 	{

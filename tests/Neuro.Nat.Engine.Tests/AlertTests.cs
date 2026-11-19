@@ -66,6 +66,46 @@ public class AlertTests
 	}
 
 	[Fact]
+	public async Task RulesMatchForwardedAlertsAndLiveIssuesAndSkipReplayAfterReconnect()
+	{
+		var (m, account) = await SetupAsync();
+		DateTime now = DateTime.Now;
+		using AlertService alerts = new(m, new AlertSettings(), () => now, startTimer: false);
+		List<Alert> got = [];
+		alerts.Raised += (_, a) => got.Add(a);
+		now = now.AddHours(8);
+
+		const string markdown = "Alert\n=====\n\nRemote endpoint blocked.\n\n| Information ||\n|:----|:----|\n| Event ID | RemoteEndpointBlocked |";
+		IncomingNotification message = new(account, "alpha", "first", null, now, markdown, "");
+		AlertRule rule = new(AlertRule.KeyFor(NeuronNotification.From(message)), "Remote endpoint blocked.", AlertRuleMode.Hide, now.AddHours(1));
+		alerts.Settings = alerts.Settings with { Rules = [rule] };
+		m.Attention.Add(message);
+		const string text = "Remote endpoint blocked.\n\nEventId: RemoteEndpointBlocked";
+		Event(m, now, text);
+		Assert.Empty(got);
+
+		alerts.Settings = alerts.Settings with { Rules = [rule with { Mode = AlertRuleMode.Track, Until = null }] };
+		// The same Warning can interrupt on every live recurrence.
+		Event(m, now.AddSeconds(1), text, SnifferDirection.Warning);
+		Event(m, now.AddSeconds(2), text, SnifferDirection.Warning);
+		Assert.Equal(2, got.Count);
+		Assert.All(got, a => Assert.StartsWith("Tracked", a.Title));
+
+		NeuronEvent recent = m.Hub.Snapshot().Last();
+		m.Hub.Add(recent with { Timestamp = now.AddSeconds(3), FromHistory = true });
+		m.Attention.Add(message with { NeuronJid = "beta", Delayed = true });
+		m.Attention.Add(message with { NeuronJid = "gamma", Timestamp = now.AddHours(-1) });
+		Assert.Equal(2, got.Count);
+		Assert.Equal(3, m.Attention.Items.Count);
+
+		alerts.Settings = alerts.Settings with { Rules = [rule] };
+		now = now.AddHours(2);
+		m.Attention.Add(message with { NeuronJid = "delta", Timestamp = now });
+		Assert.Equal(AlertKind.Notification, got[2].Kind);
+		Assert.Equal(3, got.Count);
+	}
+
+	[Fact]
 	public async Task NeuronDownAfterAWhileAndBackAgain()
 	{
 		var (m, account) = await SetupAsync();

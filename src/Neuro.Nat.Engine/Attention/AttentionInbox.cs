@@ -86,6 +86,7 @@ public sealed class AttentionInbox : IAsyncDisposable
 					Markdown = m.Markdown,
 					Text = m.Text,
 					Updated = m.Timestamp,
+					Delayed = m.Delayed,
 					State = old.State == AttentionState.Handled ? AttentionState.Handled : AttentionState.Unread,
 				});
 				this.items[i] = result;
@@ -109,14 +110,14 @@ public sealed class AttentionInbox : IAsyncDisposable
 		return result;
 	}
 
-	public void SetState(string id, AttentionState state)
+	public void SetState(string id, AttentionState state, AttentionState? expected = null)
 	{
 		NeuronNotification? changed = null;
 
 		lock (this.sync)
 		{
 			int i = this.items.FindIndex(n => n.Id == id);
-			if (i >= 0 && this.items[i].State != state)
+			if (i >= 0 && this.items[i].State != state && (expected is null || this.items[i].State == expected))
 			{
 				changed = this.items[i] with
 				{
@@ -172,8 +173,8 @@ public sealed class AttentionInbox : IAsyncDisposable
 		return changed;
 	}
 
-	/// <summary>Marks every unread item read.</summary>
-	public void MarkAllRead()
+	/// <summary>Files existing notifications, including ones already opened by the operator.</summary>
+	public void MarkAllRead(Predicate<NeuronNotification>? matches = null)
 	{
 		bool any = false;
 
@@ -181,9 +182,10 @@ public sealed class AttentionInbox : IAsyncDisposable
 		{
 			for (int i = 0; i < this.items.Count; i++)
 			{
-				if (this.items[i].State == AttentionState.Unread)
+				NeuronNotification n = this.items[i];
+				if (n.State is AttentionState.Unread or AttentionState.Read && (matches is null || matches(n)))
 				{
-					this.items[i] = this.items[i] with { State = AttentionState.Read };
+					this.items[i] = this.items[i] with { State = AttentionState.Archived };
 					any = true;
 				}
 			}
@@ -196,13 +198,13 @@ public sealed class AttentionInbox : IAsyncDisposable
 		}
 	}
 
-	/// <summary>Removes every handled item, and read items that never needed action.</summary>
+	/// <summary>Removes filed and handled items, and read items that never needed action.</summary>
 	public int ClearDone()
 	{
 		int removed;
 
 		lock (this.sync)
-			removed = this.items.RemoveAll(n => n.State == AttentionState.Handled || (!n.NeedsAction && n.State == AttentionState.Read));
+			removed = this.items.RemoveAll(n => n.State is AttentionState.Handled or AttentionState.Archived || (!n.NeedsAction && n.State == AttentionState.Read));
 
 		if (removed > 0)
 		{
@@ -325,7 +327,7 @@ public sealed class JsonAttentionStore(string filePath) : IAttentionStore
 	private sealed record Stored(
 		string Id, Guid AccountId, string NeuronJid, string? MessageId, DateTime Received, DateTime? Updated,
 		string Markdown, string Text, AttentionState State, DateTime? HandledAt,
-		IdentityReview? Review = null, string? Applicant = null);
+		IdentityReview? Review = null, string? Applicant = null, bool? Filed = null);
 
 	public IReadOnlyList<NeuronNotification> Load()
 	{
@@ -347,7 +349,7 @@ public sealed class JsonAttentionStore(string filePath) : IAttentionStore
 					Updated = s.Updated,
 					Markdown = s.Markdown,
 					Text = s.Text,
-					State = s.State,
+					State = s.Filed == true && s.State == AttentionState.Read ? AttentionState.Archived : s.State,
 					HandledAt = s.HandledAt,
 					Review = s.Review,
 					Applicant = s.Applicant,
@@ -370,7 +372,9 @@ public sealed class JsonAttentionStore(string filePath) : IAttentionStore
 			if (!string.IsNullOrEmpty(folder))
 				Directory.CreateDirectory(folder);
 
-			List<Stored> list = [.. items.Select(n => new Stored(n.Id, n.AccountId, n.NeuronJid, n.MessageId, n.Received, n.Updated, n.Markdown, n.Text, n.State, n.HandledAt, n.Review, n.Applicant))];
+			List<Stored> list = [.. items.Select(n => new Stored(n.Id, n.AccountId, n.NeuronJid, n.MessageId, n.Received, n.Updated, n.Markdown, n.Text,
+				n.State == AttentionState.Archived ? AttentionState.Read : n.State, n.HandledAt, n.Review, n.Applicant,
+				n.State == AttentionState.Archived ? true : null))];
 			string tmp = this.FilePath + ".tmp";
 			File.WriteAllText(tmp, JsonSerializer.Serialize(list, options));
 			File.Move(tmp, this.FilePath, true);

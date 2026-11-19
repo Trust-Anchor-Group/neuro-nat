@@ -35,6 +35,9 @@ public sealed partial class NeuronPageViewModel(Guid accountId, string bareJid) 
 	[ObservableProperty] private string? note;
 
 	[ObservableProperty] private string cpuText = "–";
+	[ObservableProperty] private string cpuWindow = string.Empty;
+	[ObservableProperty] private string cpuReading = string.Empty;
+	[ObservableProperty] private string cpuMinute = "CPU, latest minute";
 	[ObservableProperty] private int[] cpuSeries = [];
 	[ObservableProperty] private bool highCpu;
 	[ObservableProperty] private string memoryUsedText = "–";
@@ -102,6 +105,9 @@ public sealed partial class NeuronPageViewModel(Guid accountId, string bareJid) 
 			return;
 		}
 
+		this.CpuMinute = h.Cpu.LatestStart is DateTime start ? $"CPU, minute at {start.ToString(start.Date == now.Date ? "t" : "g", CultureInfo.CurrentCulture)}" : "CPU, latest minute";
+		this.CpuWindow = h.Cpu.Series.Count == 0 ? string.Empty : $"{HealthReader.Minutes} min avg {h.Cpu.Series.Average():0} %"
+			+ (h.Cpu.Peak is double peak ? $", peak {peak:0} %" : string.Empty);
 		if (h.Cpu.Latest is double cpu)
 		{
 			this.CpuText = cpu.ToString("0", CultureInfo.CurrentCulture) + " %";

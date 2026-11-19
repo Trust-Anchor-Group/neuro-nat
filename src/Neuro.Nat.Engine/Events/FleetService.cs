@@ -42,6 +42,14 @@ public sealed class FleetService : IAsyncDisposable
 	/// <summary>Reads every live Neuron now.</summary>
 	public Task RefreshAsync() => this.PollAllAsync();
 
+	/// <summary>Refresh the open Neuron without polling the rest of the fleet.</summary>
+	public Task RefreshAsync(Guid accountId, string bareJid)
+	{
+		NeuronMonitor? monitor = this.monitors.For(accountId);
+		WatchedNeuron? neuron = monitor?.Neurons.FirstOrDefault(n => n.State == WatchState.Live && string.Equals(n.BareJid, bareJid, StringComparison.OrdinalIgnoreCase));
+		return monitor is not null && neuron is not null ? this.ReadAsync(monitor, neuron) : Task.CompletedTask;
+	}
+
 	private static string Key(Guid accountId, string jid) => accountId.ToString("N") + "|" + jid;
 
 	private void Monitors_NeuronsChanged(object? sender, EventArgs e)

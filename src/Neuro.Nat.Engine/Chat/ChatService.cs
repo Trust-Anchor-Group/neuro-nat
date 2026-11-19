@@ -709,7 +709,7 @@ public sealed partial class ChatService : IAsyncDisposable
 			this.ConversationChanged?.Invoke(this, conv);
 
 			// Messages that waited on the server while the account was offline are not news any more.
-			if (fresh is not null && fresh.Timestamp > DateTime.Now.AddMinutes(-2))
+			if (fresh is not null && !n.Delayed && fresh.Timestamp > DateTime.Now.AddMinutes(-2))
 			{
 				RosterItem? item = inRoom ? null : client.GetRosterItem(bare);
 				string from = inRoom ? PrivateLabel(peer) : string.IsNullOrWhiteSpace(item?.Name) ? bare : item!.Name;

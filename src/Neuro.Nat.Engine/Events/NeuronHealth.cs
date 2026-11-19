@@ -12,6 +12,9 @@ namespace Neuro.Nat.Engine.Events;
 /// <param name="Series">Means of recent samples, oldest first.</param>
 public sealed record SampleSeries(double? Latest, IReadOnlyList<double> Series, string Unit)
 {
+	public DateTime? LatestStart { get; init; }
+	public double? Peak { get; init; }
+
 	public static readonly SampleSeries Empty = new(null, [], string.Empty);
 }
 
@@ -51,6 +54,14 @@ public static partial class HealthReader
 
 	[GeneratedRegex(@"^\s*(?<v>[-+]?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?)\s*(?<u>.*)$")]
 	private static partial Regex QuantityText();
+
+	/// <summary>Read the current host CPU counter through the selected Neuron's admin console.</summary>
+	public static async Task<double?> ReadCurrentCpuAsync(Chat.ConsoleSession console)
+	{
+		string? answer = await console.AskAsync("PerformanceCounterValue('Processor','_Total','% Processor Time')", TimeSpan.FromSeconds(10));
+		string text = Attention.NotificationClassifier.Plain(answer ?? string.Empty);
+		return TryQuantity(text, out double cpu, out string unit) && unit is "" or "%" && cpu is >= 0 and <= 100 ? cpu : null;
+	}
 
 	public static async Task<NeuronHealth> ReadAsync(XmppClient client, ConcentratorClient cc, Guid accountId, string bareJid, string fullJid,
 		CancellationToken cancel = default)
@@ -108,7 +119,7 @@ public static partial class HealthReader
 
 	private static async Task<SampleSeries> ReadSamplesAsync(ConcentratorClient cc, string fullJid, string nodeId, CancellationToken cancel)
 	{
-		List<(DateTime Start, double Mean, string Unit)> samples = [];
+		List<(DateTime Start, double Mean, string Unit, double? Peak)> samples = [];
 
 		// The Neuron stamps its samples in UTC and filters on those stamps as they are, so the
 		// window has to be given in UTC too. (A local window missed every sample east of UTC.)
@@ -129,8 +140,9 @@ public static partial class HealthReader
 				if (start is null || !TryQuantity(row[mi], out double value, out string unit))
 					return;
 
+				double? peak = columns.TryGetValue("Max", out int max) && max < row.Length && TryQuantity(row[max], out double highest, out _) ? highest : null;
 				lock (samples)
-					samples.Add((start.Value, value, unit));
+					samples.Add((start.Value, value, unit, peak));
 			},
 			TimeSpan.FromSeconds(30), cancel);
 
@@ -139,8 +151,12 @@ public static partial class HealthReader
 			if (samples.Count == 0)
 				return SampleSeries.Empty;
 
-			List<(DateTime Start, double Mean, string Unit)> ordered = [.. samples.OrderBy(s => s.Start)];
-			return new SampleSeries(ordered[^1].Mean, [.. ordered.Select(s => s.Mean)], ordered[^1].Unit);
+			List<(DateTime Start, double Mean, string Unit, double? Peak)> ordered = [.. samples.OrderBy(s => s.Start)];
+			return new SampleSeries(ordered[^1].Mean, [.. ordered.Select(s => s.Mean)], ordered[^1].Unit)
+			{
+				LatestStart = ordered[^1].Start,
+				Peak = ordered.Max(s => s.Peak),
+			};
 		}
 	}
 

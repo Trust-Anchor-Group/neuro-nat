@@ -93,6 +93,33 @@ public sealed class TelemetryFeature : INatFeature
 
 	public string Key => FeatureKey;
 
+	public FeatureCheck DiscoveryCheck => new("Check app telemetry", this.CheckAsync);
+
+	private async Task<string> CheckAsync(FeatureNeuron target)
+	{
+		if (this.host?.Accounts.Get(target.AccountId) is null || this.stopping.IsCancellationRequested)
+			return "Connect the account and check again.";
+
+		bool remote = !this.Hosts(target.AccountId, target.NeuronJid);
+		Task<TelemetryStatus> round = this.RoundAsync(target.AccountId,
+			remote ? target.NeuronJid : this.DomainOf(target.AccountId)!, overXmpp: remote);
+		this.Track(round);
+		TelemetryStatus latest = await round;
+		return latest.Presence switch
+		{
+			FeaturePresence.Present => "Telemetry is available. Open App telemetry in the sidebar.",
+			FeaturePresence.NotAllowed => "Ask the Neuron administrator for " + latest.Privilege + ", then check again.",
+			FeaturePresence.Absent when remote => "The Neuron did not report an app telemetry API. Check that the Neuro.App.Telemetry package is installed on it.",
+			FeaturePresence.Absent => "The configured address did not return the app telemetry API. Verify the Web address under Accounts and the Neuro.App.Telemetry package on the Neuron.",
+			_ when remote && latest.Problem?.StartsWith("401", StringComparison.Ordinal) == true =>
+				"The Neuron rejected the telemetry request over XMPP. Check that its telemetry package supports administrator access over XMPP.",
+			_ when remote => "NAT could not reach app telemetry over XMPP. Check that the Neuron is online and this account administers it, then try again.",
+			_ when latest.Problem?.StartsWith("no token", StringComparison.Ordinal) == true =>
+				"NAT could not obtain a telemetry token. Connect the account and check again.",
+			_ => "NAT could not read app telemetry. Verify the Web address in Accounts and that the account is connected, then check again.",
+		};
+	}
+
 	public event EventHandler<FeatureNeuron?>? Changed;
 
 	/// <summary>False in tests that only look at finding the package: no numbers are fetched after it is found.</summary>
@@ -575,7 +602,7 @@ public sealed class TelemetryFeature : INatFeature
 	/// One round of asking a Neuron. <paramref name="domain"/> is what it goes by: the account's
 	/// domain over the web, the address of the Neuron's own client over XMPP.
 	/// </summary>
-	private async Task RoundAsync(Guid accountId, string domain, bool overXmpp = false)
+	private async Task<TelemetryStatus> RoundAsync(Guid accountId, string domain, bool overXmpp = false)
 	{
 		string key = KeyOf(accountId, domain);
 		long round = Interlocked.Increment(ref this.rounds);
@@ -594,12 +621,13 @@ public sealed class TelemetryFeature : INatFeature
 			result = TelemetryStatus.Unknown(ex.GetType().Name);
 		}
 
+		TelemetryStatus attempt = result;
 		bool changed;
 		lock (this.sync)
 		{
 			// A newer round for the same Neuron decides.
 			if (this.latest[key] != round)
-				return;
+				return attempt;
 
 			this.found.TryGetValue(key, out TelemetryStatus? was);
 
@@ -620,7 +648,8 @@ public sealed class TelemetryFeature : INatFeature
 		// A dashboard: its overview, for the Inbox and the big screen (at most once an hour).
 		TelemetryCollector? c = this.FetchesNumbers ? this.Collectors().FirstOrDefault(x => x.Key == key) : null;
 		if (c is not null)
-			await this.RefreshAsync(c);
+			this.Track(this.RefreshAsync(c));
+		return attempt;
 	}
 
 	/// <summary>

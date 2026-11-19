@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Neuro.Nat.App.ViewModels;
 using Waher.Content.Markdown;
 using Waher.Content.Markdown.Model;
 using Waher.Content.Markdown.Model.BlockElements;
@@ -68,7 +69,9 @@ public sealed class MarkdownView : Decorator
 		int v = ++this.version;
 		List<Control> blocks = [];
 
-		if (!string.IsNullOrWhiteSpace(markdown))
+		if (markdown is not null && ScriptResultText.Unwrap(markdown) is string literal)
+			blocks.Add(this.Code(literal));
+		else if (!string.IsNullOrWhiteSpace(markdown))
 		{
 			try
 			{
@@ -120,20 +123,7 @@ public sealed class MarkdownView : Decorator
 				return await this.TableAsync(t);
 
 			case CodeBlock cb:
-				return new Border
-				{
-					Classes = { "code" },
-					Background = this.Brush("Surface.Code"),
-					CornerRadius = new CornerRadius(6),
-					Padding = new Thickness(10, 8),
-					Child = new SelectableTextBlock
-					{
-						Text = string.Join('\n', cb.Rows ?? []),
-						FontFamily = this.Font("Font.Mono"),
-						FontSize = 12,
-						TextWrapping = TextWrapping.Wrap,
-					},
-				};
+				return this.Code(string.Join('\n', cb.Rows ?? []));
 
 			case BulletList or NumberedList:
 				return await this.ListAsync(e);
@@ -194,12 +184,40 @@ public sealed class MarkdownView : Decorator
 		}
 	}
 
+	private Control Code(string literal)
+	{
+		string display = ScriptResultText.ForDisplay(literal);
+		bool records = display != literal;
+		SelectableTextBlock body = Text(display);
+		body.FontFamily = this.Font(records ? "Font.UI" : "Font.Mono");
+		body.FontSize = records ? 14 : 13;
+		body.LineHeight = 20;
+
+		MenuItem selection = new() { Header = "Copy selection" };
+		selection.Click += async (_, _) => await Ui.Copy(body.SelectedText, "the selection");
+		MenuItem all = new() { Header = "Select all" };
+		all.Click += (_, _) => body.SelectAll();
+		MenuItem answer = new() { Header = "Copy full text" };
+		answer.Click += async (_, _) => await Ui.Copy(literal, "the text");
+		ContextMenu menu = new() { Items = { selection, all, new Separator(), answer } };
+		menu.Opening += (_, _) => selection.IsEnabled = !string.IsNullOrEmpty(body.SelectedText);
+		body.ContextMenu = menu;
+		return new Border
+		{
+			Classes = { "code" },
+			Background = this.Brush("Surface.Code"),
+			CornerRadius = new CornerRadius(6),
+			Padding = new Thickness(10, 8),
+			Child = body,
+		};
+	}
+
 	private async Task<Control> TableAsync(Table t)
 	{
 		int columns = Math.Max(1, t.Columns);
 		Grid grid = new();
 		for (int i = 0; i < columns; i++)
-			grid.ColumnDefinitions.Add(new ColumnDefinition(i == columns - 1 ? GridLength.Star : GridLength.Auto));
+			grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 
 		int row = 0;
 
@@ -323,7 +341,7 @@ public sealed class MarkdownView : Decorator
 					break;
 
 				case InlineCode code:
-					target.Add(new Run(code.Code)
+					target.Add(new Run(ScriptResultText.ForDisplay(code.Code))
 					{
 						FontFamily = this.Font("Font.Mono"),
 						FontSize = 12,

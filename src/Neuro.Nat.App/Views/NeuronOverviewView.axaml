@@ -114,13 +114,16 @@
       <!-- Four numbers -->
       <UniformGrid Classes="cards" ColumnSpacing="12" RowSpacing="12">
         <Border Classes="panel card">
-          <DockPanel>
-            <c:Sparkline DockPanel.Dock="Right" Values="{Binding Page.CpuSeries}" Width="84" Height="30" VerticalAlignment="Bottom" Foreground="{DynamicResource Accent}" />
-            <StackPanel Spacing="3">
-              <TextBlock Classes="meta" Text="CPU, last 30 min" />
+          <StackPanel Spacing="3">
+            <TextBlock Classes="meta" Text="{Binding Page.CpuMinute}" />
+            <DockPanel>
+              <c:Sparkline DockPanel.Dock="Right" Values="{Binding Page.CpuSeries}" Width="72" Height="22" Foreground="{DynamicResource Accent}" />
               <TextBlock Classes="big num" Classes.warn="{Binding Page.HighCpu}" Text="{Binding Page.CpuText}" />
-            </StackPanel>
-          </DockPanel>
+            </DockPanel>
+            <TextBlock Classes="meta" Text="{Binding Page.CpuWindow}" TextWrapping="Wrap" />
+            <Button Classes="link" HorizontalAlignment="Left" Content="Read CPU now" Command="{Binding ReadCpuNowCommand}" />
+            <TextBlock Classes="meta num" Text="{Binding Page.CpuReading}" IsVisible="{Binding Page.CpuReading, Converter={x:Static conv:EventConverters.HasText}}" />
+          </StackPanel>
         </Border>
         <Border Classes="panel card">
           <DockPanel>

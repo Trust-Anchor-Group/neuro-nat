@@ -446,7 +446,7 @@
       </Border>
 
       <Panel>
-      <ScrollViewer x:Name="MessageScroller" Padding="24,14" DragDrop.AllowDrop="True">
+      <ScrollViewer x:Name="MessageScroller" HorizontalScrollBarVisibility="Disabled" Padding="24,14" DragDrop.AllowDrop="True">
         <StackPanel>
         <Button x:Name="OlderButton" Classes="ghost small" Content="Show older messages" HorizontalAlignment="Center" Margin="0,0,0,10"
                 IsVisible="{Binding HasOlder}" />

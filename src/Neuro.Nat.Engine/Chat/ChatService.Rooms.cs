@@ -518,7 +518,7 @@ public sealed partial class ChatService
 			conv.Add(m);
 
 			// History the room replays on entry is not news.
-			if (!mine && n.Timestamp > DateTime.Now.AddMinutes(-2))
+			if (!mine && !n.Delayed && n.Timestamp > DateTime.Now.AddMinutes(-2))
 			{
 				conv.CountUnread(m);
 				fresh = m;

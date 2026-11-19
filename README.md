@@ -15,7 +15,7 @@
 | Neurons | Every Neuron at a glance, with a page each for software, sources, traffic and more |
 | Events | Events from all your Neurons as they happen, grouped into problems |
 | Chat | Your coworkers and rooms, end-to-end encrypted where both sides can |
-| Console | Commands on one Neuron or many at once, answers side by side |
+| Console | Commands on one Neuron or many at once, with a full-width answer for each Neuron |
 
 ## Install
 

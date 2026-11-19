@@ -33,7 +33,7 @@
             <TextBlock Classes="btnLabel" Text="Copy" />
           </StackPanel>
         </Button>
-        <Button Content="Reopen" IsVisible="{Binding IsHandled}" ToolTip.Tip="Reopen"
+        <Button Content="Reopen" IsVisible="{Binding CanReopen}" ToolTip.Tip="Reopen"
                 Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).ReopenCommand}" CommandParameter="{Binding}" />
         <Button Classes="primary" Content="Done" IsVisible="{Binding IsOpen}" ToolTip.Tip="Mark done"
                 Command="{Binding $parent[UserControl].((vm:AttentionViewModel)DataContext).MarkHandledCommand}" CommandParameter="{Binding}" />

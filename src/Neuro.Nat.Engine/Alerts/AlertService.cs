@@ -69,6 +69,11 @@ public sealed record AlertSettings
 	/// <summary>Keep NAT running in the tray when its window closes.</summary>
 	public bool KeepRunningInTray { get; init; } = true;
 
+	public AlertRule[] Rules { get; init; } = [];
+
+	public AlertRuleMode? RuleFor(string key, DateTimeOffset now)
+		=> this.Rules.FirstOrDefault(r => r.Key == key && (r.Until is null || r.Until > now))?.Mode;
+
 	public bool Notifications { get; init; } = true;
 	public bool Errors { get; init; } = true;
 	public bool NeuronDown { get; init; } = true;
@@ -184,7 +189,7 @@ public sealed class AlertService : IDisposable
 	private readonly DateTime started;
 	private readonly HashSet<string> seenNotifications = [];
 	private readonly HashSet<string> neededYou = [];
-	private readonly Dictionary<string, (IssueState State, int Count)> issues = [];
+	private readonly HashSet<string> liveApplications = [];
 	private readonly Dictionary<(Guid, string), (WatchState State, DateTime Since, bool Alerted)> neurons = [];
 	private readonly List<Alert> recent = [];
 	private readonly object sync = new();
@@ -204,13 +209,11 @@ public sealed class AlertService : IDisposable
 			if (n.NeedsAction)
 				this.neededYou.Add(n.Id);
 		}
-		foreach (Issue i in monitors.Hub.Issues())
-			this.issues[i.Fingerprint] = (i.State, i.Count);
 		foreach (WatchedNeuron n in monitors.Neurons)
 			this.neurons[(n.AccountId, n.BareJid.ToLowerInvariant())] = (n.State, this.started, false);
 
 		monitors.Attention.Changed += this.Attention_Changed;
-		monitors.Hub.IssueChanged += this.Hub_IssueChanged;
+		monitors.Hub.IssueOccurred += this.Hub_IssueOccurred;
 		monitors.NeuronsChanged += this.Monitors_NeuronsChanged;
 		monitors.SubscriptionRequested += this.Monitors_SubscriptionRequested;
 
@@ -436,36 +439,48 @@ public sealed class AlertService : IDisposable
 
 	private void Attention_Changed(object? sender, NeuronNotification n)
 	{
-		bool isNew, nowNeedsYou;
+		DateTime now = this.clock();
+		bool fresh = !n.Delayed && (n.Updated ?? n.Received) >= now.AddMinutes(-2);
+		bool isNew, nowNeedsYou, liveReview;
 		lock (this.sync)
 		{
 			isNew = this.seenNotifications.Add(n.Id);
+			if (isNew && fresh && n.Review == IdentityReview.Waiting)
+				this.liveApplications.Add(n.Id);
+			// A live application can legitimately come to need someone after the review timeout.
+			liveReview = n.Review != IdentityReview.Waiting && this.liveApplications.Remove(n.Id) && !n.Delayed;
 
 			// An item that did not need anyone and now does, such as an identity application its
 			// automatic review left for a person, alerts once, as a new item would.
-			nowNeedsYou = n.NeedsAction && this.neededYou.Add(n.Id) && n.State != AttentionState.Handled;
+			nowNeedsYou = n.IsOpen && this.neededYou.Add(n.Id);
 		}
+
+		if ((!fresh && !liveReview) || !this.Settings.Notifications)
+			return;
+
+		AlertRuleMode? mode = this.Settings.Rules.Length == 0 ? null : this.Settings.RuleFor(AlertRule.KeyFor(n), now);
+		if (mode is AlertRuleMode.Mute or AlertRuleMode.Hide)
+			return;
 
 		if (!isNew)
 		{
 			// Already known: a correction, or a state change. Only coming to need someone counts.
-			if (nowNeedsYou && this.Settings.Notifications)
+			if (nowNeedsYou)
 				this.RaiseNotification(n);
 			return;
 		}
 
-		if (!this.Settings.Notifications || n.Received < this.started.AddMinutes(-1))
-			return;
+		bool tracked = mode == AlertRuleMode.Track;
 
 		// An identity application is quiet until its review says it needs someone.
-		if (n.Kind == NotificationKind.LegalIdApplication)
+		if (!tracked && n.Kind == NotificationKind.LegalIdApplication)
 		{
 			if (n.IsOpen)
 				this.RaiseNotification(n);
 			return;
 		}
 
-		bool worth = n.IsOpen || n.Severity >= EventSeverity.Warning || this.Settings.InformationalNotifications;
+		bool worth = tracked || n.IsOpen || n.Severity >= EventSeverity.Warning || this.Settings.InformationalNotifications;
 		if (!worth)
 			return;
 
@@ -473,9 +488,9 @@ public sealed class AlertService : IDisposable
 		{
 			Id = "n:" + n.Id,
 			Kind = AlertKind.Notification,
-			Title = n.Title,
+			Title = tracked ? "Tracked: " + n.Title : n.Title,
 			Detail = this.NeuronLabel(n.AccountId, n.NeuronJid) + (n.IsOpen ? " is waiting for you" : string.Empty),
-			NeedsYou = n.IsOpen,
+			NeedsYou = tracked || n.IsOpen,
 			Severity = n.Severity,
 			At = this.clock(),
 			AccountId = n.AccountId,
@@ -505,38 +520,32 @@ public sealed class AlertService : IDisposable
 
 	// ---- Errors ----------------------------------------------------------------------------
 
-	private void Hub_IssueChanged(object? sender, Issue i)
+	private void Hub_IssueOccurred(object? sender, IssueOccurrence occurrence)
 	{
-		bool isNew, cameBack;
-		lock (this.sync)
-		{
-			bool known = this.issues.TryGetValue(i.Fingerprint, out var before);
-			this.issues[i.Fingerprint] = (i.State, i.Count);
-			isNew = !known;
-			cameBack = known && before.State == IssueState.Resolved && i.State == IssueState.Open && i.Count > before.Count;
-		}
-
-		if (!this.Settings.Errors || i.Severity < EventSeverity.Error || i.State == IssueState.Muted)
+		NeuronEvent e = occurrence.Event;
+		DateTime now = this.clock();
+		if (!this.Settings.Errors || e.FromHistory || e.Timestamp < now.AddMinutes(-2))
 			return;
 
-		// History that arrives after start (backfill) is not news: only events from now on count.
-		if (i.Latest.Timestamp < this.started.AddMinutes(-1))
+		AlertRuleMode? mode = this.Settings.Rules.Length == 0 ? null : this.Settings.RuleFor(AlertRule.KeyFor(e), now);
+		if (mode is AlertRuleMode.Hide or AlertRuleMode.Mute)
 			return;
 
-		if (!isNew && !cameBack)
+		bool tracked = mode == AlertRuleMode.Track;
+		if (!tracked && (occurrence.State == IssueState.Muted || e.Severity < EventSeverity.Error || !(occurrence.IsNew || occurrence.Reopened)))
 			return;
 
-		IReadOnlyList<string> where = i.Neurons;
 		this.Raise(new Alert
 		{
-			Id = "i:" + i.Fingerprint + ":" + i.Count,
+			Id = "i:" + e.Fingerprint + ":" + e.Sequence,
 			Kind = AlertKind.Error,
-			Title = (cameBack ? "Back again: " : "New: ") + i.Title,
-			Detail = where.Count == 1 ? NeuronNames.For(this.monitors.Neurons, where[0]) : $"{where.Count} Neurons",
-			Severity = i.Severity,
-			At = this.clock(),
-			NeuronJid = where.Count == 1 ? where[0] : null,
-			Target = i.Fingerprint,
+			Title = (tracked ? "Tracked: " : occurrence.Reopened ? "Back again: " : "New: ") + e.Title,
+			Detail = this.NeuronLabel(e.Source.AccountId, e.Source.NeuronJid),
+			Severity = e.Severity,
+			At = now,
+			AccountId = e.Source.AccountId,
+			NeuronJid = e.Source.NeuronJid,
+			Target = e.Fingerprint,
 		});
 	}
 
@@ -643,7 +652,7 @@ public sealed class AlertService : IDisposable
 	{
 		this.timer?.Dispose();
 		this.monitors.Attention.Changed -= this.Attention_Changed;
-		this.monitors.Hub.IssueChanged -= this.Hub_IssueChanged;
+		this.monitors.Hub.IssueOccurred -= this.Hub_IssueOccurred;
 		this.monitors.NeuronsChanged -= this.Monitors_NeuronsChanged;
 		this.monitors.SubscriptionRequested -= this.Monitors_SubscriptionRequested;
 	}

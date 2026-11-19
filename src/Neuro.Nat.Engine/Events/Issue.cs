@@ -110,7 +110,7 @@ public sealed class Issue
 				this.perMinute.Remove(k);
 		}
 
-		if (this.State == IssueState.Resolved)
+		if (!e.FromHistory && this.State == IssueState.Resolved)
 		{
 			this.State = IssueState.Open;
 			this.Reopened = true;

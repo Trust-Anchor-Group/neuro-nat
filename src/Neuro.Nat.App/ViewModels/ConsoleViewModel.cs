@@ -45,6 +45,11 @@ public sealed partial class ConsoleResultViewModel(ConsoleEntry entry, string ne
 	[ObservableProperty] private bool isWaiting = true;
 	[ObservableProperty] private bool hasError;
 
+	internal string AnswerText => this.HasError ? this.Status : ScriptResultText.Unwrap(this.Markdown) ?? this.Markdown;
+
+	[RelayCommand]
+	private Task CopyAnswer() => Ui.Copy(this.AnswerText, "the answer");
+
 	public void Refresh()
 	{
 		IReadOnlyList<ConsoleResponse> r = this.Entry.Responses;
@@ -65,7 +70,6 @@ public sealed partial class ConsoleRunViewModel(string command, DateTime time) :
 	public string Time { get; } = time.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
 	public ObservableCollection<ConsoleResultViewModel> Results { get; } = [];
 	public bool IsFanOut => this.Results.Count > 1;
-	public int Columns => Math.Clamp(this.Results.Count, 1, 3);
 
 	/// <summary>Ticked to go into a runbook ("Save as runbook").</summary>
 	[ObservableProperty] private bool isPicked;
@@ -73,7 +77,7 @@ public sealed partial class ConsoleRunViewModel(string command, DateTime time) :
 
 /// <summary>
 /// The chat admin console: commands and script to one Neuron or several at once, with the
-/// answers rendered as Markdown and, for several Neurons, side by side.
+/// answers grouped by Neuron.
 /// </summary>
 public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 {
@@ -245,7 +249,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 			case ConsoleResultViewModel r:
 				string command = r.Run?.Command ?? string.Empty;
 				string? csv = Export.MarkdownTablesAsCsv(r.Markdown);
-				list.Copy("Copy answer", () => r.HasError ? r.Status : r.Markdown, "the answer", "Ctrl+C");
+				list.Copy("Copy answer", () => r.AnswerText, "the answer", "Ctrl+C");
 				if (csv is not null)
 				{
 					list.Copy("Copy table for a spreadsheet", () => string.Join(Environment.NewLine, Export.MarkdownTables(r.Markdown).Select(t => Export.Tabs(t[0], t.Skip(1)))), "the table");
@@ -255,7 +259,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IActionSource
 				List<SaveFormat> formats = [new SaveFormat("Markdown", "md", () => "> " + command + Environment.NewLine + Environment.NewLine + r.Markdown)];
 				if (csv is not null)
 					formats.Insert(0, new SaveFormat("Spreadsheet (CSV)", "csv", () => csv));
-				formats.Add(new SaveFormat("Text", "txt", () => r.Markdown));
+				formats.Add(new SaveFormat("Text", "txt", () => r.AnswerText));
 				list.Save("Save…", Ui.FileName(command.Split(' ', 2)[0] + " " + r.NeuronLabel), [.. formats]);
 
 				if (this.Shell is IShell shell && r.AccountId != default)

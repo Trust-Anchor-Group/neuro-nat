@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Neuro.Nat.Engine.Runbooks;
 
 namespace Neuro.Nat.App.ViewModels;
@@ -63,6 +64,9 @@ public sealed partial class RunbookCellViewModel(string neuronLabel, bool dry) :
 	/// <summary>Not come to yet in a run, or not run at all.</summary>
 	public bool IsPending => !this.IsDry && this.State == RunbookCellState.NotRun;
 
+	[RelayCommand]
+	private Task CopyAnswer() => Ui.Copy(ScriptResultText.Unwrap(this.Markdown) ?? this.Markdown, "the answer");
+
 	public void Set(RunbookCell cell, bool isWait)
 	{
 		this.State = cell.State;
@@ -91,7 +95,6 @@ public sealed class RunbookRunStepViewModel(int number, RunbookStep step)
 	public bool IsMarked => this.Step.Marked;
 	public bool IsWait => !this.Step.IsCommand;
 	public ObservableCollection<RunbookCellViewModel> Cells { get; } = [];
-	public int Columns => Math.Clamp(this.Cells.Count, 1, 3);
 }
 
 /// <summary>How the run ended on one Neuron.</summary>

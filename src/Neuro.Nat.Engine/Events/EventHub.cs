@@ -3,6 +3,8 @@ using System.Text;
 
 namespace Neuro.Nat.Engine.Events;
 
+internal sealed record IssueOccurrence(NeuronEvent Event, IssueState State, bool IsNew, bool Reopened);
+
 /// <summary>
 /// Collects events from every Neuron and account into one stream, removes duplicates, and
 /// groups warnings and worse into issues. Thread-safe. Change notifications are raised on
@@ -23,6 +25,8 @@ public sealed class EventHub(int capacity = 50_000)
 	/// <summary>Raised when an issue is created or updated.</summary>
 	public event EventHandler<Issue>? IssueChanged;
 
+	internal event EventHandler<IssueOccurrence>? IssueOccurred;
+
 	/// <summary>Number of events kept.</summary>
 	public int Count
 	{
@@ -37,6 +41,7 @@ public sealed class EventHub(int capacity = 50_000)
 	public bool Add(NeuronEvent e)
 	{
 		Issue? changed = null;
+		IssueOccurrence? occurrence = null;
 
 		lock (this.sync)
 		{
@@ -55,13 +60,16 @@ public sealed class EventHub(int capacity = 50_000)
 
 			if (e.Severity >= EventSeverity.Warning)
 			{
-				if (!this.issues.TryGetValue(e.Fingerprint, out Issue? issue))
+				bool isNew = !this.issues.TryGetValue(e.Fingerprint, out Issue? issue);
+				if (issue is null)
 				{
 					issue = new Issue(e);
 					this.issues[e.Fingerprint] = issue;
 				}
 
+				bool wasResolved = issue.State == IssueState.Resolved;
 				issue.Add(e);
+				occurrence = new(e, issue.State, isNew, wasResolved && issue.State == IssueState.Open);
 				changed = issue;
 			}
 		}
@@ -69,6 +77,8 @@ public sealed class EventHub(int capacity = 50_000)
 		this.EventAdded?.Invoke(this, e);
 		if (changed is not null)
 			this.IssueChanged?.Invoke(this, changed);
+		if (occurrence is not null)
+			this.IssueOccurred?.Invoke(this, occurrence);
 
 		return true;
 	}

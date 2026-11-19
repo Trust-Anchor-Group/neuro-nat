@@ -74,6 +74,7 @@ public sealed class TopologyMap : Control
 	private const double LoadCardWidth = 214;
 
 	private readonly Dictionary<string, (Rect Box, FormattedText Title, FormattedText? Sub)> cards = [];
+	private readonly Dictionary<MapEdge, (StreamGeometry Path, Point Label)> peerRoutes = [];
 	private double zoom = 1;
 	private Vector offset;
 	private Point? dragFrom;
@@ -208,6 +209,50 @@ public sealed class TopologyMap : Control
 
 			this.cards[n.Id] = (new Rect(n.X - w / 2, n.Y - h / 2, w, h), title, sub);
 		}
+
+		this.peerRoutes.Clear();
+		HashSet<string> brokers = [.. g.Nodes.Where(n => n.Kind == TopologyNodeKind.Broker).Select(n => n.Id)];
+		foreach (MapEdge e in g.Edges.Where(e => e.Kind == TopologyLink.Federation && (brokers.Contains(e.From) || brokers.Contains(e.To))))
+			this.RoutePeer(e);
+	}
+
+	// A direct line through an intervening card makes it look like part of the connection.
+	// Find a clear vertical lane between the two rows and turn in the gaps above/below them.
+	private void RoutePeer(MapEdge edge)
+	{
+		if (!this.cards.TryGetValue(edge.From, out var from) || !this.cards.TryGetValue(edge.To, out var to))
+			return;
+		Rect top = from.Box, bottom = to.Box;
+		if (top.Y > bottom.Y)
+			(top, bottom) = (bottom, top);
+		if (bottom.Top - top.Bottom < TopologyLayout.RowGap)
+			return;
+
+		double x1 = top.Center.X, x2 = bottom.Center.X;
+		double y1 = top.Bottom + 12, y2 = bottom.Top - 12;
+		Rect[] between = [.. this.cards.Values.Select(c => c.Box).Where(r => r.Bottom >= y1 && r.Top <= y2)];
+		double SlopeX(double y) => x1 + (x2 - x1) * (y - top.Center.Y) / (bottom.Center.Y - top.Center.Y);
+		bool BlocksLine(Rect r)
+		{
+			double a = SlopeX(Math.Max(y1, r.Top)), b = SlopeX(Math.Min(y2, r.Bottom));
+			return r.Left <= Math.Max(a, b) && r.Right >= Math.Min(a, b);
+		}
+		if (!between.Any(BlocksLine))
+			return;
+
+		var lanes = between.SelectMany(r => new[] { r.Left - 12, r.Right + 12 }).Append(x1).Append(x2).Distinct()
+			.OrderBy(x => Math.Abs(x - x1) + Math.Abs(x - x2)).ThenBy(x => Math.Abs(x - x1));
+		foreach (double lane in lanes)
+		{
+			if (between.Any(r => r.Left < lane && lane < r.Right ||
+				(r.Top <= y1 && y1 <= r.Bottom && r.Left < Math.Max(x1, lane) && r.Right > Math.Min(x1, lane)) ||
+				(r.Top <= y2 && y2 <= r.Bottom && r.Left < Math.Max(x2, lane) && r.Right > Math.Min(x2, lane))))
+				continue;
+
+			this.peerRoutes[edge] = (Rounded([new(x1, top.Bottom), new(x1, y1), new(lane, y1), new(lane, y2), new(x2, y2), new(x2, bottom.Top)], 5),
+				new Point((lane + x2) / 2, y2));
+			break;
+		}
 	}
 
 	private void Fit(MapGraph g)
@@ -320,7 +365,7 @@ public sealed class TopologyMap : Control
 				IBrush stroke = federated ? (lit ? accent : Fade(accent, 0.6))
 					: e.Kind == TopologyLink.Group ? (lit ? ink2 : Fade(ink3, 0.7))
 					: lit ? ink2 : lineStrong;
-				if (dim)
+				if (dim || (selected is not null && !lit))
 					stroke = Fade(stroke, 0.25);
 
 				double thickness = (lit ? 2 : 1.4) / Math.Max(this.zoom, 0.6);
@@ -357,6 +402,11 @@ public sealed class TopologyMap : Control
 					route.Add(into);
 					context.DrawGeometry(null, pen, Rounded(route, 6));
 					Arrow(context, new Pen(stroke, thickness), new Point(into.X, bar), into);
+				}
+				else if (this.peerRoutes.TryGetValue(e, out var detour))
+				{
+					context.DrawGeometry(null, pen, detour.Path);
+					labelAt = detour.Label;
 				}
 				else if (e.Kind != TopologyLink.Parent && Math.Abs(a.Box.Center.Y - b.Box.Center.Y) < 8 && Math.Abs(a.Box.Center.X - b.Box.Center.X) > (a.Box.Width + b.Box.Width) / 2 + 60)
 				{

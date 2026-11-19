@@ -468,6 +468,9 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 				list.GoTo("Chat with them", () => shell.ShowChat(row.AccountId, asker), "Chat");
 		}
 
+		if (row.Notification?.Model is Engine.Attention.NeuronNotification notification)
+			this.Notifications.AddSimilarActions(list, notification, this.Refresh);
+
 		if (!row.IsDone)
 		{
 			if (!string.IsNullOrEmpty(row.PrimaryText))
@@ -475,7 +478,7 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 			if (!string.IsNullOrEmpty(row.SecondaryText))
 				list.Do(row.SecondaryText, () => this.SecondaryCommand.Execute(row));
 		}
-		else if (row.Notification is AttentionItemViewModel done)
+		else if (row.Notification is { CanReopen: true } done)
 			list.Do("Reopen", () =>
 			{
 				this.Notifications.ReopenCommand.Execute(done);
@@ -880,6 +883,8 @@ public sealed partial class InboxViewModel : ObservableObject, IDisposable, IAct
 	[RelayCommand]
 	private void MarkAllRead()
 	{
+		if (this.SelectedRow?.IsMessage == true)
+			this.SelectedRow = null;
 		foreach (Conversation c in this.chat.Conversations)
 			this.chat.MarkRead(c);
 		this.Notifications.MarkAllReadCommand.Execute(null);

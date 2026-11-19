@@ -218,6 +218,69 @@ public class GettingAroundTests
 		return new Sample(vm, chat, pubsub, software, monitors, manager, fleet, o, a, said, copied, asked);
 	}
 
+	[AvaloniaFact]
+	public async Task HidingAnInboxPatternIsFleetWideAndCanBeRestored()
+	{
+		using Sample s = await SampleAsync();
+		var vm = s.Vm;
+		const string markdown = "Alert\n=====\nRemote endpoint blocked.\n\n| Information ||\n|:----|:----|\n| Event ID | RemoteEndpointBlocked |";
+		foreach (string jid in new[] { Lab, Sto })
+			s.Monitors.Attention.Add(new(s.Ops, jid, "blocked", null, DateTime.Now, markdown, ""));
+		vm.Attention.Refresh();
+		vm.Inbox.Refresh();
+		int before = vm.Inbox.WaitingCount;
+		var blocked = vm.Inbox.Rows.First(r => r.Title == "Remote endpoint blocked.");
+		var actions = vm.Inbox.ActionsFor([blocked]).Single(a => a.Text == "Similar alerts across all Neurons").Children!;
+		await Action(actions, "Mute and hide for 1 hour").RunAsync();
+		vm.Inbox.Refresh();
+		Assert.Equal(before - 2, vm.Inbox.WaitingCount);
+		Assert.DoesNotContain(vm.Inbox.Rows, r => r.Title == blocked.Title);
+		Assert.Equal(2, s.Monitors.Attention.Items.Count(n => n.Title == blocked.Title));
+		vm.Settings.RemoveRuleCommand.Execute(Assert.Single(vm.Settings.AlertRules));
+		vm.Inbox.Refresh();
+		Assert.Equal(before, vm.Inbox.WaitingCount);
+	}
+
+	[AvaloniaFact]
+	public async Task BulkReadFilesMatchingInboxItemsAcrossNeuronsAndLeavesNewArrivals()
+	{
+		using Sample s = await SampleAsync();
+		var inbox = s.Vm.Inbox;
+		void Alert(Guid account, string jid, string id, string title, string messageId)
+			=> s.Monitors.Attention.Add(new(account, jid, messageId, null, DateTime.Now,
+				$"Alert\n=====\n{title}\n\n| Information ||\n|:----|:----|\n| Event ID | {id} |", ""));
+		void Refresh()
+		{
+			s.Vm.Attention.Refresh();
+			inbox.Refresh();
+		}
+
+		Alert(s.Ops, Lab, "Example", "First location", "a");
+		Alert(s.Admin, Prod, "Example", "Second location", "b");
+		Alert(s.Admin, Backup, "ExampleOther", "First location", "c");
+		s.PubSub.Preview(new NodeRequest(s.Ops, Service, "alerts", "reviewer@lab.example", DateTime.Now));
+		Refresh();
+		var first = inbox.Rows.Single(r => r.Notification?.Model?.MessageId == "a");
+		inbox.SelectedRow = first;
+		var file = inbox.ActionsFor([first]).Single(a => a.Text == "Mark all 2 read across all Neurons (Example)");
+		Alert(s.Ops, Sto, "Example", "Later occurrence", "d");
+		await file.RunAsync();
+		Assert.DoesNotContain(inbox.Rows, r => r.Notification?.Model?.MessageId is "a" or "b");
+		Assert.Contains(inbox.Rows, r => r.Notification?.Model?.MessageId == "c");
+		Assert.Contains(inbox.Rows, r => r.Notification?.Model?.MessageId == "d");
+
+		inbox.SelectedRow = inbox.Rows.First(r => r.IsMessage);
+		inbox.MarkAllReadCommand.Execute(null);
+		Assert.DoesNotContain(inbox.Rows, r => r.IsMessage || r.IsNotification);
+		Assert.Contains(inbox.Rows, r => r.Kind == InboxRowKind.NodeRequest);
+		Assert.Equal(inbox.RequestCount, inbox.WaitingCount);
+		inbox.ShowDone = true;
+		var archived = inbox.Rows.Single(r => r.Notification?.Model?.MessageId == "a");
+		await Action(inbox.ActionsFor([archived]), "Reopen").RunAsync();
+		inbox.ShowDone = false;
+		Assert.Single(inbox.Rows, r => r.IsNotification);
+	}
+
 	// ----- Back and forward -----
 
 	[AvaloniaTheory]
@@ -317,7 +380,8 @@ public class GettingAroundTests
 		await Action(vm.ActionsFor([HistoryMenu.Back]), "The Inbox").RunAsync();
 		Assert.True(vm.IsAttention);
 		Assert.True(vm.CanGoForward);
-		Assert.Equal("Forward to the Neurons list (Alt+Right)", vm.ForwardTip);
+		// Revisiting the fleet moved it past Stockholm, leaving one stop per destination.
+		Assert.Equal("Forward to Lab, Console (Alt+Right)", vm.ForwardTip);
 
 		window.Close();
 	}

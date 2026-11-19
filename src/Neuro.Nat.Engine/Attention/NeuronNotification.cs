@@ -81,6 +81,8 @@ public enum AttentionState
 	Unread,
 	Read,
 	Handled,
+	/// <summary>Filed locally by Mark all read.</summary>
+	Archived,
 }
 
 /// <summary>Where a legal identity application stands with the Neuron's automatic review.</summary>
@@ -119,6 +121,7 @@ public sealed record IncomingNotification(
 {
 	/// <summary>Set when this message takes an earlier one back (XEP-0424): the id of the message that is gone.</summary>
 	public string? Retracts { get; init; }
+	public bool Delayed { get; init; }
 }
 
 /// <summary>One item in the Attention list.</summary>
@@ -129,6 +132,7 @@ public sealed record NeuronNotification
 	public required string NeuronJid { get; init; }
 	public string? MessageId { get; init; }
 	public required DateTime Received { get; init; }
+	public bool Delayed { get; init; }
 
 	/// <summary>When the Neuron last corrected the message, if it did.</summary>
 	public DateTime? Updated { get; init; }
@@ -150,6 +154,7 @@ public sealed record NeuronNotification
 
 	public IReadOnlyList<NotificationField> Fields { get; init; } = [];
 	public IReadOnlyList<NotificationLink> Links { get; init; } = [];
+	public string? EventId => this.Fields.FirstOrDefault(f => f.Key.Equals("Event ID", StringComparison.OrdinalIgnoreCase))?.Value;
 
 	public AttentionState State { get; init; }
 	public DateTime? HandledAt { get; init; }
@@ -161,7 +166,9 @@ public sealed record NeuronNotification
 	public string? Applicant { get; init; }
 
 	/// <summary>Still waiting for a person.</summary>
-	public bool IsOpen => this.NeedsAction && this.State != AttentionState.Handled;
+	public bool IsOpen => this.IsWaiting(false);
+
+	public bool IsWaiting(bool tracked) => (this.NeedsAction || tracked) && this.State is AttentionState.Unread or AttentionState.Read;
 
 	/// <summary>Builds an item from an incoming message.</summary>
 	public static NeuronNotification From(IncomingNotification m, string? id = null)
@@ -172,6 +179,7 @@ public sealed record NeuronNotification
 			NeuronJid = m.NeuronJid,
 			MessageId = string.IsNullOrEmpty(m.MessageId) ? null : m.MessageId,
 			Received = m.Timestamp,
+			Delayed = m.Delayed,
 			Markdown = m.Markdown,
 			Text = m.Text,
 		});

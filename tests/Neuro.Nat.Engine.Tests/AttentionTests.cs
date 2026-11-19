@@ -117,6 +117,26 @@ public class AttentionTests
 	}
 
 	[Fact]
+	public async Task FiledNotificationsStayReadOnDiskAndReturnOnCorrection()
+	{
+		string file = Path.Combine(Path.GetTempPath(), "Nat.Attention." + Guid.NewGuid().ToString("N"), "attention.json");
+		JsonAttentionStore store = new(file);
+		AttentionInbox inbox = new(store);
+		NeuronNotification original = inbox.Add(In("Account requested.", id: "a"))!;
+		inbox.MarkAllRead();
+		await inbox.DisposeAsync();
+		Assert.DoesNotContain("Archived", File.ReadAllText(file));
+
+		await using AttentionInbox again = new(store);
+		again.Load();
+		Assert.Equal(AttentionState.Archived, again.Get(original.Id)!.State);
+		Assert.Equal(0, again.OpenCount);
+		again.Add(In("Account requested. Additional information.", id: "b", replaces: "a"));
+		Assert.Equal(AttentionState.Unread, again.Get(original.Id)!.State);
+		Assert.Equal(1, again.OpenCount);
+	}
+
+	[Fact]
 	public void CapacityDropsDoneItemsFirst()
 	{
 		AttentionInbox inbox = new() { Capacity = 3 };

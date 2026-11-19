@@ -125,6 +125,19 @@ public class TopologyTests
 	}
 
 	[Fact]
+	public void ExternalPeersOfOneNeuronFillRowsWithoutFormingAChain()
+	{
+		string[] peers = [.. Enumerable.Range(1, 7).Select(i => "peer" + i)];
+		List<(string, string)> parents = [("child", "root")];
+		var pos = TopologyLayout.Compute(["child", "root", .. peers], [.. parents, .. peers.Select(p => (p, "child"))],
+			size: _ => (180, 60), parents: parents);
+
+		Assert.Equal(2, peers.Select(p => pos[p].Y).Distinct().Count());
+		Assert.All(peers, p => Assert.True(pos[p].Y > pos["child"].Y + 60));
+		AssertNoOverlap(pos, 180, 60);
+	}
+
+	[Fact]
 	public void ManyChildrenHangInColumnsUnderTheirParent()
 	{
 		List<string> leaves = [.. Enumerable.Range(1, 12).Select(i => "leaf" + i.ToString("00"))];

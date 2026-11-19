@@ -108,7 +108,7 @@
               <TextBlock Text="Federation" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowOtherServers}" ToolTip.Tip="Federation outside the tree">
+          <ToggleButton Classes="layer ghost" IsChecked="{Binding ShowOtherServers}" ToolTip.Tip="Show external federation peers and their connections">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <Line Classes="legend" Stroke="{DynamicResource Ink.Tertiary}" StrokeDashArray="3.5,2" />
               <TextBlock Text="Other servers" />

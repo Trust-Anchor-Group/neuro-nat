@@ -245,31 +245,31 @@ public static class TopologyLayout
 		// be to straight under what it is linked to, so its line is short and crosses little.
 		if (loose.Count > 0)
 		{
-			double width = Math.Max(at - gap * 2, loose.Max(n => size(n).W) * Math.Min(3, loose.Count) + gap * 2);
+			// Place peers side by side, in the order of their connections to the tree.
+			// Center each complete row as a unit. Starting each card at its preferred
+			// position left most of a row empty when all peers shared one Neuron.
+			double treeWidth = at - gap * 2;
 			double Wanted(string n)
 			{
-				List<double> near = [.. adjacent[n].Where(pos.ContainsKey).Select(m => pos[m].X)];
-				return near.Count == 0 ? 0 : near.Average();
+				var near = adjacent[n].Where(pos.ContainsKey).Select(m => pos[m].X);
+				return near.DefaultIfEmpty(treeWidth / 2).Average();
 			}
 
-			Dictionary<string, double> wanted = loose.ToDictionary(n => n, Wanted);
-			double cursor = 0, y = bottom + RowGap, rowHeight = 0;
-			foreach (string n in loose.OrderBy(n => wanted[n]).ThenBy(n => n, StringComparer.Ordinal))
+			int columns = Math.Min(loose.Count, Math.Max(4, (int)Math.Ceiling(Math.Sqrt(loose.Count * 2))));
+			var rows = loose.OrderBy(Wanted).ThenBy(n => n, StringComparer.Ordinal).Chunk(columns);
+			double y = bottom + RowGap;
+			foreach (string[] row in rows)
 			{
-				(double w, double h) = size(n);
-				double x = Math.Max(cursor, wanted[n] - w / 2);
-				if (x + w > width && cursor > 0)
+				double width = row.Sum(n => size(n).W) + (row.Length - 1) * gap;
+				double x = row.Average(Wanted) - width / 2;
+				foreach (string n in row)
 				{
-					cursor = 0;
-					y += rowHeight + gap;
-					rowHeight = 0;
-					x = Math.Max(0, wanted[n] - w / 2);
+					(double w, double h) = size(n);
+					pos[n] = (x + w / 2, y + h / 2);
+					x += w + gap;
 				}
 
-				x = Math.Max(0, Math.Min(x, Math.Max(cursor, width - w)));
-				pos[n] = (x + w / 2, y + h / 2);
-				cursor = x + w + gap;
-				rowHeight = Math.Max(rowHeight, h);
+				y += row.Max(n => size(n).H) + RowGap;
 			}
 		}
 

@@ -195,7 +195,7 @@
       </Border>
 
       <Panel>
-        <ScrollViewer x:Name="Transcript" Padding="24,14">
+        <ScrollViewer x:Name="Transcript" HorizontalScrollBarVisibility="Disabled" Padding="24,14">
           <ItemsControl ItemsSource="{Binding Runs}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:ConsoleRunViewModel">
@@ -209,11 +209,6 @@
                     <TextBlock Grid.Column="3" Classes="meta" Text="{Binding Time}" />
                   </Grid>
                   <ItemsControl ItemsSource="{Binding Results}">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <UniformGrid Columns="{Binding Columns}" />
-                      </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ConsoleResultViewModel">
                         <Border Classes="result" c:ActionMenu.Source="{Binding $parent[UserControl].((vm:ConsoleViewModel)DataContext)}">
@@ -224,12 +219,15 @@
                                       c:ActionMenu.Source="{Binding $parent[UserControl].((vm:ConsoleViewModel)DataContext)}" c:ActionMenu.OnClick="True">
                                 <c:LineIcon Data="{StaticResource Icon.More}" Width="14" Height="14" />
                               </Button>
+                              <Button DockPanel.Dock="Right" Classes="ghost small" Padding="5" Margin="6,-4,0,-4"
+                                      Command="{Binding CopyAnswerCommand}" IsVisible="{Binding !IsWaiting}"
+                                      ToolTip.Tip="Copy answer" AutomationProperties.Name="Copy answer">
+                                <c:LineIcon Data="{StaticResource Icon.Copy}" Width="14" Height="14" />
+                              </Button>
                               <TextBlock DockPanel.Dock="Right" Classes="meta" Text="{Binding Status}" Classes.error="{Binding HasError}" VerticalAlignment="Center" />
                               <TextBlock Classes="mono" Text="{Binding NeuronLabel}" FontWeight="SemiBold" />
                             </DockPanel>
-                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MaxHeight="10000">
-                              <c:MarkdownView Markdown="{Binding Markdown}" />
-                            </ScrollViewer>
+                            <c:MarkdownView Markdown="{Binding Markdown}" />
                           </StackPanel>
                         </Border>
                       </DataTemplate>
