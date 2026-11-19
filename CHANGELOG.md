@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Upload and upgrade packages from Software.** Upload a package to a broker with an optional signature, or let the broker sign it. To upgrade one installed package, select **Upgrade…** beside its name and choose whether to back up first. The confirmation shows the chat admin command that will run.
+
 ## 0.5.0
 
 This release makes it easier to clear a noisy Inbox, spot recurring issues, and read results from several Neurons.

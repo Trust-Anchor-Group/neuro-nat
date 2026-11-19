@@ -115,8 +115,21 @@ public sealed partial class SoftwareService(MonitorService monitors, ChatService
 	/// </summary>
 	public async Task<IReadOnlyList<string>> UpgradeAsync(Guid accountId, string neuronJid, string? package, bool backup)
 	{
-		string command = "upgrade" + (backup ? string.Empty : " nobackup") + (string.IsNullOrWhiteSpace(package) ? string.Empty : " " + package.Trim());
+		string command = UpgradeCommand(package, backup);
 		return Plain(await this.Console(accountId, neuronJid).AskUntilQuietAsync(command, TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(10)));
+	}
+
+	public static bool CanUpgradePackage(string? name) => !string.IsNullOrWhiteSpace(name) &&
+		!name.Any(char.IsWhiteSpace) && !name.Any(char.IsControl) && name.IndexOfAny(['/', '\\']) < 0 &&
+		!name.Equals("nobackup", StringComparison.OrdinalIgnoreCase) &&
+		!name.Equals("IoTBroker.package", StringComparison.OrdinalIgnoreCase);
+
+	public static string UpgradeCommand(string? package, bool backup)
+	{
+		if (package is not null && !CanUpgradePackage(package))
+			throw new ArgumentException("Choose an installed package that the broker can upgrade individually.", nameof(package));
+
+		return "upgrade" + (backup ? string.Empty : " nobackup") + (package is null ? string.Empty : " " + package);
 	}
 
 	private NeuronNotification? Pending(Guid accountId, string neuronJid)

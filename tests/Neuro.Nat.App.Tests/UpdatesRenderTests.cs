@@ -1,8 +1,11 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Interactivity;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Neuro.Nat.App.ViewModels;
 using Neuro.Nat.App.Views;
 using Neuro.Nat.Engine;
@@ -94,6 +97,33 @@ public class UpdatesRenderTests
 		Assert.Equal("15", u.AutoMinutes);
 		Assert.Equal(3, u.Packages.Count);
 		Assert.False(u.UpgradeNowCommand.CanExecute(null));
+		Button upload = window.GetVisualDescendants().OfType<Button>().Single(b =>
+			b.IsEffectivelyVisible && Equals(b.Content, "Upload package…"));
+		upload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+		Dispatcher.UIThread.RunJobs();
+		var dialog = Assert.IsType<PackageUploadWindow>(Assert.Single(window.OwnedWindows));
+		Assert.Equal("https://gbg.lab.example.com/", dialog.FindControl<TextBox>("Address")!.Text);
+		Assert.False(dialog.FindControl<CheckBox>("Downloadable")!.IsChecked);
+		dialog.FindControl<Button>("Send")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+		Assert.Contains("choose a package", dialog.FindControl<TextBlock>("Status")!.Text);
+		dialog.Close();
+		Dispatcher.UIThread.RunJobs();
+		Button upgrade = window.GetVisualDescendants().OfType<Button>().Single(b =>
+			b.IsEffectivelyVisible && Equals(b.Content, "Upgrade…") && Equals(b.CommandParameter, "TAG.Payments.package"));
+		upgrade.Command!.Execute(upgrade.CommandParameter);
+		Assert.Equal("upgrade TAG.Payments.package", u.UpgradeCommandPreview);
+		Assert.True(u.UpgradeBackup);
+		u.UpgradeBackup = false;
+		Assert.Equal("upgrade nobackup TAG.Payments.package", u.UpgradeCommandPreview);
+		u.UpgradeConfirmText = u.Selected!.Label;
+		Assert.True(u.UpgradeNowCommand.CanExecute(null));
+		u.UpgradePackage = "";
+		Assert.False(u.UpgradeNowCommand.CanExecute(null));
+		u.Selected = u.Rows.First(r => r.NeuronJid == jids[0]);
+		Assert.False(u.IsConfirmingUpgrade);
+		u.AskUpgradeCommand.Execute(null);
+		Assert.Equal("upgrade", u.UpgradeCommandPreview);
+		Assert.True(u.UpgradeBackup);
 		window.Close();
 	}
 

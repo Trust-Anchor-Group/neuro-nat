@@ -41,7 +41,7 @@ public sealed record UpdateLogLine(string Time, string Text);
 /// <summary>
 /// The Updates workspace: each Neuron's build, installed and downloaded packages and automatic
 /// update setting, with checking for packages, cancelling a pending update and upgrading.
-/// Everything goes through the Neuron's chat admin, which is the only way it offers.
+/// Upgrade commands use chat admin. The Software view submits uploads to the broker's web interface.
 /// </summary>
 public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 {
@@ -103,7 +103,9 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	public bool HasSelection => this.Selected is not null;
 
 	[ObservableProperty] private bool hasRows;
-	[ObservableProperty] private bool isBusy;
+	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(AskUpgradeCommand), nameof(UpgradeNowCommand))]
+	private bool isBusy;
 	[ObservableProperty] private string busyText = string.Empty;
 	[ObservableProperty] private string? error;
 
@@ -126,8 +128,48 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	[NotifyCanExecuteChangedFor(nameof(UpgradeNowCommand))]
 	private string upgradeConfirmText = string.Empty;
 
-	[ObservableProperty] private bool upgradeBackup = true;
-	[ObservableProperty] private string upgradePackage = string.Empty;
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(UpgradeCommandPreview))]
+	private bool upgradeBackup = true;
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(UpgradeCommandPreview), nameof(UpgradeTarget))]
+	[NotifyCanExecuteChangedFor(nameof(UpgradeNowCommand))]
+	private bool upgradeSingle;
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(UpgradeCommandPreview), nameof(UpgradeTarget))]
+	[NotifyCanExecuteChangedFor(nameof(UpgradeNowCommand))]
+	private string? upgradePackage;
+
+	public string UpgradeTarget => this.UpgradeSingle
+		? $"Upgrade {(string.IsNullOrWhiteSpace(this.UpgradePackage) ? "one package" : this.UpgradePackage)} on {this.Selected?.Label}"
+		: $"Upgrade all installed software on {this.Selected?.Label}";
+
+	public string? UpgradeCommandPreview => this.UpgradeSingle && !SoftwareService.CanUpgradePackage(this.UpgradePackage)
+		? null : SoftwareService.UpgradeCommand(this.UpgradeSingle ? this.UpgradePackage : null, this.UpgradeBackup);
+
+	public string? UploadAddress
+	{
+		get
+		{
+			if (this.Selected is not { } row)
+				return null;
+			var profile = this.accounts.Get(row.AccountId)?.Profile;
+			string? domain = this.monitors.For(row.AccountId)?.Neurons
+				.FirstOrDefault(n => string.Equals(n.BareJid, row.NeuronJid, StringComparison.OrdinalIgnoreCase))?.OwnName;
+			if (string.IsNullOrWhiteSpace(domain))
+			{
+				// The domain of a client JID can belong to a parent broker. A local
+				// client without a domain belongs to the account's own Neuron.
+				if (!row.NeuronJid.Contains('@'))
+					domain = row.NeuronJid;
+				else if (NeuronNames.Domain(row.NeuronJid).Length == 0)
+					domain = profile?.EffectiveDomain;
+			}
+			if (profile is not null && string.Equals(domain, profile.EffectiveDomain, StringComparison.OrdinalIgnoreCase))
+				return AccountWeb.Check(profile.WebAddress) ?? AccountWeb.Check(domain);
+			return AccountWeb.Check(domain);
+		}
+	}
 
 	public string UpgradeConfirmHint => this.Selected is null ? string.Empty : $"Type {this.Selected.Label} to upgrade it";
 
@@ -137,6 +179,8 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	partial void OnSelectedChanged(UpdateRowViewModel? value)
 	{
 		this.IsConfirmingUpgrade = false;
+		this.AskUpgradeCommand.NotifyCanExecuteChanged();
+		this.OnPropertyChanged(nameof(this.UpgradeTarget));
 		this.UpgradeConfirmText = string.Empty;
 		this.Error = null;
 		this.Log.Clear();
@@ -479,9 +523,15 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 		})
 		: Task.CompletedTask;
 
-	[RelayCommand]
-	private void AskUpgrade()
+	private bool CanAskUpgrade(string? package) => !this.IsBusy && this.Selected is not null &&
+		(package is null || SoftwareService.CanUpgradePackage(package));
+
+	[RelayCommand(CanExecute = nameof(CanAskUpgrade))]
+	private void AskUpgrade(string? package)
 	{
+		this.UpgradeSingle = package is not null;
+		this.UpgradePackage = package;
+		this.UpgradeBackup = true;
 		this.UpgradeConfirmText = string.Empty;
 		this.IsConfirmingUpgrade = true;
 	}
@@ -489,24 +539,30 @@ public sealed partial class UpdatesViewModel : ObservableObject, IActionSource
 	[RelayCommand]
 	private void CancelUpgrade() => this.IsConfirmingUpgrade = false;
 
-	private bool CanUpgradeNow() => this.IsConfirmingUpgrade && this.Selected is { } r &&
+	private bool CanUpgradeNow() => this.IsConfirmingUpgrade && !this.IsBusy && this.Selected is { } r &&
+		this.UpgradeCommandPreview is not null &&
 		string.Equals(this.UpgradeConfirmText.Trim(), r.Label, StringComparison.OrdinalIgnoreCase);
 
 	[RelayCommand(CanExecute = nameof(CanUpgradeNow))]
 	private Task UpgradeNow()
 	{
-		if (this.Selected is not { } r)
+		if (!this.CanUpgradeNow() || this.Selected is not { } r)
 			return Task.CompletedTask;
 
 		this.IsConfirmingUpgrade = false;
-		string? package = string.IsNullOrWhiteSpace(this.UpgradePackage) ? null : this.UpgradePackage;
+		string? package = this.UpgradeSingle ? this.UpgradePackage : null;
 		bool backup = this.UpgradeBackup;
-		this.AddLog(backup ? "Upgrading, with a backup first. The Neuron restarts when it is done." : "Upgrading without a backup. The Neuron restarts when it is done.");
+		this.AddLog($"{r.Label} > {SoftwareService.UpgradeCommand(package, backup)}");
 
 		return this.RunAsync(r, "Upgrading…", async () =>
 		{
-			foreach (string l in await this.software.UpgradeAsync(r.AccountId, r.NeuronJid, package, backup))
-				this.AddLog(l);
+			var replies = await this.software.UpgradeAsync(r.AccountId, r.NeuronJid, package, backup);
+			if (this.Selected != r)
+				return;
+			foreach (string reply in replies)
+				this.AddLog(reply);
+			if (replies.Count == 0)
+				this.AddLog("No reply to the upgrade command. Refresh Software when the Neuron is connected to check its status.");
 		});
 	}
 }

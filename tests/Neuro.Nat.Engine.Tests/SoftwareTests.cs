@@ -8,6 +8,22 @@ namespace Neuro.Nat.Engine.Tests;
 /// <summary>Reading the chat admin's software answers, as the broker writes them.</summary>
 public class SoftwareTests
 {
+	[Theory]
+	[InlineData(null, true, "upgrade")]
+	[InlineData(null, false, "upgrade nobackup")]
+	[InlineData("fo.package", true, "upgrade fo.package")]
+	[InlineData("fo.package", false, "upgrade nobackup fo.package")]
+	public void UpgradeTargetsOnlyTheChosenScope(string? package, bool backup, string expected)
+		=> Assert.Equal(expected, SoftwareService.UpgradeCommand(package, backup));
+
+	[Theory]
+	[InlineData("")]
+	[InlineData("nobackup")]
+	[InlineData("IoTBroker.package")]
+	[InlineData("other.package key")]
+	public void InvalidPackageCannotBecomeAWholeNeuronUpgrade(string package)
+		=> Assert.Throws<ArgumentException>(() => SoftwareService.UpgradeCommand(package, true));
+
 	[Fact]
 	public void ReadsAutoUpdateSettings()
 	{
